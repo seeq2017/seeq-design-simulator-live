@@ -11,6 +11,21 @@
      even with ~100 fonts. See FONTS + lazy loader in the script below. -->
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<!-- On-device debug console (Eruda) — loads ONLY when the URL has ?debug=1
+     (or #debug). Lets us inspect Console/DOM/Network on a real iPhone Safari.
+     Never present in normal/production views. -->
+<script>
+(function(){
+  try{
+    var q=location.search+' '+location.hash;
+    if(!/[?#&]debug(=1)?\b/i.test(q) && !/\beruda\b/i.test(q)) return;
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/eruda@3.0.1/eruda.min.js';
+    s.onload=function(){ try{ window.eruda && eruda.init(); console.log('[SeeQ] eruda debug console enabled'); }catch(e){} };
+    document.head.appendChild(s);
+  }catch(e){}
+})();
+</script>
 <style>
   /* ===== SeeQ Design System tokens (design/colors_and_type.css の正本を取り込み) ===== */
   :root{
