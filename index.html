@@ -303,7 +303,9 @@
     /* reserve room at the bottom equal to the collapsed sheet's visible height
        (98px grip+tabs) plus a little breathing space, so the canvas centre is
        never hidden behind the bottom sheet and stays touchable. */
-    .stage{order:1;padding:8px 8px calc(108px + env(safe-area-inset-bottom));flex:1 1 auto;min-height:0;}
+    /* reserve room for the collapsed sheet (its real measured height, set as
+       --sheet-peek from JS) so the canvas centre never hides behind the nav. */
+    .stage{order:1;padding:8px 8px calc(var(--sheet-peek,92px) + 8px + env(safe-area-inset-bottom));flex:1 1 auto;min-height:0;}
     .canvas-wrap{max-width:min(92vw,440px);}
     .brand small{display:none;}
     .brand .logo{height:24px;}
@@ -315,19 +317,30 @@
     /* ---- bottom sheet ---- */
     .tools{
       order:2;position:fixed;left:0;right:0;bottom:0;z-index:50;width:100%;
-      max-height:64vh;border-right:0;border-top:1px solid var(--line);
-      border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(20,40,50,.14);
+      max-height:66vh;border-right:0;border-top:1px solid var(--line);
+      border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(20,40,50,.16);
       padding:0;gap:0;overflow:hidden;
-      transform:translateY(0);transition:transform .28s cubic-bezier(.4,0,.2,1);
+      transform:translateY(0);transition:transform .3s cubic-bezier(.32,.72,0,1);
       padding-bottom:env(safe-area-inset-bottom);
+      will-change:transform;
     }
-    .tools.collapsed{transform:translateY(calc(100% - 98px));}
-    .sheet-head{display:block;flex:0 0 auto;background:var(--panel);border-radius:18px 18px 0 0;}
-    .sheet-grip{width:44px;height:5px;border-radius:3px;background:#cdd9dc;margin:9px auto 7px;cursor:grab;}
-    .mtabs{display:flex;gap:6px;overflow-x:auto;padding:0 10px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-    .mtabs::-webkit-scrollbar{display:none;}
-    .mtab{flex:0 0 auto;border:1px solid var(--line);background:#fbfdfd;border-radius:20px;padding:9px 16px;font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;min-height:42px;}
-    .mtab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+    .tools.collapsed{transform:translateY(calc(100% - var(--sheet-peek,92px)));}
+    /* sheet head = drag grip + bottom-nav tab bar (the "footer") */
+    .sheet-head{display:block;flex:0 0 auto;background:var(--panel);border-radius:18px 18px 0 0;
+      touch-action:none;user-select:none;-webkit-user-select:none;}
+    .sheet-grip{width:40px;height:4px;border-radius:3px;background:#cfd9dc;margin:8px auto 4px;cursor:grab;}
+    .mtabs{display:flex;gap:0;padding:0 4px 2px;}
+    .mtab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+      border:0;background:transparent;border-radius:12px;padding:6px 1px 7px;cursor:pointer;
+      font-size:10px;font-weight:700;color:var(--sub);position:relative;line-height:1;
+      -webkit-tap-highlight-color:transparent;transition:color .15s,transform .1s;}
+    .mtab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;
+      stroke-linecap:round;stroke-linejoin:round;display:block;}
+    .mtab .mlab{white-space:nowrap;}
+    .mtab:active{transform:scale(.92);}
+    .mtab.active{color:var(--accent);}
+    .mtab.active::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);
+      width:24px;height:3px;border-radius:0 0 3px 3px;background:var(--accent);}
     .sheet-body{flex:1 1 auto;overflow-y:auto;padding:8px 12px 18px;gap:10px;-webkit-overflow-scrolling:touch;}
     .tools .card{display:none;border:0;border-radius:0;padding:4px 0;}
     .tools .card.m-active{display:block;}
@@ -414,16 +427,16 @@
 <main>
   <aside class="tools" id="tools">
 
-    <!-- Mobile bottom-sheet header (hidden on desktop) -->
+    <!-- Mobile bottom-sheet header (hidden on desktop) — drag grip + bottom-nav tabs -->
     <div class="sheet-head" id="sheetHead">
       <div class="sheet-grip" id="sheetGrip"></div>
-      <div class="mtabs" id="mtabs">
-        <button class="mtab active" data-mtab="product">商品</button>
-        <button class="mtab" data-mtab="text">文字</button>
-        <button class="mtab" data-mtab="image">画像</button>
-        <button class="mtab" data-mtab="shape">図形</button>
-        <button class="mtab" data-mtab="arrange">配置</button>
-        <button class="mtab" data-mtab="layer">レイヤー</button>
+      <div class="mtabs" id="mtabs" role="tablist">
+        <button class="mtab active" data-mtab="product" role="tab"><svg viewBox="0 0 24 24"><path d="M8 4L3.5 6.5 5.5 10 8 8.8V20h8V8.8l2.5 1.2 2-3.5L16 4l-1.7.9a3.3 3.3 0 01-4.6 0z"/></svg><span class="mlab">商品</span></button>
+        <button class="mtab" data-mtab="text" role="tab"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v12M9.5 18h5"/></svg><span class="mlab">文字</span></button>
+        <button class="mtab" data-mtab="image" role="tab"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5L5 19.5"/></svg><span class="mlab">画像</span></button>
+        <button class="mtab" data-mtab="shape" role="tab"><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="9" height="9" rx="1.5"/><circle cx="16" cy="16" r="5"/></svg><span class="mlab">図形</span></button>
+        <button class="mtab" data-mtab="arrange" role="tab"><svg viewBox="0 0 24 24"><path d="M4 4v16"/><rect x="7.5" y="7" width="11" height="4" rx="1"/><rect x="7.5" y="14" width="7" height="4" rx="1"/></svg><span class="mlab">配置</span></button>
+        <button class="mtab" data-mtab="layer" role="tab"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span class="mlab">レイヤー</span></button>
       </div>
     </div>
     <div class="sheet-body" id="sheetBody">
@@ -2786,26 +2799,82 @@ fabric.Object.prototype.set({
 
 function isMobile(){ return window.matchMedia('(max-width:820px)').matches; }
 
-/* --- bottom-sheet tabs --- */
+/* --- bottom-sheet tabs + drag-to-close ----------------------------------
+   Two snap states: collapsed (only the nav bar peeks) and expanded. The peek
+   height is MEASURED (not guessed) and published as --sheet-peek so the CSS
+   transform and the stage's reserved padding always agree → no layout jank.
+   The head can be dragged: pull down to close, pull up to open. */
 var toolsEl=document.getElementById('tools');
+var sheetHeadEl=document.getElementById('sheetHead');
 var currentMTab='product';
 function setMobileTab(name){
   currentMTab=name;
   document.querySelectorAll('.mtab').forEach(function(b){ b.classList.toggle('active', b.dataset.mtab===name); });
   document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.toggle('m-active', c.dataset.tab===name); });
 }
+function measureSheet(){
+  if(!isMobile()) return;
+  /* peek = grip + tab bar height; round up so nothing clips */
+  var peek = Math.ceil(sheetHeadEl.getBoundingClientRect().height) || 92;
+  document.documentElement.style.setProperty('--sheet-peek', peek+'px');
+}
 function expandSheet(){ toolsEl.classList.remove('collapsed'); }
 function collapseSheet(){ toolsEl.classList.add('collapsed'); }
-document.getElementById('mtabs').addEventListener('click', function(e){ var b=e.target.closest('.mtab'); if(!b) return; setMobileTab(b.dataset.mtab); expandSheet(); });
+function isCollapsed(){ return toolsEl.classList.contains('collapsed'); }
+
+document.getElementById('mtabs').addEventListener('click', function(e){
+  var b=e.target.closest('.mtab'); if(!b) return;
+  /* re-tapping the active tab while open collapses the sheet (toggle) */
+  if(b.dataset.mtab===currentMTab && !isCollapsed()){ collapseSheet(); return; }
+  setMobileTab(b.dataset.mtab); expandSheet();
+});
 document.getElementById('sheetGrip').addEventListener('click', function(){ toolsEl.classList.toggle('collapsed'); });
+
+/* drag the head to open/close. We translate the sheet live during the drag
+   (transition off) then snap to the nearest state on release. */
+(function sheetDrag(){
+  var dragging=false, startY=0, baseT=0, lastDy=0, peek=0, sheetH=0, didDrag=false;
+  function curT(){ return isCollapsed() ? Math.max(0, sheetH-peek) : 0; }
+  sheetHeadEl.addEventListener('touchstart', function(e){
+    if(!isMobile() || e.touches.length!==1) return;
+    measureSheet();
+    peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek')) || sheetHeadEl.offsetHeight;
+    sheetH = toolsEl.offsetHeight;
+    dragging=true; didDrag=false; startY=e.touches[0].clientY; baseT=curT(); lastDy=0;
+    toolsEl.style.transition='none';
+  }, {passive:true});
+  sheetHeadEl.addEventListener('touchmove', function(e){
+    if(!dragging) return;
+    lastDy = e.touches[0].clientY - startY;
+    if(Math.abs(lastDy)>4) didDrag=true;
+    var t = Math.max(0, Math.min(sheetH-peek, baseT+lastDy));
+    toolsEl.style.transform='translateY('+t+'px)';
+    e.preventDefault();                 /* stop the page from scrolling under us */
+  }, {passive:false});
+  function endDrag(){
+    if(!dragging) return; dragging=false;
+    toolsEl.style.transition=''; toolsEl.style.transform='';   /* hand back to the class */
+    if(lastDy > 44) collapseSheet();
+    else if(lastDy < -44) expandSheet();
+    /* small move → snap back to whatever state the class already holds */
+  }
+  sheetHeadEl.addEventListener('touchend', endDrag, {passive:true});
+  sheetHeadEl.addEventListener('touchcancel', endDrag, {passive:true});
+})();
+
 function initMobile(){
   if(isMobile()){
     setMobileTab(currentMTab);
+    measureSheet();
     /* start collapsed so the canvas (and shirt centre) is fully reachable;
        the user pulls the sheet up via the grip/tabs when they need tools. */
     collapseSheet();
   }
-  else { document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.remove('m-active'); }); toolsEl.classList.remove('collapsed'); }
+  else {
+    document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.remove('m-active'); });
+    toolsEl.classList.remove('collapsed');
+    toolsEl.style.transform=''; toolsEl.style.transition='';
+  }
 }
 /* auto-jump to the relevant tab when an object is selected on mobile.
    IMPORTANT: only switch tabs — do NOT auto-expand the sheet, otherwise it
