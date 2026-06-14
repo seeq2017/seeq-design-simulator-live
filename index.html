@@ -298,8 +298,15 @@
   }
   .toast.show{opacity:1;}
 
+  /* bottom-sheet scrim — sits just under the sheet (z 50) and above the canvas,
+     but below the top objbar/zoombar (z 40) so those stay crisp & tappable.
+     Hidden by default; the mobile rule below shows it while body.sheet-open. */
+  .sheet-scrim{position:fixed;inset:0;z-index:35;background:rgba(15,30,35,.30);
+    opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s;}
+
   @media (max-width:820px){
     main{flex-direction:column;}
+    body.sheet-open .sheet-scrim{opacity:1;visibility:visible;}
     /* reserve room at the bottom equal to the collapsed sheet's visible height
        (98px grip+tabs) plus a little breathing space, so the canvas centre is
        never hidden behind the bottom sheet and stays touchable. */
@@ -782,6 +789,10 @@
     </div>
   </section>
 </main>
+
+<!-- Mobile bottom-sheet scrim: dims/blocks the canvas while the sheet is open
+     so browsing tools never edits the design by accident; tap to close. -->
+<div class="sheet-scrim" id="sheetScrim" aria-hidden="true"></div>
 
 <!-- Selected object toolbar -->
 <div class="objbar" id="objbar">
@@ -2818,8 +2829,11 @@ function measureSheet(){
   var peek = Math.ceil(sheetHeadEl.getBoundingClientRect().height) || 92;
   document.documentElement.style.setProperty('--sheet-peek', peek+'px');
 }
-function expandSheet(){ toolsEl.classList.remove('collapsed'); }
-function collapseSheet(){ toolsEl.classList.add('collapsed'); }
+/* expand/collapse also toggle body.sheet-open, which drives the scrim (CSS).
+   Keeping the scrim purely state-driven means every entry point — tabs, grip,
+   drag, scrim-tap — stays in sync with one source of truth. */
+function expandSheet(){ toolsEl.classList.remove('collapsed'); document.body.classList.add('sheet-open'); }
+function collapseSheet(){ toolsEl.classList.add('collapsed'); document.body.classList.remove('sheet-open'); }
 function isCollapsed(){ return toolsEl.classList.contains('collapsed'); }
 
 document.getElementById('mtabs').addEventListener('click', function(e){
@@ -2828,12 +2842,17 @@ document.getElementById('mtabs').addEventListener('click', function(e){
   if(b.dataset.mtab===currentMTab && !isCollapsed()){ collapseSheet(); return; }
   setMobileTab(b.dataset.mtab); expandSheet();
 });
-document.getElementById('sheetGrip').addEventListener('click', function(){ toolsEl.classList.toggle('collapsed'); });
+document.getElementById('sheetGrip').addEventListener('click', function(){ isCollapsed()?expandSheet():collapseSheet(); });
+/* tap the dimmed canvas (scrim) to close the sheet */
+document.getElementById('sheetScrim').addEventListener('click', collapseSheet);
 
 /* drag the head to open/close. We translate the sheet live during the drag
-   (transition off) then snap to the nearest state on release. */
+   (transition off) then snap on release. Snapping considers BOTH travelled
+   distance AND flick velocity, so a quick short flick toggles too — the固定
+   44px-only threshold ignored fast flicks and felt sticky. */
 (function sheetDrag(){
   var dragging=false, startY=0, baseT=0, lastDy=0, peek=0, sheetH=0, didDrag=false;
+  var lastY=0, lastT=0, vel=0;        /* px/ms, signed: +down / -up */
   function curT(){ return isCollapsed() ? Math.max(0, sheetH-peek) : 0; }
   sheetHeadEl.addEventListener('touchstart', function(e){
     if(!isMobile() || e.touches.length!==1) return;
@@ -2841,11 +2860,15 @@ document.getElementById('sheetGrip').addEventListener('click', function(){ tools
     peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek')) || sheetHeadEl.offsetHeight;
     sheetH = toolsEl.offsetHeight;
     dragging=true; didDrag=false; startY=e.touches[0].clientY; baseT=curT(); lastDy=0;
+    lastY=startY; lastT=e.timeStamp; vel=0;
     toolsEl.style.transition='none';
   }, {passive:true});
   sheetHeadEl.addEventListener('touchmove', function(e){
     if(!dragging) return;
-    lastDy = e.touches[0].clientY - startY;
+    var y=e.touches[0].clientY, dt=e.timeStamp-lastT;
+    if(dt>0) vel = (y-lastY)/dt;       /* instantaneous velocity for flick detection */
+    lastY=y; lastT=e.timeStamp;
+    lastDy = y - startY;
     if(Math.abs(lastDy)>4) didDrag=true;
     var t = Math.max(0, Math.min(sheetH-peek, baseT+lastDy));
     toolsEl.style.transform='translateY('+t+'px)';
@@ -2854,9 +2877,10 @@ document.getElementById('sheetGrip').addEventListener('click', function(){ tools
   function endDrag(){
     if(!dragging) return; dragging=false;
     toolsEl.style.transition=''; toolsEl.style.transform='';   /* hand back to the class */
-    if(lastDy > 44) collapseSheet();
-    else if(lastDy < -44) expandSheet();
-    /* small move → snap back to whatever state the class already holds */
+    var FLICK=0.5, DIST=44;            /* px/ms , px */
+    if(vel > FLICK || lastDy > DIST) collapseSheet();
+    else if(vel < -FLICK || lastDy < -DIST) expandSheet();
+    /* otherwise snap back to whatever state the class already holds */
   }
   sheetHeadEl.addEventListener('touchend', endDrag, {passive:true});
   sheetHeadEl.addEventListener('touchcancel', endDrag, {passive:true});
@@ -2873,6 +2897,7 @@ function initMobile(){
   else {
     document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.remove('m-active'); });
     toolsEl.classList.remove('collapsed');
+    document.body.classList.remove('sheet-open');   /* no scrim on desktop */
     toolsEl.style.transform=''; toolsEl.style.transition='';
   }
 }
