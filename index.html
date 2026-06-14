@@ -2527,25 +2527,50 @@ function reorderLayer(src, target){
 function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
 /* =====================================================================
-   Alignment / smart guides (center snapping)
+   Alignment / smart guides — canvas centre + object-to-object snapping
    ===================================================================== */
-var snapV=null, snapH=null, SNAP=7;
+var SNAP=7;                 /* snap threshold (scene px) */
+var snapGuides=[];          /* drawn this frame: {x} vertical or {y} horizontal */
+/* scene-space bounding edges of an object (handles scale/rotation) */
+function objEdges(o){
+  var r=o.getBoundingRect(true,true);
+  return {l:r.left, cx:r.left+r.width/2, r:r.left+r.width,
+          t:r.top,  cy:r.top+r.height/2, b:r.top+r.height};
+}
 canvas.on('object:moving', function(e){
   var o=e.target; if(!o) return;
-  var cx=canvas.getWidth()/2, cy=canvas.getHeight()*0.46;
-  var c=o.getCenterPoint(); snapV=snapH=null;
-  if(Math.abs(c.x-cx)<SNAP){ o.setPositionByOrigin(new fabric.Point(cx,c.y),'center','center'); snapV=cx; }
-  if(Math.abs(c.y-cy)<SNAP){ c=o.getCenterPoint(); o.setPositionByOrigin(new fabric.Point(c.x,cy),'center','center'); snapH=cy; }
+  snapGuides=[];
+  var cw=canvas.getWidth(), ch=canvas.getHeight();
+  /* candidate alignment lines: canvas/print centre + every other object's edges */
+  var vCands=[cw/2], hCands=[ch*0.46];
+  userObjects().forEach(function(x){
+    if(x===o || x.visible===false) return;
+    var ex=objEdges(x); vCands.push(ex.l,ex.cx,ex.r); hCands.push(ex.t,ex.cy,ex.b);
+  });
+  var me=objEdges(o);
+  var myXs=[me.l, me.cx, me.r], myYs=[me.t, me.cy, me.b];
+  /* nearest vertical snap (align one of my x-edges to a candidate) */
+  var bvD=SNAP+1, bvX=null;
+  vCands.forEach(function(cx){ myXs.forEach(function(mx){ var d=cx-mx; if(Math.abs(d)<Math.abs(bvD)){ bvD=d; bvX=cx; } }); });
+  var bhD=SNAP+1, bhY=null;
+  hCands.forEach(function(cy){ myYs.forEach(function(my){ var d=cy-my; if(Math.abs(d)<Math.abs(bhD)){ bhD=d; bhY=cy; } }); });
+  if(Math.abs(bvD)<=SNAP){ o.left+=bvD; snapGuides.push({x:bvX}); }
+  if(Math.abs(bhD)<=SNAP){ o.top +=bhD; snapGuides.push({y:bhY}); }
+  if(snapGuides.length) o.setCoords();
 });
-canvas.on('mouse:up', function(){ snapV=snapH=null; canvas.requestRenderAll(); });
+canvas.on('mouse:up', function(){ if(snapGuides.length){ snapGuides=[]; canvas.requestRenderAll(); } });
 canvas.on('after:render', function(){
-  var ctx=canvas.getSelectionContext(); if(!ctx) return;
-  if(snapV==null&&snapH==null) return;
+  var ctx=canvas.getSelectionContext(); if(!ctx || !snapGuides.length) return;
+  var w=BASE_W*scaleUnit(), h=BASE_H*scaleUnit();
   ctx.save(); ctx.strokeStyle='#E60012'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
   var vt=canvas.viewportTransform;
   ctx.setTransform(vt[0],vt[1],vt[2],vt[3],vt[4],vt[5]);
-  if(snapV!=null){ ctx.beginPath(); ctx.moveTo(snapV,0); ctx.lineTo(snapV,BASE_H*scaleUnit()); ctx.stroke(); }
-  if(snapH!=null){ ctx.beginPath(); ctx.moveTo(0,snapH); ctx.lineTo(BASE_W*scaleUnit(),snapH); ctx.stroke(); }
+  snapGuides.forEach(function(g){
+    ctx.beginPath();
+    if(g.x!=null){ ctx.moveTo(g.x,0); ctx.lineTo(g.x,h); }
+    else { ctx.moveTo(0,g.y); ctx.lineTo(w,g.y); }
+    ctx.stroke();
+  });
   ctx.restore();
 });
 
