@@ -881,6 +881,8 @@
       <button class="btn btn-primary" id="applyKey">キーから復元</button>
     </div>
     <input type="file" id="jsonInput" accept="application/json,.json" hidden>
+    <button class="btn btn-primary btn-block mt-m" id="btnWpSave" hidden>会員保存（WordPress）</button>
+    <button class="btn btn-ghost btn-block mt-s" id="btnSaveTpl" hidden>テンプレートとして登録（運用者）</button>
     <button class="btn btn-ghost btn-block mt-l" id="saveClose">閉じる</button>
   </div>
 </div>
@@ -2981,6 +2983,8 @@ proofModal.onclick=function(e){ if(e.target===proofModal) proofModal.classList.r
 document.getElementById('proofMetaCopy').onclick=function(){ var t=document.getElementById('proofMeta'); t.select(); try{document.execCommand('copy');toast('メタをコピーしました');}catch(e){} };
 document.getElementById('proofMetaDl').onclick=function(){ _dl(URL.createObjectURL(new Blob([document.getElementById('proofMeta').value],{type:'application/json'})), 'seeq-proof-meta.json', true); };
 document.getElementById('proofPreviewDl').onclick=function(){ if(proofPreview) _dl(proofPreview, 'seeq-preview-'+currentProduct+'.png'); };
+document.getElementById('btnWpSave').onclick=wpSaveDesign;
+document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
 
 var EXPORTERS={png:exportPNG, jpg:exportJPG, svg:exportSVG, pdf:exportPDF, proof:openProofModal};
 
@@ -3152,13 +3156,73 @@ registerTemplates(BUILTIN_TEMPLATES);
   if(url) loadTemplateManifest(url);
 })();
 
-/* WordPress parent → tool: push a template set at runtime.
-   (Templates are read-only design data, so this is low-risk; the authenticated
-   save/load bridge with strict origin checks is added in item 4.) */
+/* =====================================================================
+   WordPress 連携ブリッジ (postMessage) — 要件書 第6章
+   --------------------------------------------------------------------
+   単一HTML・localStorage不使用の原則を保ったまま、保存/読込/テンプレ登録を
+   親(WordPress)へ委譲する。ツールは保存処理を自前で持たず、親が REST
+   (cookie + nonce) で実行する。送受信ともオリジン検証（親が seeq:init で自身の
+   オリジンを通知 → 以後その発信元のみ受理、送信もそのオリジン宛）。
+   ===================================================================== */
+var SEEQ_EMBED={ embedded:(window.parent!==window), origin:null, isAdmin:false };
+function wpTarget(){ return SEEQ_EMBED.origin || '*'; }   /* '*'＝未init(dev)時のみ */
+function wpPost(type, payload){
+  if(!SEEQ_EMBED.embedded) return false;
+  window.parent.postMessage({type:type, payload:payload}, wpTarget());
+  return true;
+}
+/* small composed thumbnail (low-res) for member/template list views */
+function designThumb(){
+  try{ return _renderForExport({format:'jpeg', quality:0.8, multiplier:Math.min(0.5, 220/canvas.getWidth()), bg:'#ffffff'}); }
+  catch(e){ return ''; }
+}
+function wpSaveDesign(){
+  if(!wpPost('seeq:save', {title:curProduct().label+' デザイン', product:currentProduct, design_json:exportDesign(), thumb:designThumb()}))
+    { toast('WordPressに接続されていません'); return; }
+  toast('保存リクエストを送信しました…');
+}
+function wpSaveTemplate(){
+  var name=window.prompt('テンプレート名を入力してください', curProduct().label+' テンプレート');
+  if(name==null) return;
+  if(!wpPost('seeq:saveTemplate', {name:name, category:'', product:currentProduct, design_json:exportDesign(), thumb:designThumb()}))
+    { toast('WordPressに接続されていません'); return; }
+  toast('テンプレート登録リクエストを送信しました…');
+}
+function updateWpUI(){
+  var s=document.getElementById('btnWpSave'); if(s) s.hidden=!SEEQ_EMBED.embedded;
+  var t=document.getElementById('btnSaveTpl'); if(t) t.hidden=!SEEQ_EMBED.isAdmin;
+}
 window.addEventListener('message', function(e){
   var d=e.data; if(!d||typeof d!=='object') return;
-  if(d.type==='seeq:templates' && Array.isArray(d.payload)) registerTemplates(d.payload);
+  /* once the parent declares its origin, accept inbound only from it */
+  if(SEEQ_EMBED.origin && e.origin!==SEEQ_EMBED.origin) return;
+  switch(d.type){
+    case 'seeq:init':
+      if(d.payload){
+        if(d.payload.origin) SEEQ_EMBED.origin=d.payload.origin;
+        SEEQ_EMBED.isAdmin=!!d.payload.isAdmin;
+        if(Array.isArray(d.payload.templates)) registerTemplates(d.payload.templates);
+        if(d.payload.design) importDesign(typeof d.payload.design==='string'?d.payload.design:JSON.stringify(d.payload.design));
+      }
+      updateWpUI();
+      break;
+    case 'seeq:templates':
+      if(Array.isArray(d.payload)) registerTemplates(d.payload);
+      break;
+    case 'seeq:load':
+      if(d.payload && d.payload.design_json){
+        importDesign(typeof d.payload.design_json==='string'?d.payload.design_json:JSON.stringify(d.payload.design_json));
+        toast('デザインを読み込みました');
+      }
+      break;
+    case 'seeq:saved':
+      toast((d.payload&&d.payload.ok!==false)?'保存しました':'保存に失敗しました');
+      break;
+  }
 });
+/* announce readiness so the parent can reply with seeq:init (origin/admin/templates) */
+if(SEEQ_EMBED.embedded){ try{ window.parent.postMessage({type:'seeq:ready'}, '*'); }catch(e){} }
+updateWpUI();
 
 /* =====================================================================
    Quote modal + toast
@@ -3360,6 +3424,7 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   exportDesign:exportDesign, importDesign:importDesign, commitHistory:commitHistory,
   registerTemplates:registerTemplates, applyTemplate:applyTemplate, TEMPLATES:TEMPLATES,
   generateProofBundle:generateProofBundle, proofGeometry:proofGeometry, emitProof:emitProof, PRINT:PRINT,
+  wpSaveDesign:wpSaveDesign, wpSaveTemplate:wpSaveTemplate, SEEQ_EMBED:SEEQ_EMBED, updateWpUI:updateWpUI,
   state:function(){return {undo:undoStack.length, redo:redoStack.length, product:currentProduct, face:currentFace, color:currentColor.hex, objs:userObjects().length};}};
 </script>
 </body>
