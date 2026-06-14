@@ -408,6 +408,22 @@
   .exp-menu button:hover{background:#eef3f4;}
   .exp-menu button small{margin-left:auto;color:var(--sub);font-weight:500;font-size:10.5px;}
   .exp-menu .exp-ico{width:15px;height:15px;flex:0 0 auto;color:var(--accent,#E60012);}
+  .exp-sep{height:1px;background:var(--line);margin:5px 4px;}
+
+  /* ===== Proof (入稿データ) modal ===== */
+  .modal.modal-wide{max-width:560px;}
+  .proof-settings{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;}
+  .proof-tag{font-size:11.5px;font-weight:700;color:var(--accent-d,#B3000E);background:#FDECEE;
+    border-radius:999px;padding:4px 11px;}
+  .proof-face{border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:10px;}
+  .proof-face h4{margin:0 0 4px;font-size:13.5px;color:var(--ink);}
+  .proof-face .dim{font-size:11.5px;color:var(--sub);margin:0 0 9px;}
+  .proof-row{display:flex;flex-wrap:wrap;gap:7px;align-items:center;}
+  .proof-prev{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:10px;}
+  .proof-prev img{width:84px;height:auto;border-radius:6px;border:1px solid var(--line);background:#eef3f4;}
+  .proof-prev .meta{flex:1 1 0;min-width:0;}
+  .proof-prev .meta p{margin:0 0 6px;}
+  .btn-xs{padding:7px 12px;font-size:12px;}
 </style>
 </head>
 <body>
@@ -439,6 +455,8 @@
         <button data-fmt="jpg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>JPG画像<small>白背景</small></button>
         <button data-fmt="svg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M12 11v10M4 7l8 4 8-4"/></svg>SVGベクター<small>編集可</small></button>
         <button data-fmt="pdf" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M14 3v5h5"/></svg>PDF<small>印刷向け</small></button>
+        <div class="exp-sep"></div>
+        <button data-fmt="proof" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>入稿データ<small>印刷工程用</small></button>
       </div>
     </div>
     <button class="btn btn-primary" id="btnQuote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg><span class="label-pc">見積もり依頼</span></button>
@@ -864,6 +882,31 @@
     </div>
     <input type="file" id="jsonInput" accept="application/json,.json" hidden>
     <button class="btn btn-ghost btn-block mt-l" id="saveClose">閉じる</button>
+  </div>
+</div>
+
+<!-- 入稿データ (proof) modal -->
+<div class="modal-bg" id="proofModal">
+  <div class="modal modal-wide">
+    <h2>入稿データ（印刷工程用）</h2>
+    <p>プリント可能エリア（破線枠）を基準に、印刷工程へ渡す高解像度データと、お客様確認用の低解像度プレビューを生成します。</p>
+    <div class="proof-settings" id="proofSettings"></div>
+    <div id="proofFaces"></div>
+    <div class="proof-prev" id="proofPreviewWrap" hidden>
+      <img id="proofPreviewImg" alt="顧客プレビュー">
+      <div class="meta">
+        <p class="mini">顧客確認用プレビュー（低解像度・商品込み）</p>
+        <button class="btn btn-ghost btn-xs" id="proofPreviewDl">プレビューを保存</button>
+      </div>
+    </div>
+    <label class="fld">入稿メタ情報（JSON）</label>
+    <textarea id="proofMeta" readonly placeholder="メタ情報"></textarea>
+    <div class="row mt-s">
+      <button class="btn btn-ghost" id="proofMetaCopy">メタをコピー</button>
+      <button class="btn btn-ghost" id="proofMetaDl">メタJSON保存</button>
+    </div>
+    <p class="mini note">「見積/注文」連携時は、この入稿データ一式を WordPress 側へ送信します（postMessage <code>seeq:proof</code>／要件書 第7章）。</p>
+    <button class="btn btn-ghost btn-block mt-l" id="proofClose">閉じる</button>
   </div>
 </div>
 
@@ -1457,6 +1500,9 @@ function loadFace(arr, cb){
   if(!arr || !arr.length){ canvas.requestRenderAll(); if(cb)cb(); return; }
   fabric.util.enlivenObjects(arr, function(objs){
     objs.forEach(function(o){
+      /* externally-authored design keys (templates/manifest) may omit `styles`;
+         fabric's toObject() throws on undefined styles, so guarantee an object. */
+      if((o.type==='i-text'||o.type==='text') && !o.styles){ o.styles={}; }
       canvas.add(o);
       if(o.type==='i-text'||o.type==='text'){ loadFontAndRender(o.fontFamily); }
       if((o.type==='i-text'||o.type==='text') && o.fx && o.fx.type && o.fx.type!=='none' && o.fx.type!=='gradient'){
@@ -2813,7 +2859,130 @@ function exportPDF(){
     pdf.save('seeq-design-'+currentFace+'.pdf');
   }).catch(function(){ toast('PDFライブラリの読み込みに失敗しました'); });
 }
-var EXPORTERS={png:exportPNG, jpg:exportJPG, svg:exportSVG, pdf:exportPDF};
+/* =====================================================================
+   入稿データ生成パイプライン (proof pipeline) — 要件書 第7章
+   --------------------------------------------------------------------
+   プリント可能エリア(printArea=破線ガイド)を基準に2系統を出力：
+     ① 入稿用＝高解像度(PNG/SVG)・デザインのみ・透過・bleed付き（印刷工程用）
+     ② 顧客プレビュー＝低解像度・商品込み（確認用）
+   既定：単位mm・300dpi・bleed3mm。BASE(480×560)座標を実寸へ写像し、各面ごとに
+   出力。入稿メタJSONも生成し、WP連携(seeq:proof)へ渡せる形にする。
+   ===================================================================== */
+var PRINT={ dpi:300, bleedMM:3, mmPerBase:1.0 };   /* 1 BASE単位 ≈ 1mm（ガイド寸法＝mm目安） */
+var proofModal=document.getElementById('proofModal');
+var proofAssets={}, proofPreview='', proofMetaObj=null;
+
+function proofGeometry(f){
+  var g=f.guide, dpi=PRINT.dpi, bleed=PRINT.bleedMM;
+  var areaMM = f.printMM ? {w:f.printMM.w, h:f.printMM.h}
+                         : {w:+(g.w*PRINT.mmPerBase).toFixed(1), h:+(g.h*PRINT.mmPerBase).toFixed(1)};
+  var mmpbX=areaMM.w/g.w, mmpbY=areaMM.h/g.h;           /* mm per BASE unit, per axis */
+  return {g:g, areaMM:areaMM, mmpbX:mmpbX, mmpbY:mmpbY,
+    outPx:{ w:Math.round((areaMM.w+2*bleed)/25.4*dpi), h:Math.round((areaMM.h+2*bleed)/25.4*dpi) }};
+}
+/* render the CURRENT canvas objects into a printArea-cropped proof (png/svg).
+   Maps BASE→output px via a temporary viewport transform; design only (no shirt). */
+function renderProofCurrent(opt){
+  var info=proofGeometry(curFaceDef()), g=info.g, dpi=PRINT.dpi, bleed=PRINT.bleedMM, u=scaleUnit();
+  var sX=info.mmpbX*dpi/25.4, sY=info.mmpbY*dpi/25.4;   /* output px per BASE unit */
+  var kX=sX/u, kY=sY/u, bp=bleed/25.4*dpi;
+  var tx=bp - g.x*sX, ty=bp - g.y*sY;
+  canvas.discardActiveObject();
+  var pvpt=canvas.viewportTransform.slice(), pw=canvas.getWidth(), ph=canvas.getHeight();
+  var pbgImg=canvas.backgroundImage, pbg=canvas.backgroundColor, gv=guide.visible;
+  guide.visible=false; canvas.backgroundImage=null; canvas.backgroundColor='';
+  canvas.setDimensions({width:info.outPx.w, height:info.outPx.h});
+  canvas.setViewportTransform([kX,0,0,kY,tx,ty]);
+  canvas.renderAll();
+  var out = opt.svg ? canvas.toSVG() : canvas.toDataURL({format:'png', multiplier:1});
+  guide.visible=gv; canvas.backgroundImage=pbgImg; canvas.backgroundColor=pbg;
+  canvas.setDimensions({width:pw, height:ph});
+  canvas.setViewportTransform(pvpt); canvas.renderAll();
+  return out;
+}
+function loadFacePromise(arr){ return new Promise(function(res){ loadFace(arr, res); }); }
+
+/* generate proofs for every non-empty face of the current product + a preview */
+function generateProofBundle(){
+  saveCurrentFace();
+  var origFace=currentFace, faces=curProduct().faces;
+  var meta={ product:currentProduct, productLabel:curProduct().label, color:currentColor.hex,
+    unit:'mm', dpi:PRINT.dpi, bleedMm:PRINT.bleedMM, coordBase:{w:BASE_W,h:BASE_H},
+    generatedAt:new Date().toISOString(), faces:[] };
+  proofAssets={};
+  histGuard=true;
+  var chain=Promise.resolve();
+  faces.forEach(function(f){
+    var arr=faceState[currentProduct+'.'+f.id]||[];
+    if(!arr.length) return;
+    chain=chain.then(function(){ return loadFacePromise(arr); }).then(function(){
+      currentFace=f.id;
+      var info=proofGeometry(f);
+      proofAssets[f.id]={ png:renderProofCurrent({svg:false}), svg:renderProofCurrent({svg:true}), label:f.label };
+      meta.faces.push({ face:f.id, faceLabel:f.label, printAreaMm:info.areaMM, bleedMm:PRINT.bleedMM, outputPx:info.outPx });
+    });
+  });
+  return chain.then(function(){
+    currentFace=origFace;
+    return loadFacePromise(faceState[currentProduct+'.'+origFace]||[]);
+  }).then(function(){
+    histGuard=false; renderLayers(); refreshBars();
+    /* customer preview: composed (shirt+design), low resolution, current face */
+    var mult=Math.min(1.2, 620/canvas.getWidth());
+    proofPreview=_renderForExport({format:'png', multiplier:mult});
+    meta.previewFace=origFace;
+    proofMetaObj=meta;
+    return {meta:meta, assets:proofAssets, preview:proofPreview};
+  });
+}
+function renderProofModal(meta){
+  var set=document.getElementById('proofSettings');
+  set.innerHTML='';
+  ['単位 mm','解像度 '+meta.dpi+'dpi','塗り足し '+meta.bleedMm+'mm','商品 '+meta.productLabel].forEach(function(t){
+    var s=document.createElement('span'); s.className='proof-tag'; s.textContent=t; set.appendChild(s);
+  });
+  var wrap=document.getElementById('proofFaces'); wrap.innerHTML='';
+  if(!meta.faces.length){
+    wrap.innerHTML='<p class="mini">この商品にはまだデザインがありません。文字や画像を配置してから生成してください。</p>';
+  }
+  meta.faces.forEach(function(fm){
+    var d=document.createElement('div'); d.className='proof-face';
+    d.innerHTML='<h4>'+fm.faceLabel+'</h4><p class="dim">入稿サイズ '+fm.printAreaMm.w+'×'+fm.printAreaMm.h+
+      'mm（+塗り足し'+fm.bleedMm+'mm）／ '+fm.outputPx.w+'×'+fm.outputPx.h+'px</p>';
+    var row=document.createElement('div'); row.className='proof-row';
+    var bp=document.createElement('button'); bp.className='btn btn-primary btn-xs'; bp.textContent='入稿PNG';
+    bp.onclick=function(){ _dl(proofAssets[fm.face].png, 'seeq-proof-'+meta.product+'-'+fm.face+'.png'); };
+    var bs=document.createElement('button'); bs.className='btn btn-ghost btn-xs'; bs.textContent='入稿SVG';
+    bs.onclick=function(){ _dl(URL.createObjectURL(new Blob([proofAssets[fm.face].svg],{type:'image/svg+xml'})), 'seeq-proof-'+meta.product+'-'+fm.face+'.svg', true); };
+    row.appendChild(bp); row.appendChild(bs); d.appendChild(row); wrap.appendChild(d);
+  });
+  var pw=document.getElementById('proofPreviewWrap');
+  if(proofPreview){ pw.hidden=false; document.getElementById('proofPreviewImg').src=proofPreview; } else { pw.hidden=true; }
+  document.getElementById('proofMeta').value=JSON.stringify(meta,null,2);
+}
+function openProofModal(){
+  toast('入稿データを生成しています…');
+  generateProofBundle().then(function(){
+    renderProofModal(proofMetaObj);
+    proofModal.classList.add('show');
+    if(isMobile()) collapseSheet();
+    toast('入稿データを生成しました');
+  }).catch(function(err){ histGuard=false; toast('入稿データの生成に失敗しました'); });
+}
+/* WP連携用：入稿データ一式を親へ送信（要件書 第7章 POST /proofs） */
+function emitProof(){
+  if(window.parent===window) return false;
+  if(!proofMetaObj) return false;
+  window.parent.postMessage({type:'seeq:proof', payload:{meta:proofMetaObj, faces:proofAssets, preview:proofPreview}}, '*');
+  return true;
+}
+document.getElementById('proofClose').onclick=function(){ proofModal.classList.remove('show'); };
+proofModal.onclick=function(e){ if(e.target===proofModal) proofModal.classList.remove('show'); };
+document.getElementById('proofMetaCopy').onclick=function(){ var t=document.getElementById('proofMeta'); t.select(); try{document.execCommand('copy');toast('メタをコピーしました');}catch(e){} };
+document.getElementById('proofMetaDl').onclick=function(){ _dl(URL.createObjectURL(new Blob([document.getElementById('proofMeta').value],{type:'application/json'})), 'seeq-proof-meta.json', true); };
+document.getElementById('proofPreviewDl').onclick=function(){ if(proofPreview) _dl(proofPreview, 'seeq-preview-'+currentProduct+'.png'); };
+
+var EXPORTERS={png:exportPNG, jpg:exportJPG, svg:exportSVG, pdf:exportPDF, proof:openProofModal};
 
 var btnExport=document.getElementById('btnExport'), expMenu=document.getElementById('expMenu');
 btnExport.onclick=function(e){ e.stopPropagation(); var open=expMenu.classList.toggle('show'); btnExport.setAttribute('aria-expanded', open?'true':'false'); };
@@ -2880,7 +3049,7 @@ function tplText(o){
   return Object.assign({
     type:'i-text', originX:'center', originY:'center', textAlign:'center',
     fontFamily:"'Noto Sans JP',sans-serif", fontWeight:700, fill:'#222222',
-    scaleX:1, scaleY:1, curve:0, vertical:false, paintFirst:'stroke', strokeLineJoin:'round'
+    scaleX:1, scaleY:1, curve:0, vertical:false, styles:{}, paintFirst:'stroke', strokeLineJoin:'round'
   }, o);
 }
 function dkey(state){ return {v:3, product:'tshirt', face:'front', color:'#ffffff', state:state}; }
@@ -3190,6 +3359,7 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   rebuildFilters:rebuildFilters, applyCrop:applyCrop, removeColorBg:removeColorBg, activeImage:activeImage,
   exportDesign:exportDesign, importDesign:importDesign, commitHistory:commitHistory,
   registerTemplates:registerTemplates, applyTemplate:applyTemplate, TEMPLATES:TEMPLATES,
+  generateProofBundle:generateProofBundle, proofGeometry:proofGeometry, emitProof:emitProof, PRINT:PRINT,
   state:function(){return {undo:undoStack.length, redo:redoStack.length, product:currentProduct, face:currentFace, color:currentColor.hex, objs:userObjects().length};}};
 </script>
 </body>
