@@ -1137,15 +1137,39 @@ function positionGuide(){
 /* =====================================================================
    Responsive sizing & zoom
    ===================================================================== */
+/* Size the canvas to fit BOTH the available width AND the available height of
+   the stage (the product is portrait — BASE_W:BASE_H — so on short/landscape
+   viewports a width-only fit overflows and the top gets clipped). We pick the
+   smaller of the two constraints so the whole product always sits centred with
+   a little breathing room, at any window size and inside the embed iframe. */
 function fitCanvas(){
-  var wrap = document.querySelector('.canvas-wrap');
-  var w = Math.min(wrap.clientWidth || BASE_W, BASE_W);
-  if(w<100) w=BASE_W;
+  var stage = document.getElementById('stage');
+  var wrap  = document.querySelector('.canvas-wrap');
+  var hint  = document.getElementById('stageHint');
+  var cs    = getComputedStyle(stage);
+  var padX  = (parseFloat(cs.paddingLeft)||0)  + (parseFloat(cs.paddingRight)||0);
+  var padY  = (parseFloat(cs.paddingTop)||0)   + (parseFloat(cs.paddingBottom)||0);
+
+  /* width budget: stage inner width, but never wider than the wrap's CSS max or BASE_W */
+  var cssMax = parseFloat(getComputedStyle(wrap).maxWidth);
+  if(!cssMax || isNaN(cssMax)) cssMax = BASE_W;
+  var availW = Math.min((stage.clientWidth||BASE_W) - padX, cssMax, BASE_W);
+
+  /* height budget: stage inner height minus the hint line and a small margin */
+  var hintH = hint ? (hint.offsetHeight + 12) : 0;          /* 12 ≈ hint margin-top + gap */
+  var availH = (stage.clientHeight||BASE_H) - padY - hintH - 6;
+
+  /* fit to the tighter constraint, with a sane floor so it's never microscopic */
+  var w = Math.min(availW, availH * (BASE_W / BASE_H));
+  if(!(w>0)) w = availW;
+  w = Math.round(Math.max(180, w));
+
   var prevW = canvas.getWidth();
   var ratio = (prevW>1) ? w / prevW : 1;
-  if(prevW>1 && Math.abs(ratio-1)<0.002){ positionGuide(); applyShirt(); return; }
+  if(prevW>1 && Math.abs(ratio-1)<0.004){ wrap.style.width=w+'px'; positionGuide(); applyShirt(); return; }
   /* set BOTH dimensions atomically so the canvas never keeps a stale/default size */
   canvas.setDimensions({width:w, height:Math.round(w*BASE_H/BASE_W)});
+  wrap.style.width = w + 'px';   /* pin the wrap to the canvas so the stage centres it */
   if(prevW>1){
     userObjects().forEach(function(o){
       o.left*=ratio; o.top*=ratio; o.scaleX*=ratio; o.scaleY*=ratio; o.setCoords();
