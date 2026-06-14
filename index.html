@@ -413,19 +413,16 @@
     .tools .card.m-active{display:block;}
     .tools .card.hidden{display:none !important;}
 
-    /* context toolbar & zoom moved to top (away from fingers & sheet).
-       The bar is draggable (req 4c/6b): JS writes --obj-dx/--obj-dy so the user
-       can park it off the design. Compact size so it covers less of the canvas. */
-    .objbar{top:56px;bottom:auto;left:50%;padding:4px;gap:2px;
-      transform:translate(calc(-50% + var(--obj-dx,0px)), var(--obj-dy,0px));
-      touch-action:none;}
-    .objbar::before{content:'';position:absolute;top:3px;left:50%;transform:translateX(-50%);
-      width:26px;height:3px;border-radius:3px;background:#cfd9dc;}
-    .objbar{padding-top:9px;}
-    .obj-act{min-width:40px;padding:6px 5px;}
+    /* Floating context toolbar (案C): JS positions it just above (or below, when
+       near the top) the SELECTED object so it never covers the design or the
+       layer list, and it's hidden while the object is being moved/scaled so it
+       never steals the touch (req 4c/6a/6b). Compact, single row. */
+    .objbar{top:0;left:0;bottom:auto;transform:none;padding:3px;gap:1px;
+      flex-wrap:nowrap;max-width:96vw;transition:opacity .12s ease;}
+    .obj-act{min-width:0;width:40px;padding:6px 3px;}
     .obj-act svg{width:18px;height:18px;}
-    .obj-act small{font-size:8.5px;}
-    .objbar.dragging{transition:none;opacity:.95;}
+    .obj-act small{font-size:8px;margin-top:1px;}
+    .objbar.manip{opacity:0;pointer-events:none;}   /* hidden during drag/scale/rotate */
     .zoombar{top:56px;bottom:auto;right:10px;}
 
     /* ---- text-compose mode: a big, distraction-free input above the keyboard
@@ -2748,11 +2745,47 @@ function refreshBars(){
   if(isImg){ syncImagePanel(); }
   document.getElementById('actLock').querySelector('small').textContent = o.locked?'解除':'ロック';
   mobileFollowSelection(o);
+  positionContextBar();
   renderLayers();
 }
 canvas.on('selection:created', refreshBars);
 canvas.on('selection:updated', refreshBars);
 canvas.on('selection:cleared', refreshBars);
+
+/* ---- floating context toolbar positioning (案C) ----
+   On mobile the object toolbar follows the SELECTED object: placed just above it
+   (flipped below when near the top, clamped within the screen, never under the
+   sheet). It's hidden while the object is being manipulated so it never steals
+   the touch. On desktop the bar keeps its CSS bottom-centre placement. */
+function positionContextBar(){
+  if(!isMobile()){ objbar.style.left=''; objbar.style.top=''; objbar.style.transform=''; return; }  /* desktop = CSS bottom-centre */
+  var o=canvas.getActiveObject();
+  if(!o){ objbar.classList.remove('show'); return; }
+  if(!objbar.classList.contains('show')) objbar.classList.add('show');
+  objbar.style.transform='none';
+  var cr=canvas.upperCanvasEl.getBoundingClientRect();
+  var r=o.getBoundingRect();                       /* canvas-screen px (viewport applied) */
+  var bw=objbar.offsetWidth||300, bh=objbar.offsetHeight||44;
+  var gap=12;
+  var hdr=headerEl?headerEl.getBoundingClientRect().bottom:0;
+  var minTop=hdr+6;
+  var objTop=cr.top+r.top, objBot=cr.top+r.top+r.height;
+  var top = (objTop-bh-gap>=minTop) ? (objTop-bh-gap) : (objBot+gap);
+  /* never let it slide under the sheet */
+  var sheetTop=toolsEl.getBoundingClientRect().top;
+  if(top+bh>sheetTop-6) top=Math.max(minTop, objTop-bh-gap);
+  if(top+bh>sheetTop-6) top=Math.max(minTop, sheetTop-bh-6);
+  top=Math.max(minTop, top);
+  var cx=cr.left+r.left+r.width/2;
+  var left=Math.max(8, Math.min(window.innerWidth-bw-8, cx-bw/2));
+  objbar.style.left=Math.round(left)+'px';
+  objbar.style.top=Math.round(top)+'px';
+}
+/* hide while manipulating, reposition + show when the gesture ends */
+canvas.on('object:moving',  function(){ if(isMobile()) objbar.classList.add('manip'); });
+canvas.on('object:scaling', function(){ if(isMobile()) objbar.classList.add('manip'); });
+canvas.on('object:rotating',function(){ if(isMobile()) objbar.classList.add('manip'); });
+canvas.on('mouse:up', function(){ if(isMobile()){ objbar.classList.remove('manip'); positionContextBar(); } });
 
 document.getElementById('actFront').onclick=function(){var o=canvas.getActiveObject();if(o){o.bringToFront();canvas.sendToBack(guide);canvas.requestRenderAll();renderLayers();commitHistory();}};
 document.getElementById('actBack').onclick=function(){var o=canvas.getActiveObject();if(o){o.sendToBack();canvas.sendToBack(guide);canvas.requestRenderAll();renderLayers();commitHistory();}};
@@ -2763,36 +2796,6 @@ document.getElementById('actDel').onclick=function(){ deleteActive(); };
 document.getElementById('actLock').onclick=function(){ toggleLockActive(); };
 document.getElementById('actGroup').onclick=function(){ toggleGroup(); };
 
-/* Drag the floating object bar out of the way so it never covers the design or
-   steals the touch (req 4c/6b). Grab anywhere on the bar EXCEPT a button; the
-   offset is stored as --obj-dx/--obj-dy (used by the mobile transform). */
-(function objbarDrag(){
-  var dx=0, dy=0, dragging=false, sx=0, sy=0, bx=0, by=0, moved=false;
-  function setOff(){ objbar.style.setProperty('--obj-dx', dx+'px'); objbar.style.setProperty('--obj-dy', dy+'px'); }
-  function down(e){
-    if(!isMobile()) return;
-    if(e.target.closest('.obj-act')) return;            /* let buttons work */
-    var p=e.touches?e.touches[0]:e;
-    dragging=true; moved=false; sx=p.clientX; sy=p.clientY; bx=dx; by=dy;
-    objbar.classList.add('dragging');
-  }
-  function move(e){
-    if(!dragging) return;
-    var p=e.touches?e.touches[0]:e;
-    dx=bx+(p.clientX-sx); dy=by+(p.clientY-sy);
-    /* keep the bar fully on-screen (it sits at top:56px, centred) */
-    var r=objbar.getBoundingClientRect(), m=8, halfSlack=(window.innerWidth-r.width)/2-m;
-    dx=Math.max(-halfSlack, Math.min(halfSlack, dx));
-    dy=Math.max(0, Math.min(window.innerHeight-r.height-56-m, dy));
-    if(Math.abs(p.clientX-sx)+Math.abs(p.clientY-sy)>3) moved=true;
-    setOff(); e.preventDefault();
-  }
-  function up(){ if(!dragging) return; dragging=false; objbar.classList.remove('dragging'); }
-  objbar.addEventListener('touchstart', down, {passive:true});
-  objbar.addEventListener('touchmove', move, {passive:false});
-  objbar.addEventListener('touchend', up, {passive:true});
-  objbar.addEventListener('touchcancel', up, {passive:true});
-})();
 
 /* =====================================================================
    Lock / group / duplicate / delete
@@ -3714,6 +3717,7 @@ function snapTo(name){
   document.body.classList.toggle('sheet-open', name!=='peek');
   applySheetVis(snaps[name]);
   fitCanvas();                                              /* keep the design fully visible (non-overlap) */
+  positionContextBar();                                     /* keep the context bar pinned to its object */
 }
 /* legacy aliases (used by templates / proof / wp-save flows) */
 function expandSheet(){ snapTo('mid'); }
@@ -3791,7 +3795,7 @@ function onViewportChange(){
   var typing=ae && toolsEl.contains(ae) && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA');
   /* toolbar show/hide changes the visible height → recompute snaps + refit so the
      product never ends up behind the sheet. Skip while typing (keyboard). */
-  if(!typing){ clearTimeout(_vvFit); _vvFit=setTimeout(function(){ computeSnaps(); applySheetVis(snaps[sheetSnap]||snaps.peek); fitCanvas(); }, 140); }
+  if(!typing){ clearTimeout(_vvFit); _vvFit=setTimeout(function(){ computeSnaps(); applySheetVis(snaps[sheetSnap]||snaps.peek); fitCanvas(); positionContextBar(); }, 140); }
 }
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize', onViewportChange);
