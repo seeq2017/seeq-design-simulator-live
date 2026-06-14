@@ -2869,7 +2869,11 @@ function renderLayers(){
     row.draggable=true;
     var label=o.name || ((o.type==='i-text'||o.type==='text')?((o.srcText!=null?o.srcText:o.text)||'テキスト').replace(/\n/g,'').slice(0,14):'要素');
     row.innerHTML='<span class="grip">⠿</span><span class="licon">'+iconFor(o)+'</span><span class="lname">'+escapeHtml(label)+'</span>'
+      +'<button class="lup" title="前へ（上へ）"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>'
+      +'<button class="ldown" title="後ろへ（下へ）"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>'
       +'<button class="lvis" title="表示/非表示"></button><button class="llock" title="ロック"></button>';
+    row.querySelector('.lup').onclick=function(e){ e.stopPropagation(); moveLayerStep(o, +1); };
+    row.querySelector('.ldown').onclick=function(e){ e.stopPropagation(); moveLayerStep(o, -1); };
     row.querySelector('.lvis').innerHTML = o.visible===false
       ? '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10 10 0 0112 20C5 20 1 12 1 12a18 18 0 015.06-5.94M9.9 4.24A9 9 0 0112 4c7 0 11 8 11 8a18 18 0 01-2.16 3.19M1 1l22 22"/></svg>'
       : '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -2924,6 +2928,14 @@ function reorderLayer(src, target){
   var bottomUp=visual.slice().reverse();   // desired stack order bottom..top
   bottomUp.forEach(function(o,i){ canvas.moveTo(o, i+1); }); // +1 keeps guide at 0
   canvas.sendToBack(guide);
+  canvas.requestRenderAll(); renderLayers(); commitHistory();
+}
+/* one-step reorder for the up/down arrows (small-screen fallback for drag, LO-b).
+   dir +1 = bring forward (up in the list), -1 = send backward (down). */
+function moveLayerStep(o, dir){
+  if(!o) return;
+  if(dir>0) canvas.bringForward(o, true); else canvas.sendBackwards(o, true);
+  canvas.sendToBack(guide);                 /* guide always stays at the very back */
   canvas.requestRenderAll(); renderLayers(); commitHistory();
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
