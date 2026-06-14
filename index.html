@@ -93,9 +93,14 @@
 
   /* Tool panel */
   .tools{
-    flex:0 0 272px;background:var(--panel);border-right:1px solid var(--line);
+    flex:0 0 256px;background:var(--panel);border-right:1px solid var(--line);
     overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;
   }
+  /* desktop right-hand layer dock (req PC-a): the layer card is moved here by JS
+     on desktop and back into the sheet on mobile. */
+  .layer-dock{flex:0 0 232px;background:var(--panel);border-left:1px solid var(--line);
+    overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;}
+  .layer-dock:empty{display:none;}
   /* sheet header is desktop-hidden; on mobile it becomes the bottom-sheet grip + tabs */
   .sheet-head{display:none;}
   .sheet-body{display:flex;flex-direction:column;gap:12px;}
@@ -106,10 +111,10 @@
 
   .stage{
     flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:10px;overflow:auto;position:relative;background:
+    padding:6px;overflow:auto;position:relative;background:
       radial-gradient(circle at 1px 1px,rgba(0,0,0,.05) 1px,transparent 0) 0 0/22px 22px,var(--bg-2);
   }
-  .canvas-wrap{position:relative;width:100%;max-width:620px;filter:drop-shadow(0 30px 60px rgba(0,0,0,.22));}
+  .canvas-wrap{position:relative;width:100%;max-width:740px;filter:drop-shadow(0 30px 60px rgba(0,0,0,.22));}
   canvas{border-radius:4px;}
   .stage-hint{margin-top:10px;font-size:11.5px;color:var(--sub);text-align:center;line-height:1.6;}
   .zoombar{position:absolute;right:12px;bottom:12px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:4px;box-shadow:var(--shadow);}
@@ -276,7 +281,7 @@
   .fp-overlay.show{display:block;}
   .fp-panel{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    width:min(480px,92vw);max-height:80vh;background:var(--panel);border:1px solid var(--line);
+    width:min(600px,94vw);max-height:80vh;background:var(--panel);border:1px solid var(--line);
     border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden;
   }
   .fp-head{padding:14px 14px 8px;border-bottom:1px solid var(--line);flex:0 0 auto;}
@@ -289,8 +294,9 @@
   .fp-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:#eef3f4;color:var(--sub);cursor:pointer;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:1;display:none;}
   .fp-search-wrap.has-q .fp-clear{display:block;}
   .fp-count{font-size:11px;color:var(--sub);padding:6px 2px 0;}
-  .fp-cats{display:flex;gap:6px;overflow-x:auto;padding:9px 0 2px;scrollbar-width:none;}
-  .fp-cats::-webkit-scrollbar{display:none;}
+  /* wrap so every category chip is visible at once (req PC-b) instead of a
+     single horizontally-scrolling row that hid the later categories */
+  .fp-cats{display:flex;flex-wrap:wrap;gap:6px;padding:9px 0 2px;}
   .fp-cat{flex:0 0 auto;border:1px solid var(--line);background:#fbfdfd;border-radius:18px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;color:var(--sub);white-space:nowrap;}
   .fp-cat.on{background:var(--accent);color:#fff;border-color:var(--accent);}
   .fp-list{flex:1 1 auto;overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch;}
@@ -896,6 +902,9 @@
       <button id="zFit" title="フィット">⤢</button>
     </div>
   </section>
+
+  <!-- desktop layer dock (req PC-a): JS relocates the layer card here on desktop -->
+  <aside class="layer-dock" id="layerDock"></aside>
 </main>
 
 <!-- Mobile bottom-sheet scrim: dims/blocks the canvas while the sheet is open
@@ -1511,7 +1520,7 @@ function fitCanvas(){
      art is vector (SVG), so we allow it to scale ABOVE BASE_W (up to MAX_W) to
      fill a roomy desktop stage without going blurry; height usually binds first
      on portrait products, keeping a sensible size. */
-  var MAX_W = Math.round(BASE_W * 1.6);
+  var MAX_W = Math.round(BASE_W * 2.0);
   var cssMax = parseFloat(getComputedStyle(wrap).maxWidth);
   if(!cssMax || isNaN(cssMax)) cssMax = MAX_W;
   var availW = Math.min((stage.clientWidth||BASE_W) - padX, cssMax, MAX_W);
@@ -3763,7 +3772,23 @@ document.addEventListener('focusout', function(e){
   if(toolsEl.contains(e.target)) setTimeout(function(){ toolsEl.style.bottom='0px'; }, 60);
 });
 
+/* Move the layer card to the right-hand dock on desktop (req PC-a) and back into
+   the bottom sheet on mobile, where it's a tab. The list element (#layerList)
+   travels with the card, so renderLayers() keeps targeting the same node. */
+var _layerCard=document.querySelector('.card[data-tab="layer"]');
+var _layerDock=document.getElementById('layerDock');
+var _sheetBodyEl=document.getElementById('sheetBody');
+function placeLayerCard(){
+  if(!_layerCard) return;
+  if(isMobile()){
+    if(_layerCard.parentNode!==_sheetBodyEl){ _sheetBodyEl.appendChild(_layerCard); }
+  } else {
+    if(_layerCard.parentNode!==_layerDock){ _layerDock.appendChild(_layerCard); }
+    _layerCard.classList.remove('m-active');            /* dock always shows it */
+  }
+}
 function initMobile(){
+  placeLayerCard();
   if(isMobile()){
     computeSnaps();
     setMobileTab(currentMTab);
@@ -3771,6 +3796,7 @@ function initMobile(){
   } else {
     document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.remove('m-active'); });
     document.body.classList.remove('sheet-open');
+    document.body.classList.remove('sheet-full');
     toolsEl.style.transform=''; toolsEl.style.transition=''; toolsEl.style.bottom='';
     document.documentElement.style.removeProperty('--sheet-vis');
     document.documentElement.style.removeProperty('--sheet-off');
