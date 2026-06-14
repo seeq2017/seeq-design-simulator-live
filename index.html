@@ -1466,6 +1466,25 @@ function fitCanvas(){
   var hintH = hint ? (hint.offsetHeight + 12) : 0;          /* 12 ≈ hint margin-top + gap */
   var availH = (stage.clientHeight||BASE_H) - padY - hintH - 6;
 
+  /* On mobile the bottom sheet is fixed to the VISUAL viewport; iOS Safari's
+     dynamic toolbar makes the layout viewport taller than what's actually on
+     screen, so a layout-based fit lets the product slip behind the sheet. Re-
+     derive the height budget from the TRUE visible area between the header and
+     the sheet, so the WHOLE product preview stays above the sheet (no overlap).
+     Skip while typing — the keyboard shrinks visualViewport and we lift the
+     sheet instead, so the canvas must not collapse then. */
+  if(typeof isMobile==='function' && isMobile()){
+    var _h=document.querySelector('header');
+    var _ae=document.activeElement, _tools=document.getElementById('tools');
+    var _typing=_ae && _tools && _tools.contains(_ae) && (_ae.tagName==='INPUT'||_ae.tagName==='TEXTAREA');
+    var vv=window.visualViewport;
+    var vvh=(vv && !_typing)?vv.height:(window.innerHeight||BASE_H);
+    var headH=_h?_h.getBoundingClientRect().height:56;
+    var sheetVis=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-vis'))||72;
+    var mAvail=vvh - headH - sheetVis - 18;                 /* 18 = top+bottom breathing */
+    if(mAvail>80) availH=Math.min(availH, mAvail);
+  }
+
   /* fit to the tighter constraint, with a sane floor so it's never microscopic */
   var w = Math.min(availW, availH * (BASE_W / BASE_H));
   if(!(w>0)) w = availW;
@@ -3286,14 +3305,18 @@ function setMobileTab(name){
   document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.toggle('m-active', c.dataset.tab===name); });
 }
 function computeSnaps(){
-  var vh=window.innerHeight||document.documentElement.clientHeight||640;
+  /* use the TRUE visible height (visualViewport) so iOS Safari's dynamic toolbar
+     doesn't inflate the snaps and push the product behind the sheet. */
+  var vv=window.visualViewport;
+  var vh=(vv&&vv.height)||window.innerHeight||document.documentElement.clientHeight||640;
   var headerH=headerEl?Math.round(headerEl.getBoundingClientRect().height):56;
   var peek=Math.ceil(sheetHeadEl.getBoundingClientRect().height)||72;
-  var CANVAS_MIN=Math.max(170, Math.round(vh*0.26));        /* design area kept even at full */
-  var full=Math.min(Math.round(vh*0.62), vh-headerH-CANVAS_MIN);
-  full=Math.max(full, peek+150);
-  var mid=Math.min(Math.round(vh*0.42), full-50);
-  mid=Math.max(mid, peek+86);
+  /* keep a generous share of the screen for the product preview, even at full */
+  var CANVAS_MIN=Math.max(220, Math.round(vh*0.40));
+  var full=Math.min(Math.round(vh*0.58), vh-headerH-CANVAS_MIN);
+  full=Math.max(full, peek+140);
+  var mid=Math.min(Math.round(vh*0.36), full-50);          /* "少しだけ" — modest standard-edit height */
+  mid=Math.max(mid, peek+80);
   snaps={peek:peek, mid:mid, full:full};
   /* the sheet is `full` tall (content = head + fixed body) and slid down to show
      only the active snap; the body's fixed height makes it scroll in place. */
@@ -3381,9 +3404,19 @@ function liftForKeyboard(){
   var kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
   toolsEl.style.bottom = (inSheet && kb>80) ? kb+'px' : '0px';
 }
+var _vvFit=null;
+function onViewportChange(){
+  liftForKeyboard();
+  if(!isMobile()) return;
+  var ae=document.activeElement;
+  var typing=ae && toolsEl.contains(ae) && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA');
+  /* toolbar show/hide changes the visible height → recompute snaps + refit so the
+     product never ends up behind the sheet. Skip while typing (keyboard). */
+  if(!typing){ clearTimeout(_vvFit); _vvFit=setTimeout(function(){ computeSnaps(); applySheetVis(snaps[sheetSnap]||snaps.peek); fitCanvas(); }, 140); }
+}
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize', liftForKeyboard);
-  window.visualViewport.addEventListener('scroll', liftForKeyboard);
+  window.visualViewport.addEventListener('resize', onViewportChange);
+  window.visualViewport.addEventListener('scroll', onViewportChange);
 }
 document.addEventListener('focusin', function(e){
   if(!isMobile()) return;
