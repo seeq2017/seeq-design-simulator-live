@@ -194,6 +194,7 @@
   .obj-act.danger:hover{background:#FDECEE;}
   .obj-act svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
   .obj-act small{font-size:9px;display:block;margin-top:2px;color:var(--ink-3);}
+  .compose-hint{display:none;font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.5;}
 
   /* context menu */
   .ctxmenu{position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;min-width:170px;}
@@ -320,7 +321,10 @@
 
   @media (max-width:820px){
     main{flex-direction:column;}
-    body.sheet-open .sheet-scrim{opacity:1;visibility:visible;}
+    /* dim the canvas ONLY at the tall "full" snap (long-list browsing). At mid/peek
+       there is no dimming so tapping a design/image edits it seamlessly without the
+       grey wash the user reported (req 6a). */
+    body.sheet-open.sheet-full .sheet-scrim{opacity:1;visibility:visible;}
     /* Reserve the sheet's CURRENT visible height (--sheet-vis, set per snap by
        JS) as bottom padding, so the canvas is always laid out ABOVE the sheet.
        fitCanvas() re-fits on every snap → the design is never covered (req #4). */
@@ -347,9 +351,12 @@
       border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(20,40,50,.16);
       padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column;
       transform:translateY(var(--sheet-off,100%));
-      transition:transform .3s cubic-bezier(.32,.72,0,1), bottom .2s ease;
-      will-change:transform;
+      transition:transform .3s cubic-bezier(.32,.72,0,1);
+      will-change:transform,bottom;
     }
+    /* keyboard tracking moves `bottom` directly each visualViewport frame; a CSS
+       transition on it would lag behind the keyboard and cause the judder the
+       user reported (req 4a) — so `bottom` is intentionally NOT transitioned. */
     /* sheet head = drag grip + bottom-nav tab bar (the "footer") */
     .sheet-head{display:block;flex:0 0 auto;background:var(--panel);border-radius:18px 18px 0 0;
       touch-action:none;user-select:none;-webkit-user-select:none;}
@@ -371,11 +378,36 @@
     .tools .card.m-active{display:block;}
     .tools .card.hidden{display:none !important;}
 
-    /* context toolbar & zoom moved to top (away from fingers & sheet) */
-    .objbar{top:60px;bottom:auto;padding:5px;}
-    .obj-act{min-width:46px;padding:9px 8px;}
-    .obj-act svg{width:20px;height:20px;}
-    .zoombar{top:60px;bottom:auto;right:10px;}
+    /* context toolbar & zoom moved to top (away from fingers & sheet).
+       The bar is draggable (req 4c/6b): JS writes --obj-dx/--obj-dy so the user
+       can park it off the design. Compact size so it covers less of the canvas. */
+    .objbar{top:56px;bottom:auto;left:50%;padding:4px;gap:2px;
+      transform:translate(calc(-50% + var(--obj-dx,0px)), var(--obj-dy,0px));
+      touch-action:none;}
+    .objbar::before{content:'';position:absolute;top:3px;left:50%;transform:translateX(-50%);
+      width:26px;height:3px;border-radius:3px;background:#cfd9dc;}
+    .objbar{padding-top:9px;}
+    .obj-act{min-width:40px;padding:6px 5px;}
+    .obj-act svg{width:18px;height:18px;}
+    .obj-act small{font-size:8.5px;}
+    .objbar.dragging{transition:none;opacity:.95;}
+    .zoombar{top:56px;bottom:auto;right:10px;}
+
+    /* ---- text-compose mode: a big, distraction-free input above the keyboard
+       (req 9). When a sheet text field is focused we hide everything except the
+       active card's input so the user can type comfortably, and the objbar is
+       hidden so the alignment popover never sits over the field (req 4a). ---- */
+    body.text-compose .objbar{display:none !important;}
+    body.text-compose .sheet-grip{display:none;}
+    body.text-compose #txtInput{min-height:104px;font-size:16px;line-height:1.5;}
+    body.text-compose .compose-hint{display:block;}
+
+    /* ---- font picker as a bottom sheet that leaves the canvas visible so the
+       live preview is seen the instant a font is tapped (req 5a). ---- */
+    .fp-overlay{background:rgba(15,30,35,.18);}
+    .fp-panel{top:auto;bottom:0;left:0;transform:none;width:100%;max-height:46vh;
+      border-radius:16px 16px 0 0;}
+    .fp-list{padding-bottom:14px;}
 
     /* finger-friendly tap targets */
     .swatch{width:38px;height:38px;}
@@ -509,6 +541,7 @@
       <h3><span class="dot"></span>テキストを追加</h3>
       <textarea id="txtInput" rows="2" placeholder="ここに文字を入力"></textarea>
       <button class="btn btn-primary btn-block" id="btnAddText">＋ テキストを追加</button>
+      <p class="compose-hint">入力したら「テキストを追加」をタップ。追加後はそのまま書体・効果を選べます。</p>
     </div>
 
     <!-- Text editing panel (appears when a text object is selected) -->
@@ -1744,7 +1777,21 @@ document.getElementById('btnAddText').onclick=function(){
     curve:0, vertical:false, srcText:v, paintFirst:'stroke', strokeLineJoin:'round'
   });
   addObj(t, v.slice(0,12));
-  document.getElementById('txtInput').value='';
+  var ti=document.getElementById('txtInput');
+  ti.value='';
+  /* req 4b: after adding, leave the compose field and surface the new text's
+     font/effect editor so the user can keep decorating straight away. Blurring
+     closes the keyboard; refreshBars() (fired by addObj→setActiveObject) has
+     already un-hidden #textPanel and switched to the text tab on mobile. */
+  if(isMobile()){
+    document.body.classList.remove('text-compose');
+    ti.blur();
+    setTimeout(function(){
+      snapTo('mid');
+      var tp=document.getElementById('textPanel');
+      try{ tp.scrollIntoView({block:'start',behavior:'smooth'}); }catch(_){ tp.scrollIntoView(); }
+    }, 120);
+  }
 };
 
 /* image */
@@ -2078,10 +2125,20 @@ function chooseFont(css){
   var o=activeText(); if(o){ o.set('fontFamily',css); if(o.curve)applyCurve(o); canvas.requestRenderAll(); commitHistory(); }
   pushRecentFont(css);
   fontSelect.value=css; fontBtnName.textContent=fontLabelByCss(css);
-  closeFontPicker();
+  /* On mobile the picker is a short bottom sheet, so the canvas stays visible:
+     keep it open and apply live so each tap previews instantly (req 5a). The
+     header × / tapping outside closes it. On desktop, pick-and-close as before. */
+  if(isMobile()){
+    fpList.querySelectorAll('.fp-item').forEach(function(it){ it.classList.toggle('cur', it.dataset.css===css); });
+  } else {
+    closeFontPicker();
+  }
 }
 function openFontPicker(){ fpQuery=''; fpSearch.value=''; fpSearchWrap.classList.remove('has-q'); renderFpList(); fpOverlay.classList.add('show');
-  setTimeout(function(){ try{fpSearch.focus();}catch(e){}
+  setTimeout(function(){
+    /* don't auto-focus the search on mobile — the keyboard would cover the canvas
+       preview that the bottom-sheet picker is meant to keep visible (req 5a) */
+    if(!isMobile()){ try{fpSearch.focus();}catch(e){} }
     var c=fpList.querySelector('.fp-item.cur'); if(c&&c.scrollIntoView){ try{ c.scrollIntoView({block:'center'}); }catch(e2){ c.scrollIntoView(); } }
   },30);
 }
@@ -2607,6 +2664,37 @@ document.getElementById('actDup').onclick=function(){ duplicateActive(); };
 document.getElementById('actDel').onclick=function(){ deleteActive(); };
 document.getElementById('actLock').onclick=function(){ toggleLockActive(); };
 document.getElementById('actGroup').onclick=function(){ toggleGroup(); };
+
+/* Drag the floating object bar out of the way so it never covers the design or
+   steals the touch (req 4c/6b). Grab anywhere on the bar EXCEPT a button; the
+   offset is stored as --obj-dx/--obj-dy (used by the mobile transform). */
+(function objbarDrag(){
+  var dx=0, dy=0, dragging=false, sx=0, sy=0, bx=0, by=0, moved=false;
+  function setOff(){ objbar.style.setProperty('--obj-dx', dx+'px'); objbar.style.setProperty('--obj-dy', dy+'px'); }
+  function down(e){
+    if(!isMobile()) return;
+    if(e.target.closest('.obj-act')) return;            /* let buttons work */
+    var p=e.touches?e.touches[0]:e;
+    dragging=true; moved=false; sx=p.clientX; sy=p.clientY; bx=dx; by=dy;
+    objbar.classList.add('dragging');
+  }
+  function move(e){
+    if(!dragging) return;
+    var p=e.touches?e.touches[0]:e;
+    dx=bx+(p.clientX-sx); dy=by+(p.clientY-sy);
+    /* keep the bar fully on-screen (it sits at top:56px, centred) */
+    var r=objbar.getBoundingClientRect(), m=8, halfSlack=(window.innerWidth-r.width)/2-m;
+    dx=Math.max(-halfSlack, Math.min(halfSlack, dx));
+    dy=Math.max(0, Math.min(window.innerHeight-r.height-56-m, dy));
+    if(Math.abs(p.clientX-sx)+Math.abs(p.clientY-sy)>3) moved=true;
+    setOff(); e.preventDefault();
+  }
+  function up(){ if(!dragging) return; dragging=false; objbar.classList.remove('dragging'); }
+  objbar.addEventListener('touchstart', down, {passive:true});
+  objbar.addEventListener('touchmove', move, {passive:false});
+  objbar.addEventListener('touchend', up, {passive:true});
+  objbar.addEventListener('touchcancel', up, {passive:true});
+})();
 
 /* =====================================================================
    Lock / group / duplicate / delete
@@ -3336,6 +3424,7 @@ function snapTo(name){
   toolsEl.style.transition='';
   toolsEl.style.transform='';                              /* drop any inline drag transform → CSS var applies */
   document.body.classList.toggle('sheet-open', name!=='peek');
+  document.body.classList.toggle('sheet-full', name==='full');  /* scrim dims only at full (req 6a) */
   applySheetVis(snaps[name]);
   fitCanvas();                                              /* keep the design fully visible (non-overlap) */
 }
@@ -3404,9 +3493,12 @@ function liftForKeyboard(){
   var kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
   toolsEl.style.bottom = (inSheet && kb>80) ? kb+'px' : '0px';
 }
-var _vvFit=null;
+var _vvFit=null, _liftRAF=0;
 function onViewportChange(){
-  liftForKeyboard();
+  /* coalesce the rapid resize/scroll bursts iOS fires while the keyboard
+     animates into one write per frame → smooth follow, no judder (req 4a) */
+  if(_liftRAF) cancelAnimationFrame(_liftRAF);
+  _liftRAF=requestAnimationFrame(function(){ _liftRAF=0; liftForKeyboard(); });
   if(!isMobile()) return;
   var ae=document.activeElement;
   var typing=ae && toolsEl.contains(ae) && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA');
@@ -3421,12 +3513,15 @@ if(window.visualViewport){
 document.addEventListener('focusin', function(e){
   if(!isMobile()) return;
   if(toolsEl.contains(e.target) && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')){
+    /* the main text-entry field gets the roomy compose layout (req 9) */
+    if(e.target.id==='txtInput') document.body.classList.add('text-compose');
     if(sheetSnap==='peek') snapTo('mid');
     setTimeout(function(){ liftForKeyboard(); try{ e.target.scrollIntoView({block:'center'}); }catch(_){} }, 260);
   }
 });
 document.addEventListener('focusout', function(e){
   if(!isMobile()) return;
+  if(e.target.id==='txtInput') document.body.classList.remove('text-compose');
   if(toolsEl.contains(e.target)) setTimeout(function(){ toolsEl.style.bottom='0px'; }, 60);
 });
 
