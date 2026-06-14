@@ -118,6 +118,7 @@
   .layer-dock:empty{display:none;}
   /* sheet header is desktop-hidden; on mobile it becomes the bottom-sheet grip + tabs */
   .sheet-head{display:none;}
+  .sheet-close{display:none;}
   .sheet-body{display:flex;flex-direction:column;gap:12px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px;}
   .card.hidden{display:none;}
@@ -227,9 +228,6 @@
   .obj-act svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
   .obj-act small{font-size:9px;display:block;margin-top:2px;color:var(--ink-3);}
   .compose-hint{display:none;font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.5;}
-
-  /* mobile right-side quick tab dock (req LO-a) — desktop-hidden */
-  .quick-dock{display:none;}
 
   /* context menu */
   .ctxmenu{position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;min-width:170px;}
@@ -349,38 +347,18 @@
   }
   .toast.show{opacity:1;}
 
-  /* bottom-sheet scrim — sits just under the sheet (z 50) and above the canvas,
-     but below the top objbar/zoombar (z 40) so those stay crisp & tappable.
-     Hidden by default; the mobile rule below shows it while body.sheet-open. */
-  .sheet-scrim{position:fixed;inset:0;z-index:35;background:rgba(15,30,35,.30);
-    opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s;}
+  /* The bottom sheet is NON-MODAL (UX research: MD3 / NN-g / iOS HIG advise
+     against an always-on scrim). The canvas stays fully interactive while the
+     sheet is open, so the scrim is removed entirely. */
+  .sheet-scrim{display:none !important;}
 
   @media (max-width:820px){
     main{flex-direction:column;}
-    /* dim the canvas ONLY at the tall "full" snap (long-list browsing). At mid/peek
-       there is no dimming so tapping a design/image edits it seamlessly without the
-       grey wash the user reported (req 6a). */
-    body.sheet-open.sheet-full .sheet-scrim{opacity:1;visibility:visible;}
     /* Reserve the sheet's CURRENT visible height (--sheet-vis, set per snap by
        JS) as bottom padding, so the canvas is always laid out ABOVE the sheet.
        fitCanvas() re-fits on every snap → the design is never covered (req #4). */
-    /* extra right padding reserves a gutter for the quick-dock so it never
-       overlaps the design (req LO-a keeps the existing non-overlap guarantee) */
-    .stage{order:1;padding:8px 68px calc(var(--sheet-vis,72px) + 8px + env(safe-area-inset-bottom)) 8px;flex:1 1 auto;min-height:0;}
-    .canvas-wrap{max-width:min(88vw,440px);}
-
-    /* right-edge vertical tab dock: taps open the matching sheet tab, re-tap closes */
-    .quick-dock{display:flex;flex-direction:column;gap:3px;position:fixed;right:7px;top:50%;
-      transform:translateY(-50%);z-index:45;background:rgba(255,255,255,.94);
-      -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
-      border:1px solid var(--line);border-radius:15px;padding:5px;box-shadow:0 6px 22px rgba(20,40,50,.18);}
-    .qd-btn{width:42px;height:42px;border:0;background:transparent;border-radius:11px;display:flex;
-      flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--sub);
-      position:relative;-webkit-tap-highlight-color:transparent;cursor:pointer;line-height:1;}
-    .qd-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
-    .qd-btn .qd-lab{font-size:8px;font-weight:700;}
-    .qd-btn:active{transform:scale(.9);}
-    .qd-btn.active{color:var(--accent);background:#FDECEE;}
+    .stage{order:1;padding:8px 8px calc(var(--sheet-vis,72px) + 8px + env(safe-area-inset-bottom));flex:1 1 auto;min-height:0;}
+    .canvas-wrap{max-width:min(92vw,440px);}
     .brand small{display:none;}
     .brand .logo{height:24px;}
     .brand>span{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -408,10 +386,16 @@
     /* keyboard tracking moves `bottom` directly each visualViewport frame; a CSS
        transition on it would lag behind the keyboard and cause the judder the
        user reported (req 4a) — so `bottom` is intentionally NOT transitioned. */
-    /* sheet head = drag grip + bottom-nav tab bar (the "footer") */
-    .sheet-head{display:block;flex:0 0 auto;background:var(--panel);border-radius:18px 18px 0 0;
+    /* sheet head = drag grip + close button + tab bar */
+    .sheet-head{display:block;position:relative;flex:0 0 auto;background:var(--panel);border-radius:18px 18px 0 0;
       touch-action:none;user-select:none;-webkit-user-select:none;}
     .sheet-grip{width:40px;height:4px;border-radius:3px;background:#cfd9dc;margin:8px auto 4px;cursor:grab;}
+    /* explicit close so users aren't forced to discover the swipe gesture */
+    .sheet-close{display:none;position:absolute;top:5px;right:8px;z-index:2;width:30px;height:30px;
+      border:0;background:#eef3f4;border-radius:50%;align-items:center;justify-content:center;
+      color:var(--ink-3,#5a6b72);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+    .sheet-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;}
+    body.sheet-open .sheet-close{display:flex;}   /* only meaningful when the sheet is up */
     .mtabs{display:flex;gap:0;padding:0 4px calc(2px + env(safe-area-inset-bottom));}
     .mtab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
       border:0;background:transparent;border-radius:12px;padding:6px 1px 7px;cursor:pointer;
@@ -560,6 +544,9 @@
     <!-- Mobile bottom-sheet header (hidden on desktop) — drag grip + bottom-nav tabs -->
     <div class="sheet-head" id="sheetHead">
       <div class="sheet-grip" id="sheetGrip"></div>
+      <button class="sheet-close" id="sheetClose" type="button" aria-label="ツールを閉じる" title="閉じる">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
       <div class="mtabs" id="mtabs" role="tablist">
         <button class="mtab active" data-mtab="product" role="tab"><svg viewBox="0 0 24 24"><path d="M8 4L3.5 6.5 5.5 10 8 8.8V20h8V8.8l2.5 1.2 2-3.5L16 4l-1.7.9a3.3 3.3 0 01-4.6 0z"/></svg><span class="mlab">商品</span></button>
         <button class="mtab" data-mtab="text" role="tab"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v12M9.5 18h5"/></svg><span class="mlab">文字</span></button>
@@ -941,23 +928,7 @@
   <aside class="layer-dock" id="layerDock"></aside>
 </main>
 
-<!-- Mobile bottom-sheet scrim: dims/blocks the canvas while the sheet is open
-     so browsing tools never edits the design by accident; tap to close. -->
-<div class="sheet-scrim" id="sheetScrim" aria-hidden="true"></div>
-
-<!-- Mobile right-side quick tab dock (req LO-a): right-hand access to the tool
-     tabs with tap-to-open / re-tap-to-close. Mirrors the bottom-sheet tabs and
-     drives the same sheet, so the non-overlap + keyboard behaviour is preserved. -->
-<nav class="quick-dock" id="quickDock" aria-label="ツール">
-  <button class="qd-btn" data-mtab="product"><svg viewBox="0 0 24 24"><path d="M8 4L3.5 6.5 5.5 10 8 8.8V20h8V8.8l2.5 1.2 2-3.5L16 4l-1.7.9a3.3 3.3 0 01-4.6 0z"/></svg><span class="qd-lab">商品</span></button>
-  <button class="qd-btn" data-mtab="text"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v12M9.5 18h5"/></svg><span class="qd-lab">文字</span></button>
-  <button class="qd-btn" data-mtab="image"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5L5 19.5"/></svg><span class="qd-lab">画像</span></button>
-  <button class="qd-btn" data-mtab="shape"><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="9" height="9" rx="1.5"/><circle cx="16" cy="16" r="5"/></svg><span class="qd-lab">図形</span></button>
-  <button class="qd-btn" data-mtab="arrange"><svg viewBox="0 0 24 24"><path d="M4 4v16"/><rect x="7.5" y="7" width="11" height="4" rx="1"/><rect x="7.5" y="14" width="7" height="4" rx="1"/></svg><span class="qd-lab">配置</span></button>
-  <button class="qd-btn" data-mtab="layer"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span class="qd-lab">層</span></button>
-</nav>
-
-<!-- Selected object toolbar -->
+<!-- Selected object toolbar (floating context toolbar — follows the selection) -->
 <div class="objbar" id="objbar">
   <button class="obj-act" id="actFront" title="前面へ"><svg viewBox="0 0 24 24"><path d="M12 3l8 5-8 5-8-5z"/><path d="M4 14l8 5 8-5"/></svg><small>前面</small></button>
   <button class="obj-act" id="actBack" title="背面へ"><svg viewBox="0 0 24 24"><path d="M12 11l8 5-8 5-8-5z"/><path d="M4 8l8 5 8-5-8-5z"/></svg><small>背面</small></button>
@@ -3708,10 +3679,6 @@ function setMobileTab(name){
   currentMTab=name;
   document.querySelectorAll('.mtab').forEach(function(b){ b.classList.toggle('active', b.dataset.mtab===name); });
   document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.toggle('m-active', c.dataset.tab===name); });
-  syncQuickDock();
-}
-function syncQuickDock(){
-  document.querySelectorAll('.qd-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mtab===currentMTab && sheetSnap!=='peek'); });
 }
 function computeSnaps(){
   /* use the TRUE visible height (visualViewport) so iOS Safari's dynamic toolbar
@@ -3745,10 +3712,8 @@ function snapTo(name){
   toolsEl.style.transition='';
   toolsEl.style.transform='';                              /* drop any inline drag transform → CSS var applies */
   document.body.classList.toggle('sheet-open', name!=='peek');
-  document.body.classList.toggle('sheet-full', name==='full');  /* scrim dims only at full (req 6a) */
   applySheetVis(snaps[name]);
   fitCanvas();                                              /* keep the design fully visible (non-overlap) */
-  syncQuickDock();
 }
 /* legacy aliases (used by templates / proof / wp-save flows) */
 function expandSheet(){ snapTo('mid'); }
@@ -3762,19 +3727,12 @@ document.getElementById('mtabs').addEventListener('click', function(e){
   setMobileTab(b.dataset.mtab);
   if(sheetSnap==='peek') snapTo('mid'); else applySheetVis(snaps[sheetSnap]);        /* keep height if already open */
 });
-/* right-side quick dock: tap opens the matching sheet tab; re-tap the active one closes */
-document.getElementById('quickDock').addEventListener('click', function(e){
-  var b=e.target.closest('.qd-btn'); if(!b) return;
-  if(b.dataset.mtab===currentMTab && sheetSnap!=='peek'){ snapTo('peek'); return; }
-  setMobileTab(b.dataset.mtab);
-  if(sheetSnap==='peek') snapTo('mid'); else applySheetVis(snaps[sheetSnap]);
-});
 /* grip tap cycles peek → mid → full → peek */
 document.getElementById('sheetGrip').addEventListener('click', function(){
   snapTo(sheetSnap==='peek'?'mid':(sheetSnap==='mid'?'full':'peek'));
 });
-/* tap the dimmed canvas (scrim) closes the sheet to peek */
-document.getElementById('sheetScrim').addEventListener('click', function(){ snapTo('peek'); });
+/* explicit close button (no longer swipe-only) */
+document.getElementById('sheetClose').addEventListener('click', function(e){ e.stopPropagation(); snapTo('peek'); });
 
 /* drag the head to resize the sheet live; snap to the nearest stage on release
    (nearest distance, or flick velocity for a quick swipe). */
@@ -3878,7 +3836,6 @@ function initMobile(){
   } else {
     document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.remove('m-active'); });
     document.body.classList.remove('sheet-open');
-    document.body.classList.remove('sheet-full');
     toolsEl.style.transform=''; toolsEl.style.transition=''; toolsEl.style.bottom='';
     document.documentElement.style.removeProperty('--sheet-vis');
     document.documentElement.style.removeProperty('--sheet-off');
