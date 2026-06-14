@@ -321,12 +321,10 @@
   @media (max-width:820px){
     main{flex-direction:column;}
     body.sheet-open .sheet-scrim{opacity:1;visibility:visible;}
-    /* reserve room at the bottom equal to the collapsed sheet's visible height
-       (98px grip+tabs) plus a little breathing space, so the canvas centre is
-       never hidden behind the bottom sheet and stays touchable. */
-    /* reserve room for the collapsed sheet (its real measured height, set as
-       --sheet-peek from JS) so the canvas centre never hides behind the nav. */
-    .stage{order:1;padding:8px 8px calc(var(--sheet-peek,92px) + 8px + env(safe-area-inset-bottom));flex:1 1 auto;min-height:0;}
+    /* Reserve the sheet's CURRENT visible height (--sheet-vis, set per snap by
+       JS) as bottom padding, so the canvas is always laid out ABOVE the sheet.
+       fitCanvas() re-fits on every snap → the design is never covered (req #4). */
+    .stage{order:1;padding:8px 8px calc(var(--sheet-vis,72px) + 8px + env(safe-area-inset-bottom));flex:1 1 auto;min-height:0;}
     .canvas-wrap{max-width:min(92vw,440px);}
     .brand small{display:none;}
     .brand .logo{height:24px;}
@@ -335,22 +333,28 @@
     .head-actions .label-pc{display:none;}
     .btn{padding:9px 11px;}
 
-    /* ---- bottom sheet ---- */
+    /* ---- bottom sheet (3-stage snap: peek / mid / full) ----
+       Height is CONTENT-driven (head + a fixed-height scrollable body) and the
+       whole sheet is slid down by --sheet-off to reveal only the current snap's
+       worth. The body keeps a fixed height (--sheet-bodyh) so its top slice acts
+       as a scroll viewport → effects/lists scroll IN the sheet without making it
+       taller. JS re-fits the canvas per snap (reserving --sheet-vis as stage
+       padding) so the design never gets covered (req #4). */
     .tools{
       order:2;position:fixed;left:0;right:0;bottom:0;z-index:50;width:100%;
-      max-height:66vh;border-right:0;border-top:1px solid var(--line);
+      max-height:var(--sheet-full,82vh);
+      border-right:0;border-top:1px solid var(--line);
       border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(20,40,50,.16);
-      padding:0;gap:0;overflow:hidden;
-      transform:translateY(0);transition:transform .3s cubic-bezier(.32,.72,0,1);
-      padding-bottom:env(safe-area-inset-bottom);
+      padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column;
+      transform:translateY(var(--sheet-off,100%));
+      transition:transform .3s cubic-bezier(.32,.72,0,1), bottom .2s ease;
       will-change:transform;
     }
-    .tools.collapsed{transform:translateY(calc(100% - var(--sheet-peek,92px)));}
     /* sheet head = drag grip + bottom-nav tab bar (the "footer") */
     .sheet-head{display:block;flex:0 0 auto;background:var(--panel);border-radius:18px 18px 0 0;
       touch-action:none;user-select:none;-webkit-user-select:none;}
     .sheet-grip{width:40px;height:4px;border-radius:3px;background:#cfd9dc;margin:8px auto 4px;cursor:grab;}
-    .mtabs{display:flex;gap:0;padding:0 4px 2px;}
+    .mtabs{display:flex;gap:0;padding:0 4px calc(2px + env(safe-area-inset-bottom));}
     .mtab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
       border:0;background:transparent;border-radius:12px;padding:6px 1px 7px;cursor:pointer;
       font-size:10px;font-weight:700;color:var(--sub);position:relative;line-height:1;
@@ -362,7 +366,7 @@
     .mtab.active{color:var(--accent);}
     .mtab.active::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);
       width:24px;height:3px;border-radius:0 0 3px 3px;background:var(--accent);}
-    .sheet-body{flex:1 1 auto;overflow-y:auto;padding:8px 12px 18px;gap:10px;-webkit-overflow-scrolling:touch;}
+    .sheet-body{flex:0 0 auto;height:var(--sheet-bodyh,300px);overflow-y:auto;padding:8px 12px 18px;gap:10px;-webkit-overflow-scrolling:touch;}
     .tools .card{display:none;border:0;border-radius:0;padding:4px 0;}
     .tools .card.m-active{display:block;}
     .tools .card.hidden{display:none !important;}
@@ -385,6 +389,10 @@
 
     /* prevent page scroll/zoom while manipulating the canvas */
     .canvas-wrap,canvas{touch-action:none;}
+    /* the verbose hint (incl. desktop-only Ctrl/Alt wheel tip) wastes vertical
+       space on phones and could tuck under the sheet at "full" — the dashed
+       print-area guide already conveys the key info, so hide it on mobile. */
+    .stage-hint{display:none;}
   }
 
   /* ===== アクセシビリティ：モーション低減 / 印刷時はアニメ無効・要素は消さない ===== */
@@ -1404,6 +1412,11 @@ function applyShirt(){
   }
   var url = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
   var cw = canvas.getWidth(), ch = canvas.getHeight();
+  /* skip the async reload when nothing changed (same art + same canvas size) —
+     prevents a shirt flicker when the bottom sheet snaps between heights. */
+  var sig = url + '|' + cw + 'x' + ch;
+  if(applyShirt._sig === sig && canvas.backgroundImage){ canvas.requestRenderAll(); return; }
+  applyShirt._sig = sig;
   fabric.Image.fromURL(url, function(img){
     /* Every product SVG uses viewBox "0 0 BASE_W BASE_H", so scale off those
        constants rather than the rasterised intrinsic size (which varies by
@@ -3253,104 +3266,158 @@ fabric.Object.prototype.set({
 
 function isMobile(){ return window.matchMedia('(max-width:820px)').matches; }
 
-/* --- bottom-sheet tabs + drag-to-close ----------------------------------
-   Two snap states: collapsed (only the nav bar peeks) and expanded. The peek
-   height is MEASURED (not guessed) and published as --sheet-peek so the CSS
-   transform and the stage's reserved padding always agree → no layout jank.
-   The head can be dragged: pull down to close, pull up to open. */
+/* --- bottom-sheet: 3-stage snap (peek / mid / full) --------------------
+   The sheet's height equals its visible height (--sheet-vis); the body scrolls
+   within it. Each snap re-fits the canvas so the design (product preview, print
+   area, the object being edited) is ALWAYS fully visible above the sheet — it
+   never overlaps (req #4). Heights are computed from the viewport while keeping
+   a guaranteed minimum canvas area, so even "full" leaves the design visible.
+     peek = nav bar only · mid = standard editing · full = long-list scrolling */
 var toolsEl=document.getElementById('tools');
 var sheetHeadEl=document.getElementById('sheetHead');
+var headerEl=document.querySelector('header');
 var currentMTab='product';
+var snaps={peek:72, mid:320, full:520};
+var sheetSnap='peek';
+
 function setMobileTab(name){
   currentMTab=name;
   document.querySelectorAll('.mtab').forEach(function(b){ b.classList.toggle('active', b.dataset.mtab===name); });
   document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.toggle('m-active', c.dataset.tab===name); });
 }
-function measureSheet(){
-  if(!isMobile()) return;
-  /* peek = grip + tab bar height; round up so nothing clips */
-  var peek = Math.ceil(sheetHeadEl.getBoundingClientRect().height) || 92;
-  document.documentElement.style.setProperty('--sheet-peek', peek+'px');
+function computeSnaps(){
+  var vh=window.innerHeight||document.documentElement.clientHeight||640;
+  var headerH=headerEl?Math.round(headerEl.getBoundingClientRect().height):56;
+  var peek=Math.ceil(sheetHeadEl.getBoundingClientRect().height)||72;
+  var CANVAS_MIN=Math.max(170, Math.round(vh*0.26));        /* design area kept even at full */
+  var full=Math.min(Math.round(vh*0.62), vh-headerH-CANVAS_MIN);
+  full=Math.max(full, peek+150);
+  var mid=Math.min(Math.round(vh*0.42), full-50);
+  mid=Math.max(mid, peek+86);
+  snaps={peek:peek, mid:mid, full:full};
+  /* the sheet is `full` tall (content = head + fixed body) and slid down to show
+     only the active snap; the body's fixed height makes it scroll in place. */
+  document.documentElement.style.setProperty('--sheet-full', full+'px');
+  document.documentElement.style.setProperty('--sheet-bodyh', (full-peek)+'px');
+  return snaps;
 }
-/* expand/collapse also toggle body.sheet-open, which drives the scrim (CSS).
-   Keeping the scrim purely state-driven means every entry point — tabs, grip,
-   drag, scrim-tap — stays in sync with one source of truth. */
-function expandSheet(){ toolsEl.classList.remove('collapsed'); document.body.classList.add('sheet-open'); }
-function collapseSheet(){ toolsEl.classList.add('collapsed'); document.body.classList.remove('sheet-open'); }
-function isCollapsed(){ return toolsEl.classList.contains('collapsed'); }
+function applySheetVis(px){
+  document.documentElement.style.setProperty('--sheet-vis', px+'px');    /* stage padding reserve */
+  document.documentElement.style.setProperty('--sheet-off', (snaps.full-px)+'px'); /* slide-down */
+}
+function snapTo(name){
+  if(!isMobile()) return;
+  if(!snaps || !snaps.peek) computeSnaps();
+  if(!snaps[name]) name='peek';
+  sheetSnap=name;
+  toolsEl.style.transition='';
+  toolsEl.style.transform='';                              /* drop any inline drag transform → CSS var applies */
+  document.body.classList.toggle('sheet-open', name!=='peek');
+  applySheetVis(snaps[name]);
+  fitCanvas();                                              /* keep the design fully visible (non-overlap) */
+}
+/* legacy aliases (used by templates / proof / wp-save flows) */
+function expandSheet(){ snapTo('mid'); }
+function collapseSheet(){ snapTo('peek'); }
+function isCollapsed(){ return sheetSnap==='peek'; }
+function measureSheet(){ if(isMobile()){ computeSnaps(); applySheetVis(snaps[sheetSnap]||snaps.peek); } }
 
 document.getElementById('mtabs').addEventListener('click', function(e){
   var b=e.target.closest('.mtab'); if(!b) return;
-  /* re-tapping the active tab while open collapses the sheet (toggle) */
-  if(b.dataset.mtab===currentMTab && !isCollapsed()){ collapseSheet(); return; }
-  setMobileTab(b.dataset.mtab); expandSheet();
+  if(b.dataset.mtab===currentMTab && sheetSnap!=='peek'){ snapTo('peek'); return; }  /* re-tap closes */
+  setMobileTab(b.dataset.mtab);
+  if(sheetSnap==='peek') snapTo('mid'); else applySheetVis(snaps[sheetSnap]);        /* keep height if already open */
 });
-document.getElementById('sheetGrip').addEventListener('click', function(){ isCollapsed()?expandSheet():collapseSheet(); });
-/* tap the dimmed canvas (scrim) to close the sheet */
-document.getElementById('sheetScrim').addEventListener('click', collapseSheet);
+/* grip tap cycles peek → mid → full → peek */
+document.getElementById('sheetGrip').addEventListener('click', function(){
+  snapTo(sheetSnap==='peek'?'mid':(sheetSnap==='mid'?'full':'peek'));
+});
+/* tap the dimmed canvas (scrim) closes the sheet to peek */
+document.getElementById('sheetScrim').addEventListener('click', function(){ snapTo('peek'); });
 
-/* drag the head to open/close. We translate the sheet live during the drag
-   (transition off) then snap on release. Snapping considers BOTH travelled
-   distance AND flick velocity, so a quick short flick toggles too — the固定
-   44px-only threshold ignored fast flicks and felt sticky. */
+/* drag the head to resize the sheet live; snap to the nearest stage on release
+   (nearest distance, or flick velocity for a quick swipe). */
 (function sheetDrag(){
-  var dragging=false, startY=0, baseT=0, lastDy=0, peek=0, sheetH=0, didDrag=false;
-  var lastY=0, lastT=0, vel=0;        /* px/ms, signed: +down / -up */
-  function curT(){ return isCollapsed() ? Math.max(0, sheetH-peek) : 0; }
+  var dragging=false, startY=0, baseVis=0, lastY=0, lastT=0, vel=0, didDrag=false;
   sheetHeadEl.addEventListener('touchstart', function(e){
     if(!isMobile() || e.touches.length!==1) return;
-    measureSheet();
-    peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek')) || sheetHeadEl.offsetHeight;
-    sheetH = toolsEl.offsetHeight;
-    dragging=true; didDrag=false; startY=e.touches[0].clientY; baseT=curT(); lastDy=0;
+    computeSnaps();
+    dragging=true; didDrag=false; startY=e.touches[0].clientY; baseVis=snaps[sheetSnap]||snaps.peek;
     lastY=startY; lastT=e.timeStamp; vel=0;
     toolsEl.style.transition='none';
   }, {passive:true});
   sheetHeadEl.addEventListener('touchmove', function(e){
     if(!dragging) return;
     var y=e.touches[0].clientY, dt=e.timeStamp-lastT;
-    if(dt>0) vel = (y-lastY)/dt;       /* instantaneous velocity for flick detection */
+    if(dt>0) vel=(y-lastY)/dt;
     lastY=y; lastT=e.timeStamp;
-    lastDy = y - startY;
-    if(Math.abs(lastDy)>4) didDrag=true;
-    var t = Math.max(0, Math.min(sheetH-peek, baseT+lastDy));
-    toolsEl.style.transform='translateY('+t+'px)';
-    e.preventDefault();                 /* stop the page from scrolling under us */
+    var dy=startY-y;                                /* drag up = taller (more visible) */
+    if(Math.abs(dy)>4) didDrag=true;
+    var vis=Math.max(snaps.peek, Math.min(snaps.full, baseVis+dy));
+    toolsEl.style.transform='translateY('+(snaps.full-vis)+'px)';   /* slide live */
+    e.preventDefault();
   }, {passive:false});
   function endDrag(){
     if(!dragging) return; dragging=false;
-    toolsEl.style.transition=''; toolsEl.style.transform='';   /* hand back to the class */
-    var FLICK=0.5, DIST=44;            /* px/ms , px */
-    if(vel > FLICK || lastDy > DIST) collapseSheet();
-    else if(vel < -FLICK || lastDy < -DIST) expandSheet();
-    /* otherwise snap back to whatever state the class already holds */
+    toolsEl.style.transition='';
+    var off=parseFloat((toolsEl.style.transform.match(/translateY\(([-0-9.]+)px\)/)||[])[1]);
+    var vis=isNaN(off)?snaps[sheetSnap]:(snaps.full-off);
+    var target, FLICK=0.5;
+    if(vel>FLICK) target=(sheetSnap==='full'?'mid':'peek');          /* flick down */
+    else if(vel<-FLICK) target=(sheetSnap==='peek'?'mid':'full');    /* flick up */
+    else { var dp=Math.abs(vis-snaps.peek), dm=Math.abs(vis-snaps.mid), df=Math.abs(vis-snaps.full);
+      target=(dp<=dm&&dp<=df)?'peek':((dm<=df)?'mid':'full'); }
+    snapTo(target);
   }
   sheetHeadEl.addEventListener('touchend', endDrag, {passive:true});
   sheetHeadEl.addEventListener('touchcancel', endDrag, {passive:true});
 })();
 
+/* keep a focused sheet input above the on-screen keyboard (req #5) */
+function liftForKeyboard(){
+  if(!isMobile() || !window.visualViewport) return;
+  var ae=document.activeElement;
+  var inSheet = ae && toolsEl.contains(ae) && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA');
+  var kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+  toolsEl.style.bottom = (inSheet && kb>80) ? kb+'px' : '0px';
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', liftForKeyboard);
+  window.visualViewport.addEventListener('scroll', liftForKeyboard);
+}
+document.addEventListener('focusin', function(e){
+  if(!isMobile()) return;
+  if(toolsEl.contains(e.target) && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')){
+    if(sheetSnap==='peek') snapTo('mid');
+    setTimeout(function(){ liftForKeyboard(); try{ e.target.scrollIntoView({block:'center'}); }catch(_){} }, 260);
+  }
+});
+document.addEventListener('focusout', function(e){
+  if(!isMobile()) return;
+  if(toolsEl.contains(e.target)) setTimeout(function(){ toolsEl.style.bottom='0px'; }, 60);
+});
+
 function initMobile(){
   if(isMobile()){
+    computeSnaps();
     setMobileTab(currentMTab);
-    measureSheet();
-    /* start collapsed so the canvas (and shirt centre) is fully reachable;
-       the user pulls the sheet up via the grip/tabs when they need tools. */
-    collapseSheet();
-  }
-  else {
+    snapTo(sheetSnap);                       /* re-apply current snap (peek on first load) */
+  } else {
     document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.remove('m-active'); });
-    toolsEl.classList.remove('collapsed');
-    document.body.classList.remove('sheet-open');   /* no scrim on desktop */
-    toolsEl.style.transform=''; toolsEl.style.transition='';
+    document.body.classList.remove('sheet-open');
+    toolsEl.style.transform=''; toolsEl.style.transition=''; toolsEl.style.bottom='';
+    document.documentElement.style.removeProperty('--sheet-vis');
+    document.documentElement.style.removeProperty('--sheet-off');
   }
 }
-/* auto-jump to the relevant tab when an object is selected on mobile.
-   IMPORTANT: only switch tabs — do NOT auto-expand the sheet, otherwise it
-   covers the canvas and blocks the drag the user is performing. */
+/* When an object is selected/added on mobile, raise the sheet just to MID and
+   jump to its tab so detail editing is immediately reachable — never to FULL,
+   so the canvas/print-area/edited object stay visible (req #2,#3,#4). */
 function mobileFollowSelection(o){
   if(!isMobile()||!o) return;
   if(o.type==='i-text'||o.type==='text'){ setMobileTab('text'); }
   else if(o.type==='image'){ setMobileTab('image'); }
+  if(sheetSnap==='peek') snapTo('mid');
 }
 
 /* --- custom two-finger pinch: scale + rotate the active object, or zoom the canvas ---
@@ -3425,6 +3492,8 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   registerTemplates:registerTemplates, applyTemplate:applyTemplate, TEMPLATES:TEMPLATES,
   generateProofBundle:generateProofBundle, proofGeometry:proofGeometry, emitProof:emitProof, PRINT:PRINT,
   wpSaveDesign:wpSaveDesign, wpSaveTemplate:wpSaveTemplate, SEEQ_EMBED:SEEQ_EMBED, updateWpUI:updateWpUI,
+  snapTo:function(n){snapTo(n);}, computeSnaps:computeSnaps, setMobileTab:setMobileTab,
+  getSheet:function(){return {snap:sheetSnap, snaps:snaps, vis:getComputedStyle(document.documentElement).getPropertyValue('--sheet-vis').trim(), bodyOpen:document.body.classList.contains('sheet-open'), toolsH:Math.round(toolsEl.getBoundingClientRect().height), toolsTop:Math.round(toolsEl.getBoundingClientRect().top)};},
   state:function(){return {undo:undoStack.length, redo:redoStack.length, product:currentProduct, face:currentFace, color:currentColor.hex, objs:userObjects().length};}};
 </script>
 </body>
