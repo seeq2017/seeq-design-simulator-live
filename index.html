@@ -237,6 +237,20 @@
   .mt-m{margin-top:10px;}
   .mt-l{margin-top:12px;}
 
+  /* ---- templates ---- */
+  .tpl-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .tpl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .tpl-item{border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;
+    background:var(--panel);display:flex;flex-direction:column;text-align:left;padding:0;
+    -webkit-tap-highlight-color:transparent;transition:border-color .15s,box-shadow .15s,transform .1s;}
+  .tpl-item:hover{border-color:var(--accent);box-shadow:var(--shadow);}
+  .tpl-item:active{transform:scale(.97);}
+  .tpl-thumb{width:100%;aspect-ratio:4/5;background:#eef3f4 center/cover no-repeat;display:grid;place-items:center;color:var(--sub);}
+  .tpl-thumb svg{width:40%;height:40%;opacity:.45;}
+  .tpl-name{font-size:11.5px;font-weight:700;color:var(--ink);padding:6px 8px;line-height:1.3;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tpl-empty{font-size:12px;color:var(--sub);margin:2px 0 0;}
+
   /* ---- font picker ---- */
   .fontbtn{
     width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -447,6 +461,13 @@
       </div>
     </div>
     <div class="sheet-body" id="sheetBody">
+
+    <div class="card" data-tab="product" id="tplCard">
+      <h3><span class="dot"></span>テンプレート</h3>
+      <div class="tpl-cats" id="tplCats"></div>
+      <div class="tpl-grid" id="tplGrid"></div>
+      <p class="tpl-empty" id="tplEmpty" hidden>テンプレートはまだ登録されていません。</p>
+    </div>
 
     <div class="card" data-tab="product">
       <h3><span class="dot"></span>商品・プリント面</h3>
@@ -2842,6 +2863,135 @@ document.getElementById('loadFileBtn').onclick=function(){ document.getElementBy
 document.getElementById('jsonInput').onchange=function(e){ var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(ev){ importDesign(ev.target.result); }; r.readAsText(f); this.value=''; };
 
 /* =====================================================================
+   Templates — "load only" structure (企画書 第3章)
+   --------------------------------------------------------------------
+   A template IS a design key (the same JSON importDesign consumes) plus light
+   metadata {id,name,category,product,thumb,baseW}. The tool only LISTS and
+   APPLIES them; authoring/管理 is SeeQ's job. Production templates arrive from
+   an external manifest (?templates=URL / window.SEEQ_TEMPLATES_URL) or via
+   postMessage 'seeq:templates' from the WordPress parent (→ item 4). Geometry
+   is authored in BASE units (480×560) and scaled to the live canvas on apply,
+   so a template lands correctly on any device size.
+   ===================================================================== */
+var TEMPLATES=[], tplCat='all';
+
+/* minimal i-text design node authored in BASE space */
+function tplText(o){
+  return Object.assign({
+    type:'i-text', originX:'center', originY:'center', textAlign:'center',
+    fontFamily:"'Noto Sans JP',sans-serif", fontWeight:700, fill:'#222222',
+    scaleX:1, scaleY:1, curve:0, vertical:false, paintFirst:'stroke', strokeLineJoin:'round'
+  }, o);
+}
+function dkey(state){ return {v:3, product:'tshirt', face:'front', color:'#ffffff', state:state}; }
+
+/* built-in demo templates (authored at BASE_W) — replaceable by SeeQ */
+var BUILTIN_TEMPLATES=[
+  { id:'simple-logo', name:'シンプルロゴ', category:'ロゴ', product:'tshirt', baseW:BASE_W,
+    design: dkey({'tshirt.front':[
+      tplText({text:'ORIGINAL', srcText:'ORIGINAL', left:240, top:250, fontSize:52, fontFamily:"'Anton',sans-serif", fill:'#1f2a30'}),
+      tplText({text:'SINCE 2026', srcText:'SINCE 2026', left:240, top:300, fontSize:18, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#E60012', charSpacing:300})
+    ]}) },
+  { id:'two-line', name:'タイトル＋サブ', category:'メッセージ', product:'tshirt', baseW:BASE_W,
+    design: dkey({'tshirt.front':[
+      tplText({text:'こんにちは', srcText:'こんにちは', left:240, top:235, fontSize:46, fontFamily:"'Noto Sans JP',sans-serif", fill:'#1E40AF'}),
+      tplText({text:'世界', srcText:'世界', left:240, top:295, fontSize:64, fontFamily:"'Noto Serif JP',serif", fill:'#1f2a30'})
+    ]}) },
+  { id:'tate-wabun', name:'縦書き和文', category:'和', product:'tshirt', baseW:BASE_W,
+    design: dkey({'tshirt.front':[
+      tplText({vertical:true, srcText:'夏祭り', text:verticalDisplay('夏祭り'), left:240, top:255, fontSize:60, fontFamily:"'Noto Serif JP',serif", fill:'#1f2a30', lineHeight:1.05})
+    ]}) }
+];
+
+var tplGridEl=document.getElementById('tplGrid'),
+    tplCatsEl=document.getElementById('tplCats'),
+    tplEmptyEl=document.getElementById('tplEmpty');
+
+/* a small placeholder thumbnail (used when a template carries no thumb image) */
+function tplPlaceholderSVG(){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">'+
+    '<path d="M8 4L3.5 6.5 5.5 10 8 8.8V20h8V8.8l2.5 1.2 2-3.5L16 4l-1.7.9a3.3 3.3 0 01-4.6 0z"/></svg>';
+}
+function renderTemplates(){
+  if(!tplGridEl) return;
+  var empty = !TEMPLATES.length;
+  tplEmptyEl.hidden = !empty;
+  /* category chips */
+  var cats=['all']; TEMPLATES.forEach(function(t){ if(t.category && cats.indexOf(t.category)<0) cats.push(t.category); });
+  tplCatsEl.innerHTML='';
+  tplCatsEl.style.display = (cats.length>2)?'flex':'none';   /* hide the bar when there's nothing to filter */
+  cats.forEach(function(c){
+    var b=document.createElement('span'); b.className='chip'+(c===tplCat?' on':'');
+    b.textContent=(c==='all'?'すべて':c); b.onclick=function(){ tplCat=c; renderTemplates(); };
+    tplCatsEl.appendChild(b);
+  });
+  /* grid */
+  tplGridEl.innerHTML='';
+  TEMPLATES.filter(function(t){ return tplCat==='all'||t.category===tplCat; }).forEach(function(t){
+    var card=document.createElement('button'); card.type='button'; card.className='tpl-item'; card.title=t.name||'テンプレート';
+    var thumb=document.createElement('div'); thumb.className='tpl-thumb';
+    if(t.thumb){ thumb.style.backgroundImage='url("'+t.thumb+'")'; } else { thumb.innerHTML=tplPlaceholderSVG(); }
+    var nm=document.createElement('div'); nm.className='tpl-name'; nm.textContent=t.name||'テンプレート';
+    card.appendChild(thumb); card.appendChild(nm);
+    card.onclick=function(){ applyTemplate(t); };
+    tplGridEl.appendChild(card);
+  });
+}
+
+/* scale a template's BASE-space geometry to the live canvas, then load it */
+function applyTemplate(t){
+  if(!t||!t.design){ toast('テンプレートを読み込めません'); return; }
+  if(userObjects().length && !window.confirm('現在のデザインを置き換えてテンプレートを読み込みます。よろしいですか？')) return;
+  var design = (typeof t.design==='string') ? JSON.parse(t.design) : JSON.parse(JSON.stringify(t.design));
+  var factor = canvas.getWidth() / (t.baseW || BASE_W);
+  if(design.state){
+    Object.keys(design.state).forEach(function(k){
+      (design.state[k]||[]).forEach(function(o){
+        o.left=(o.left||0)*factor; o.top=(o.top||0)*factor;
+        o.scaleX=(o.scaleX!=null?o.scaleX:1)*factor; o.scaleY=(o.scaleY!=null?o.scaleY:1)*factor;
+      });
+    });
+  }
+  importDesign(JSON.stringify(design));
+  if(isMobile()) collapseSheet();
+  toast('テンプレート「'+(t.name||'')+'」を読み込みました');
+}
+
+/* merge new templates by id, then re-render */
+function registerTemplates(arr){
+  if(!Array.isArray(arr)) return;
+  arr.forEach(function(t){
+    if(!t||!t.id||!t.design) return;
+    var i=TEMPLATES.map(function(x){return x.id;}).indexOf(t.id);
+    if(i>=0) TEMPLATES[i]=t; else TEMPLATES.push(t);
+  });
+  renderTemplates();
+}
+function loadTemplateManifest(url){
+  if(!url) return;
+  fetch(url, {credentials:'same-origin'}).then(function(r){ return r.json(); })
+    .then(function(j){ registerTemplates(Array.isArray(j)?j:(j&&j.templates)||[]); })
+    .catch(function(){ /* manifest optional — fail quietly */ });
+}
+
+/* boot templates: built-ins + optional external manifest */
+registerTemplates(BUILTIN_TEMPLATES);
+(function(){
+  var url=null;
+  try{ var p=new URLSearchParams(window.location.search); url=p.get('templates'); }catch(e){}
+  if(!url && window.SEEQ_TEMPLATES_URL) url=window.SEEQ_TEMPLATES_URL;
+  if(url) loadTemplateManifest(url);
+})();
+
+/* WordPress parent → tool: push a template set at runtime.
+   (Templates are read-only design data, so this is low-risk; the authenticated
+   save/load bridge with strict origin checks is added in item 4.) */
+window.addEventListener('message', function(e){
+  var d=e.data; if(!d||typeof d!=='object') return;
+  if(d.type==='seeq:templates' && Array.isArray(d.payload)) registerTemplates(d.payload);
+});
+
+/* =====================================================================
    Quote modal + toast
    ===================================================================== */
 var modal=document.getElementById('modal');
@@ -3039,6 +3189,7 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   switchProduct:switchProduct, PRODUCTS:PRODUCTS,
   rebuildFilters:rebuildFilters, applyCrop:applyCrop, removeColorBg:removeColorBg, activeImage:activeImage,
   exportDesign:exportDesign, importDesign:importDesign, commitHistory:commitHistory,
+  registerTemplates:registerTemplates, applyTemplate:applyTemplate, TEMPLATES:TEMPLATES,
   state:function(){return {undo:undoStack.length, redo:redoStack.length, product:currentProduct, face:currentFace, color:currentColor.hex, objs:userObjects().length};}};
 </script>
 </body>
