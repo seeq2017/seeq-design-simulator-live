@@ -6,7 +6,10 @@
 <title>SeeQ デザインシミュレーター</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=BIZ+UDGothic:wght@400;700&family=BIZ+UDPGothic:wght@400;700&family=BIZ+UDMincho&family=BIZ+UDPMincho&family=Bangers&family=Bebas+Neue&family=Bungee&family=Caveat:wght@400;700&family=Cherry+Bomb+One&family=Cinzel:wght@400;700;900&family=Dancing+Script:wght@400;700&family=DotGothic16&family=Dela+Gothic+One&family=Hachi+Maru+Pop&family=Hina+Mincho&family=IBM+Plex+Sans+JP:wght@400;700&family=Kaisei+Decol:wght@400;700&family=Klee+One:wght@400;600&family=Kosugi+Maru&family=Lobster&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Mochiy+Pop+One&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700;900&family=Murecho:wght@400;700;900&family=New+Tegomin&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Oswald:wght@400;700&family=Pacifico&family=Permanent+Marker&family=Playfair+Display:wght@400;700;900&family=Poppins:wght@400;700;900&family=Press+Start+2P&family=Raleway:wght@400;700;900&family=Reggae+One&family=Righteous&family=Roboto:wght@400;700;900&family=RocknRoll+One&family=Sacramento&family=Shippori+Mincho:wght@400;700;800&family=Stick&family=Train+One&family=Yomogi&family=Yuji+Syuku&family=Yusei+Magic&family=Zen+Antique&family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Zen+Maru+Gothic:wght@400;700;900&family=Zen+Old+Mincho:wght@400;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Core font only (body + default text). All other webfonts load on demand
+     via ensureFontLoaded() when previewed/selected — keeps initial load light
+     even with ~100 fonts. See FONTS + lazy loader in the script below. -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <style>
   /* ===== SeeQ Design System tokens (design/colors_and_type.css の正本を取り込み) ===== */
@@ -855,78 +858,183 @@ var FONT_CATS = [
   {id:'en-sans',   label:'欧 Sans-serif'},
   {id:'en-serif',  label:'欧 Serif'},
   {id:'en-script', label:'欧 Script'},
-  {id:'en-display',label:'欧 Display'}
+  {id:'en-display',label:'欧 Display'},
+  {id:'mono',      label:'モノスペース'}
 ];
 
-/* flat font list — {label, css, cat}. Each cat backed by Google Fonts (display=swap). */
+/* flat font list — {label, css, cat, w?, sys?}.
+   w   = Google Fonts weight axis to request (omit → default 400 only, bold synthesised).
+   sys = true for OS-local fonts (no network load). All others load on demand
+         via ensureFontLoaded() (lazy) — see picker + loader below. */
 var FONTS = [
   /* 和文 ゴシック */
-  {label:'ゴシック (Noto Sans)',      css:"'Noto Sans JP',sans-serif",      cat:'jp-gothic'},
-  {label:'角ゴシック (Zen Kaku)',      css:"'Zen Kaku Gothic New',sans-serif",cat:'jp-gothic'},
-  {label:'UD角ゴ (BIZ UDPGothic)',     css:"'BIZ UDPGothic',sans-serif",     cat:'jp-gothic'},
-  {label:'UD角ゴ等幅 (BIZ UDGothic)',  css:"'BIZ UDGothic',sans-serif",      cat:'jp-gothic'},
-  {label:'モダン角ゴ (Murecho)',       css:"'Murecho',sans-serif",           cat:'jp-gothic'},
-  {label:'IBM Plex Sans JP',          css:"'IBM Plex Sans JP',sans-serif",  cat:'jp-gothic'},
+  {label:'ゴシック (Noto Sans)',      css:"'Noto Sans JP',sans-serif",      cat:'jp-gothic', w:'400;700;900'},
+  {label:'角ゴシック (Zen Kaku)',      css:"'Zen Kaku Gothic New',sans-serif",cat:'jp-gothic', w:'400;700;900'},
+  {label:'UD角ゴ (BIZ UDPGothic)',     css:"'BIZ UDPGothic',sans-serif",     cat:'jp-gothic', w:'400;700'},
+  {label:'UD角ゴ等幅 (BIZ UDGothic)',  css:"'BIZ UDGothic',sans-serif",      cat:'jp-gothic', w:'400;700'},
+  {label:'モダン角ゴ (Murecho)',       css:"'Murecho',sans-serif",           cat:'jp-gothic', w:'400;700;900'},
+  {label:'IBM Plex Sans JP',          css:"'IBM Plex Sans JP',sans-serif",  cat:'jp-gothic', w:'400;700'},
   {label:'極太 (Dela Gothic)',         css:"'Dela Gothic One',sans-serif",   cat:'jp-gothic'},
+  {label:'モダン (M PLUS 1p)',         css:"'M PLUS 1p',sans-serif",         cat:'jp-gothic', w:'400;700;800'},
+  {label:'シンプル (M PLUS 1)',        css:"'M PLUS 1',sans-serif",          cat:'jp-gothic', w:'400;700'},
+  {label:'細ゴシック (Kosugi)',        css:"'Kosugi',sans-serif",            cat:'jp-gothic'},
+  {label:'やわ角ゴ (Sawarabi)',        css:"'Sawarabi Gothic',sans-serif",   cat:'jp-gothic'},
+  {label:'角ゴアンティーク (Zen Kaku A)',css:"'Zen Kaku Gothic Antique',sans-serif",cat:'jp-gothic', w:'400;700'},
   /* 和文 明朝 */
-  {label:'明朝 (Noto Serif)',          css:"'Noto Serif JP',serif",          cat:'jp-mincho'},
-  {label:'筆明朝 (Shippori)',          css:"'Shippori Mincho',serif",        cat:'jp-mincho'},
+  {label:'明朝 (Noto Serif)',          css:"'Noto Serif JP',serif",          cat:'jp-mincho', w:'400;700;900'},
+  {label:'筆明朝 (Shippori)',          css:"'Shippori Mincho',serif",        cat:'jp-mincho', w:'400;700;800'},
   {label:'UD明朝 (BIZ UDPMincho)',     css:"'BIZ UDPMincho',serif",          cat:'jp-mincho'},
   {label:'UD明朝等幅 (BIZ UDMincho)',  css:"'BIZ UDMincho',serif",           cat:'jp-mincho'},
   {label:'クラシック明朝 (Hina)',      css:"'Hina Mincho',serif",            cat:'jp-mincho'},
-  {label:'オールド明朝 (Zen Old)',     css:"'Zen Old Mincho',serif",         cat:'jp-mincho'},
+  {label:'オールド明朝 (Zen Old)',     css:"'Zen Old Mincho',serif",         cat:'jp-mincho', w:'400;700;900'},
   {label:'レトロ明朝 (New Tegomin)',   css:"'New Tegomin',serif",            cat:'jp-mincho'},
+  {label:'やわ明朝 (Sawarabi)',        css:"'Sawarabi Mincho',serif",        cat:'jp-mincho'},
+  {label:'太明朝 (Shippori B1)',       css:"'Shippori Mincho B1',serif",     cat:'jp-mincho', w:'400;700'},
+  {label:'特太明朝 (Kaisei Tokumin)',  css:"'Kaisei Tokumin',serif",         cat:'jp-mincho', w:'400;700'},
+  {label:'春の海明朝 (Kaisei H)',      css:"'Kaisei HarunoUmi',serif",       cat:'jp-mincho', w:'400;700'},
   /* 和文 丸ゴシック */
-  {label:'丸ゴシック (M PLUS)',        css:"'M PLUS Rounded 1c',sans-serif", cat:'jp-round'},
-  {label:'丸ゴシック2 (Zen Maru)',     css:"'Zen Maru Gothic',sans-serif",   cat:'jp-round'},
+  {label:'丸ゴシック (M PLUS)',        css:"'M PLUS Rounded 1c',sans-serif", cat:'jp-round', w:'400;700;800'},
+  {label:'丸ゴシック2 (Zen Maru)',     css:"'Zen Maru Gothic',sans-serif",   cat:'jp-round', w:'400;700;900'},
   {label:'やさしい (Kosugi Maru)',     css:"'Kosugi Maru',sans-serif",       cat:'jp-round'},
   {label:'ポップ丸ゴ (RocknRoll)',     css:"'RocknRoll One',sans-serif",     cat:'jp-round'},
+  {label:'やわらか丸 (Kiwi Maru)',     css:"'Kiwi Maru',serif",              cat:'jp-round'},
   /* 和文 手書き・筆 */
   {label:'手書き風 (Yusei Magic)',     css:"'Yusei Magic',sans-serif",       cat:'jp-brush'},
   {label:'丸筆 (Yomogi)',              css:"'Yomogi',cursive",               cat:'jp-brush'},
-  {label:'教科書体 (Klee One)',        css:"'Klee One',cursive",             cat:'jp-brush'},
+  {label:'教科書体 (Klee One)',        css:"'Klee One',cursive",             cat:'jp-brush', w:'400;600'},
   {label:'毛筆 (Yuji Syuku)',          css:"'Yuji Syuku',serif",             cat:'jp-brush'},
   {label:'一筆 (Train One)',           css:"'Train One',cursive",            cat:'jp-brush'},
+  {label:'筆ペン (Yuji Boku)',         css:"'Yuji Boku',serif",              cat:'jp-brush'},
+  {label:'行書 (Yuji Mai)',            css:"'Yuji Mai',serif",               cat:'jp-brush'},
+  {label:'やわ手書き (Zen Kurenaido)', css:"'Zen Kurenaido',sans-serif",     cat:'jp-brush'},
   /* 和文 装飾・ポップ */
   {label:'まるポップ (Hachi Maru)',    css:"'Hachi Maru Pop',cursive",       cat:'jp-deco'},
   {label:'チェリー (Cherry Bomb)',     css:"'Cherry Bomb One',sans-serif",   cat:'jp-deco'},
   {label:'もちもち (Mochiy Pop)',      css:"'Mochiy Pop One',sans-serif",    cat:'jp-deco'},
-  {label:'デコ明朝 (Kaisei Decol)',    css:"'Kaisei Decol',serif",           cat:'jp-deco'},
+  {label:'もちもち細 (Mochiy Pop P)',  css:"'Mochiy Pop P One',sans-serif",  cat:'jp-deco'},
+  {label:'デコ明朝 (Kaisei Decol)',    css:"'Kaisei Decol',serif",           cat:'jp-deco', w:'400;700'},
   {label:'アンティーク (Zen Antique)', css:"'Zen Antique',serif",            cat:'jp-deco'},
+  {label:'やわアンティーク (Zen A Soft)',css:"'Zen Antique Soft',serif",      cat:'jp-deco'},
   {label:'力強い (Reggae One)',        css:"'Reggae One',cursive",           cat:'jp-deco'},
   {label:'ステンシル (Stick)',         css:"'Stick',sans-serif",             cat:'jp-deco'},
   {label:'ドット (DotGothic16)',       css:"'DotGothic16',sans-serif",       cat:'jp-deco'},
+  {label:'立体 (Rampart One)',         css:"'Rampart One',cursive",          cat:'jp-deco'},
+  {label:'彫刻体 (Chokokutai)',        css:"'Chokokutai',cursive",           cat:'jp-deco'},
+  {label:'雫 (Shizuru)',               css:"'Shizuru',cursive",              cat:'jp-deco'},
   /* 欧文 Sans-serif */
-  {label:'Oswald',         css:"'Oswald',sans-serif",        cat:'en-sans'},
-  {label:'Montserrat',     css:"'Montserrat',sans-serif",    cat:'en-sans'},
-  {label:'Poppins',        css:"'Poppins',sans-serif",       cat:'en-sans'},
-  {label:'Roboto',         css:"'Roboto',sans-serif",        cat:'en-sans'},
-  {label:'Raleway',        css:"'Raleway',sans-serif",       cat:'en-sans'},
+  {label:'Oswald',         css:"'Oswald',sans-serif",        cat:'en-sans', w:'400;700'},
+  {label:'Montserrat',     css:"'Montserrat',sans-serif",    cat:'en-sans', w:'400;700;900'},
+  {label:'Poppins',        css:"'Poppins',sans-serif",       cat:'en-sans', w:'400;700;900'},
+  {label:'Roboto',         css:"'Roboto',sans-serif",        cat:'en-sans', w:'400;700;900'},
+  {label:'Raleway',        css:"'Raleway',sans-serif",       cat:'en-sans', w:'400;700;900'},
+  {label:'Open Sans',      css:"'Open Sans',sans-serif",     cat:'en-sans', w:'400;700;800'},
+  {label:'Lato',           css:"'Lato',sans-serif",          cat:'en-sans', w:'400;700;900'},
+  {label:'Inter',          css:"'Inter',sans-serif",         cat:'en-sans', w:'400;700;900'},
+  {label:'Work Sans',      css:"'Work Sans',sans-serif",     cat:'en-sans', w:'400;700;900'},
+  {label:'Nunito',         css:"'Nunito',sans-serif",        cat:'en-sans', w:'400;700;900'},
+  {label:'Rubik',          css:"'Rubik',sans-serif",         cat:'en-sans', w:'400;700;900'},
+  {label:'Kanit',          css:"'Kanit',sans-serif",         cat:'en-sans', w:'400;700;900'},
+  {label:'Josefin Sans',   css:"'Josefin Sans',sans-serif",  cat:'en-sans', w:'400;700'},
+  {label:'Teko',           css:"'Teko',sans-serif",          cat:'en-sans', w:'400;700'},
+  {label:'Fjalla One',     css:"'Fjalla One',sans-serif",    cat:'en-sans'},
   {label:'Anton',          css:"'Anton',sans-serif",         cat:'en-sans'},
   {label:'Archivo Black',  css:"'Archivo Black',sans-serif", cat:'en-sans'},
   {label:'Bebas Neue',     css:"'Bebas Neue',sans-serif",    cat:'en-sans'},
-  {label:'Arial',          css:"Arial,sans-serif",           cat:'en-sans'},
-  {label:'Impact',         css:"Impact,sans-serif",          cat:'en-sans'},
+  {label:'Arial',          css:"Arial,sans-serif",           cat:'en-sans', sys:true},
+  {label:'Impact',         css:"Impact,sans-serif",          cat:'en-sans', sys:true},
   /* 欧文 Serif */
-  {label:'Playfair Display', css:"'Playfair Display',serif", cat:'en-serif'},
-  {label:'Merriweather',     css:"'Merriweather',serif",     cat:'en-serif'},
-  {label:'Cinzel',           css:"'Cinzel',serif",           cat:'en-serif'},
-  {label:'Times New Roman',  css:"'Times New Roman',serif",  cat:'en-serif'},
-  {label:'Georgia',          css:"Georgia,serif",            cat:'en-serif'},
+  {label:'Playfair Display', css:"'Playfair Display',serif", cat:'en-serif', w:'400;700;900'},
+  {label:'Merriweather',     css:"'Merriweather',serif",     cat:'en-serif', w:'400;700'},
+  {label:'Cinzel',           css:"'Cinzel',serif",           cat:'en-serif', w:'400;700;900'},
+  {label:'Lora',             css:"'Lora',serif",             cat:'en-serif', w:'400;700'},
+  {label:'PT Serif',         css:"'PT Serif',serif",         cat:'en-serif', w:'400;700'},
+  {label:'Bitter',           css:"'Bitter',serif",           cat:'en-serif', w:'400;700'},
+  {label:'Cormorant Garamond',css:"'Cormorant Garamond',serif",cat:'en-serif', w:'400;700'},
+  {label:'EB Garamond',      css:"'EB Garamond',serif",      cat:'en-serif', w:'400;700'},
+  {label:'Libre Baskerville',css:"'Libre Baskerville',serif",cat:'en-serif', w:'400;700'},
+  {label:'Spectral',         css:"'Spectral',serif",         cat:'en-serif', w:'400;700'},
+  {label:'Times New Roman',  css:"'Times New Roman',serif",  cat:'en-serif', sys:true},
+  {label:'Georgia',          css:"Georgia,serif",            cat:'en-serif', sys:true},
   /* 欧文 Script */
   {label:'Lobster',         css:"'Lobster',cursive",         cat:'en-script'},
   {label:'Pacifico',        css:"'Pacifico',cursive",        cat:'en-script'},
-  {label:'Caveat',          css:"'Caveat',cursive",          cat:'en-script'},
-  {label:'Dancing Script',  css:"'Dancing Script',cursive",  cat:'en-script'},
+  {label:'Caveat',          css:"'Caveat',cursive",          cat:'en-script', w:'400;700'},
+  {label:'Dancing Script',  css:"'Dancing Script',cursive",  cat:'en-script', w:'400;700'},
   {label:'Sacramento',      css:"'Sacramento',cursive",      cat:'en-script'},
+  {label:'Great Vibes',     css:"'Great Vibes',cursive",     cat:'en-script'},
+  {label:'Satisfy',         css:"'Satisfy',cursive",         cat:'en-script'},
+  {label:'Kaushan Script',  css:"'Kaushan Script',cursive",  cat:'en-script'},
+  {label:'Cookie',          css:"'Cookie',cursive",          cat:'en-script'},
+  {label:'Yellowtail',      css:"'Yellowtail',cursive",      cat:'en-script'},
+  {label:'Shadows Into Light',css:"'Shadows Into Light',cursive",cat:'en-script'},
+  {label:'Indie Flower',    css:"'Indie Flower',cursive",    cat:'en-script'},
+  {label:'Amatic SC',       css:"'Amatic SC',cursive",       cat:'en-script', w:'400;700'},
   /* 欧文 Display */
   {label:'Righteous',         css:"'Righteous',sans-serif",  cat:'en-display'},
   {label:'Bungee',            css:"'Bungee',sans-serif",     cat:'en-display'},
   {label:'Permanent Marker',  css:"'Permanent Marker',cursive",cat:'en-display'},
   {label:'Bangers',           css:"'Bangers',cursive",       cat:'en-display'},
-  {label:'Press Start 2P',    css:"'Press Start 2P',cursive",cat:'en-display'}
+  {label:'Press Start 2P',    css:"'Press Start 2P',cursive",cat:'en-display'},
+  {label:'Abril Fatface',     css:"'Abril Fatface',cursive", cat:'en-display'},
+  {label:'Alfa Slab One',     css:"'Alfa Slab One',cursive", cat:'en-display'},
+  {label:'Titan One',         css:"'Titan One',cursive",     cat:'en-display'},
+  {label:'Fredoka',           css:"'Fredoka',sans-serif",    cat:'en-display', w:'400;700'},
+  {label:'Luckiest Guy',      css:"'Luckiest Guy',cursive",  cat:'en-display'},
+  {label:'Bowlby One',        css:"'Bowlby One',sans-serif", cat:'en-display'},
+  {label:'Monoton',           css:"'Monoton',cursive",       cat:'en-display'},
+  {label:'Shrikhand',         css:"'Shrikhand',cursive",     cat:'en-display'},
+  {label:'Black Ops One',     css:"'Black Ops One',cursive", cat:'en-display'},
+  {label:'Rye',               css:"'Rye',cursive",           cat:'en-display'},
+  /* モノスペース */
+  {label:'JetBrains Mono',    css:"'JetBrains Mono',monospace",cat:'mono', w:'400;700'},
+  {label:'Roboto Mono',       css:"'Roboto Mono',monospace", cat:'mono', w:'400;700'},
+  {label:'Source Code Pro',   css:"'Source Code Pro',monospace",cat:'mono', w:'400;700'},
+  {label:'Space Mono',        css:"'Space Mono',monospace",  cat:'mono', w:'400;700'},
+  {label:'IBM Plex Mono',     css:"'IBM Plex Mono',monospace",cat:'mono', w:'400;700'},
+  {label:'Fira Code',         css:"'Fira Code',monospace",   cat:'mono', w:'400;700'},
+  {label:'Inconsolata',       css:"'Inconsolata',monospace", cat:'mono', w:'400;700'},
+  {label:'等幅JP (M PLUS Code)',css:"'M PLUS 1 Code',monospace",cat:'mono', w:'400;700'}
 ];
 function fontLabelByCss(css){ for(var i=0;i<FONTS.length;i++){ if(FONTS[i].css===css) return FONTS[i].label; } return css; }
+
+/* ---- lazy webfont loader ----------------------------------------------
+   With ~100 fonts we must NOT pull every Google family at startup. Instead
+   each family's stylesheet is injected the first time the font is previewed
+   in the picker (IntersectionObserver), selected, or restored from a design.
+   `sys` fonts are OS-local (no fetch). The core font (Noto Sans JP) is already
+   in <head>, so it's pre-seeded to avoid a duplicate request. */
+var _loadedFamilies = {'Noto Sans JP':true};
+function fontFamilyName(css){ var m=(css||'').match(/^\s*'?([^',]+?)'?\s*(?:,|$)/); return m?m[1].trim():null; }
+function ensureFontLoaded(f){
+  if(!f || f.sys) return;
+  var name=fontFamilyName(f.css); if(!name) return;
+  if(_loadedFamilies[name]) return; _loadedFamilies[name]=true;
+  var fam=encodeURIComponent(name).replace(/%20/g,'+')+(f.w?(':wght@'+f.w):'');
+  var l=document.createElement('link'); l.rel='stylesheet';
+  l.href='https://fonts.googleapis.com/css2?family='+fam+'&display=swap';
+  document.head.appendChild(l);
+}
+function ensureFontLoadedByCss(css){
+  for(var i=0;i<FONTS.length;i++){ if(FONTS[i].css===css){ ensureFontLoaded(FONTS[i]); return FONTS[i]; } }
+  return null;
+}
+/* load a font, then re-render the canvas once its faces are actually ready so
+   Fabric paints with the real glyphs (not the fallback) */
+function loadFontAndRender(css){
+  ensureFontLoadedByCss(css);
+  if(!(document.fonts&&document.fonts.load)) return;
+  var fam=(css||'').split(',')[0];
+  try{
+    document.fonts.load('24px '+fam).then(function(){ canvas.requestRenderAll(); }).catch(function(){});
+    document.fonts.load('700 24px '+fam).then(function(){ canvas.requestRenderAll(); }).catch(function(){});
+  }catch(e){}
+}
+/* one shared observer: load a preview's font when it scrolls into view */
+var _fpFontObserver = (typeof IntersectionObserver!=='undefined') ? new IntersectionObserver(function(entries){
+  entries.forEach(function(en){
+    if(en.isIntersecting){ ensureFontLoadedByCss(en.target.dataset.fcss); _fpFontObserver.unobserve(en.target); }
+  });
+}, {root:null, rootMargin:'120px'}) : null;
 
 /* style presets for text */
 var TEXT_PRESETS = [
@@ -1274,6 +1382,7 @@ function loadFace(arr, cb){
   fabric.util.enlivenObjects(arr, function(objs){
     objs.forEach(function(o){
       canvas.add(o);
+      if(o.type==='i-text'||o.type==='text'){ loadFontAndRender(o.fontFamily); }
       if((o.type==='i-text'||o.type==='text') && o.fx && o.fx.type && o.fx.type!=='none' && o.fx.type!=='gradient'){
         /* re-apply effect; gradient fills survive enliven natively so skip to keep coords */
         applyTextFx(o);
@@ -1736,8 +1845,13 @@ function fpItem(f, cur){
   it.className='fp-item'+(f.css===cur?' cur':'');
   it.dataset.css=f.css;
   var prev=document.createElement('div'); prev.className='fp-prev'; prev.style.fontFamily=f.css; prev.textContent='あア亜Ag 永';
+  prev.dataset.fcss=f.css;
   var lab=document.createElement('div'); lab.className='fp-lab'; lab.textContent=f.label;
   it.appendChild(prev); it.appendChild(lab);
+  /* load this font's webface lazily when it scrolls into view (or now, if the
+     current/active font, so it renders correctly without scrolling) */
+  if(f.css===cur || !_fpFontObserver) ensureFontLoaded(f);
+  else _fpFontObserver.observe(prev);
   it.onclick=function(){ chooseFont(f.css); };
   return it;
 }
@@ -1760,6 +1874,7 @@ function renderFpList(){
   shown.forEach(function(f){ fpList.appendChild(fpItem(f,cur)); });
 }
 function chooseFont(css){
+  loadFontAndRender(css);
   var o=activeText(); if(o){ o.set('fontFamily',css); if(o.curve)applyCurve(o); canvas.requestRenderAll(); commitHistory(); }
   pushRecentFont(css);
   fontSelect.value=css; fontBtnName.textContent=fontLabelByCss(css);
