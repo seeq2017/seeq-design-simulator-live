@@ -3026,9 +3026,175 @@ function exportPNG(){
 function exportJPG(){
   _dl(_renderForExport({format:'jpeg', quality:0.92, multiplier:EXPORT_MULT(), bg:'#ffffff'}), 'seeq-design-'+currentFace+'.jpg');
 }
+/* =====================================================================
+   SVG export with TEXT OUTLINED TO PATHS (req 15)
+   --------------------------------------------------------------------
+   Illustrator garbles SVG <text> because it lacks the Google webfonts. We
+   convert every text object to vector <path> via opentype.js, so the file is
+   font-independent and opens cleanly. Fonts are fetched as tiny per-design
+   SUBSETS from Google Fonts (only the characters actually used) and the woff2
+   is decompressed to TTF in-browser. Curved (text-on-path), 3D and reflect
+   text — whose look can't be reproduced from plain glyph runs — fall back to a
+   crisp embedded raster of just that object, which also opens fine.
+   ===================================================================== */
+var _otLibP=null;
+function _loadOutlineLibs(){
+  if(_otLibP) return _otLibP;
+  _otLibP=Promise.all([
+    loadCDN('https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js'),
+    loadCDN('https://cdn.jsdelivr.net/npm/wawoff2@2.0.1/build/decompress_binding.js')
+  ]).then(function(){
+    return new Promise(function(res,rej){
+      var t0=Date.now();
+      (function wait(){
+        if(window.opentype && window.Module && typeof window.Module.decompress==='function'){ res(); return; }
+        if(Date.now()-t0>9000){ rej(new Error('libs timeout')); return; }
+        setTimeout(wait, 70);
+      })();
+    });
+  });
+  return _otLibP;
+}
+var _otFontCache={};
+function _otWeight(o,f){
+  var w=o.fontWeight; if(w==='bold')w=700; if(w==='normal'||!w)w=400; w=parseInt(w,10)||400;
+  if(!f||!f.w) return null;
+  var avail=f.w.split(';').map(function(s){return parseInt(s,10);}), best=avail[0], bd=1e9;
+  avail.forEach(function(a){ var d=Math.abs(a-w); if(d<bd){bd=d;best=a;} });
+  return best;
+}
+function _fetchOutlineFont(family, weight, chars){
+  var key=family+'|'+(weight||'');
+  if(_otFontCache[key]) return _otFontCache[key];
+  var fam=encodeURIComponent(family).replace(/%20/g,'+')+(weight?(':wght@'+weight):'');
+  var url='https://fonts.googleapis.com/css2?family='+fam+'&text='+encodeURIComponent(chars)+'&display=swap';
+  _otFontCache[key]=fetch(url).then(function(r){return r.text();}).then(function(css){
+    var m=css.match(/url\((https:[^)]+)\)/); if(!m) throw new Error('no font src for '+family);
+    return fetch(m[1]);
+  }).then(function(r){return r.arrayBuffer();}).then(function(buf){
+    var ttf=window.Module.decompress(new Uint8Array(buf)); var u8=new Uint8Array(ttf);
+    return window.opentype.parse(u8.buffer.slice(u8.byteOffset, u8.byteOffset+u8.byteLength));
+  });
+  return _otFontCache[key];
+}
+function _matCmds(cmds, m){
+  function tx(x,y){ return [m[0]*x+m[2]*y+m[4], m[1]*x+m[3]*y+m[5]]; }
+  for(var i=0;i<cmds.length;i++){ var c=cmds[i], p;
+    if(c.x!=null){ p=tx(c.x,c.y); c.x=p[0]; c.y=p[1]; }
+    if(c.x1!=null){ p=tx(c.x1,c.y1); c.x1=p[0]; c.y1=p[1]; }
+    if(c.x2!=null){ p=tx(c.x2,c.y2); c.x2=p[0]; c.y2=p[1]; }
+  }
+}
+var _ASCENT_K=0.88;   /* baseline position within a line — calibrated by pixel-diff vs Fabric's own raster (min Δlum≈5/255) */
+function _outlinePathData(T, font){
+  T.initDimensions();
+  var lines=T._textLines, cb=T.__charBounds;
+  if(!lines||!cb) return null;
+  var fs=T.fontSize, w=T.width, h=T.height, all=[];
+  for(var i=0;i<lines.length;i++){
+    var lineLeft = T._getLineLeftOffset ? T._getLineLeftOffset(i) : 0;
+    var lineTop=0; for(var k=0;k<i;k++) lineTop+=T.getHeightOfLine(k);
+    var baseline = -h/2 + lineTop + fs*_ASCENT_K;
+    for(var j=0;j<lines[i].length;j++){
+      var ch=lines[i][j]; if(!ch || ch===' ' || ch==='　'){ continue; }
+      var box=cb[i] && cb[i][j]; if(!box) continue;
+      var x = -w/2 + lineLeft + box.left;
+      var g; try{ g=font.charToGlyph(ch); }catch(e){ continue; }
+      if(!g) continue;
+      var gp=g.getPath(x, baseline, fs);
+      if(gp && gp.commands && gp.commands.length) all=all.concat(gp.commands);
+    }
+  }
+  if(!all.length) return null;
+  _matCmds(all, T.calcTransformMatrix());
+  var p=new window.opentype.Path(); p.commands=all;
+  return p.toPathData(3);
+}
+function _isComplexText(o){ return !!(o.curve) || (o.fx && (o.fx.type==='d3'||o.fx.type==='reflect'||o.fx.type==='curve')); }
+/* raster a single object into a fabric.Image placed exactly over it */
+function _rasterSwap(o){
+  var br=o.getBoundingRect(true,true);
+  var mult=Math.max(2, (BASE_W/canvas.getWidth())*3);
+  var el=o.toCanvasElement({multiplier:mult});
+  return new Promise(function(res){
+    fabric.Image.fromURL(el.toDataURL(), function(img){
+      img.set({left:br.left, top:br.top, originX:'left', originY:'top',
+        scaleX:br.width/el.width, scaleY:br.height/el.height, selectable:false, evented:false});
+      res(img);
+    });
+  });
+}
+function buildOutlinedSVG(){
+  return _loadOutlineLibs().then(function(){
+    var texts=userObjects().filter(function(o){ return (o.type==='i-text'||o.type==='text') && o.visible!==false; });
+    /* gather subset fonts for the simple (outline-able) text objects */
+    var jobs=[]; var fontFor={};
+    texts.forEach(function(o){
+      if(_isComplexText(o)) return;
+      var fam=fontFamilyName(o.fontFamily); var fdef=fontByCss(o.fontFamily);
+      if(!fam || (fdef&&fdef.sys)){ o._otSkip=true; return; }   /* system font → raster */
+      var wt=_otWeight(o,fdef); var key=fam+'|'+(wt||'');
+      (fontFor[key]=fontFor[key]||{family:fam,weight:wt,chars:''});
+      fontFor[key].chars+=o.text;
+      o._otKey=key;
+    });
+    Object.keys(fontFor).forEach(function(key){
+      var fj=fontFor[key];
+      jobs.push(_fetchOutlineFont(fj.family, fj.weight, fj.chars).then(function(font){ fj.font=font; }).catch(function(){ fj.font=null; }));
+    });
+    return Promise.all(jobs).then(function(){ return {texts:texts, fontFor:fontFor}; });
+  }).then(function(ctx){
+    var swaps=[];          /* {orig, repl, idx} */
+    var pending=[];
+    ctx.texts.forEach(function(o){
+      var idx=canvas.getObjects().indexOf(o);
+      var fj = (!o._otSkip && o._otKey) ? ctx.fontFor[o._otKey] : null;
+      if(fj && fj.font && !_isComplexText(o)){
+        var d=null; try{ d=_outlinePathData(o, fj.font); }catch(e){ d=null; }
+        if(d){
+          var avg=(Math.abs(o.scaleX)+Math.abs(o.scaleY))/2;
+          var fillStr = (typeof o.fill==='string') ? o.fill : (o.solidFill||'#222222');
+          var hasStroke = o.stroke && o.strokeWidth>0;
+          var pathObj=new fabric.Path(d,{
+            fill:fillStr, opacity:o.opacity,
+            stroke: hasStroke?o.stroke:null, strokeWidth: hasStroke?o.strokeWidth*avg:0,
+            strokeLineJoin:'round', paintFirst:(o.paintFirst||'fill'),
+            selectable:false, evented:false
+          });
+          swaps.push({orig:o, repl:pathObj, idx:idx});
+          return;
+        }
+      }
+      /* fallback: raster this object */
+      pending.push(_rasterSwap(o).then(function(img){ swaps.push({orig:o, repl:img, idx:canvas.getObjects().indexOf(o)}); }));
+    });
+    return Promise.all(pending).then(function(){ return swaps; });
+  }).then(function(swaps){
+    /* apply swaps (replace text with path/image at same z-index) */
+    swaps.forEach(function(s){ var i=canvas.getObjects().indexOf(s.orig); if(i<0)i=s.idx;
+      canvas.remove(s.orig); canvas.insertAt(s.repl, i, false); });
+    canvas.sendToBack(guide);
+    var svg=_renderForExport({svg:true});
+    /* restore originals */
+    swaps.forEach(function(s){ var i=canvas.getObjects().indexOf(s.repl); if(i<0)i=s.idx;
+      canvas.remove(s.repl); canvas.insertAt(s.orig, i, false); });
+    canvas.sendToBack(guide);
+    canvas.requestRenderAll();
+    /* clean temp tags */
+    userObjects().forEach(function(o){ delete o._otSkip; delete o._otKey; });
+    return svg;
+  });
+}
 function exportSVG(){
-  var svg=_renderForExport({svg:true});
-  _dl(URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'})), 'seeq-design-'+currentFace+'.svg', true);
+  toast('SVGを生成しています…（文字をアウトライン化）');
+  buildOutlinedSVG().then(function(svg){
+    _dl(URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'})), 'seeq-design-'+currentFace+'.svg', true);
+    toast('SVGを書き出しました（文字アウトライン化済み）');
+  }).catch(function(e){
+    /* never block the user: fall back to the plain (text) SVG */
+    try{ var svg=_renderForExport({svg:true}); _dl(URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'})), 'seeq-design-'+currentFace+'.svg', true);
+      toast('アウトライン化に失敗したため通常SVGを書き出しました'); }catch(_){ toast('SVGの書き出しに失敗しました'); }
+  });
 }
 /* jsPDF is only fetched the first time a PDF is requested (keeps initial load light) */
 var _jspdfP=null;
