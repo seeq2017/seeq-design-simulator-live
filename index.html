@@ -188,7 +188,8 @@
   .layer{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:#fbfdfd;cursor:pointer;transition:.1s;}
   .layer.sel{border-color:var(--accent);background:#FDECEE;}
   .layer.dragover{border-style:dashed;border-color:var(--accent);}
-  .layer .grip{cursor:grab;color:#b4c0c4;font-size:14px;line-height:1;flex:0 0 auto;}
+  .layer.dragging{opacity:.5;}
+  .layer .grip{cursor:grab;color:#b4c0c4;font-size:14px;line-height:1;flex:0 0 auto;touch-action:none;padding:2px 2px;}
   .layer .lname{flex:1;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .layer .licon{flex:0 0 auto;width:24px;height:24px;display:grid;place-items:center;color:var(--sub);}
   .layer button{border:0;background:transparent;cursor:pointer;border-radius:6px;width:26px;height:26px;display:grid;place-items:center;color:var(--sub);flex:0 0 auto;}
@@ -211,6 +212,9 @@
   .obj-act svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
   .obj-act small{font-size:9px;display:block;margin-top:2px;color:var(--ink-3);}
   .compose-hint{display:none;font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.5;}
+
+  /* mobile right-side quick tab dock (req LO-a) — desktop-hidden */
+  .quick-dock{display:none;}
 
   /* context menu */
   .ctxmenu{position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;min-width:170px;}
@@ -345,8 +349,23 @@
     /* Reserve the sheet's CURRENT visible height (--sheet-vis, set per snap by
        JS) as bottom padding, so the canvas is always laid out ABOVE the sheet.
        fitCanvas() re-fits on every snap → the design is never covered (req #4). */
-    .stage{order:1;padding:8px 8px calc(var(--sheet-vis,72px) + 8px + env(safe-area-inset-bottom));flex:1 1 auto;min-height:0;}
-    .canvas-wrap{max-width:min(92vw,440px);}
+    /* extra right padding reserves a gutter for the quick-dock so it never
+       overlaps the design (req LO-a keeps the existing non-overlap guarantee) */
+    .stage{order:1;padding:8px 68px calc(var(--sheet-vis,72px) + 8px + env(safe-area-inset-bottom)) 8px;flex:1 1 auto;min-height:0;}
+    .canvas-wrap{max-width:min(88vw,440px);}
+
+    /* right-edge vertical tab dock: taps open the matching sheet tab, re-tap closes */
+    .quick-dock{display:flex;flex-direction:column;gap:3px;position:fixed;right:7px;top:50%;
+      transform:translateY(-50%);z-index:45;background:rgba(255,255,255,.94);
+      -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+      border:1px solid var(--line);border-radius:15px;padding:5px;box-shadow:0 6px 22px rgba(20,40,50,.18);}
+    .qd-btn{width:42px;height:42px;border:0;background:transparent;border-radius:11px;display:flex;
+      flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--sub);
+      position:relative;-webkit-tap-highlight-color:transparent;cursor:pointer;line-height:1;}
+    .qd-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+    .qd-btn .qd-lab{font-size:8px;font-weight:700;}
+    .qd-btn:active{transform:scale(.9);}
+    .qd-btn.active{color:var(--accent);background:#FDECEE;}
     .brand small{display:none;}
     .brand .logo{height:24px;}
     .brand>span{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -910,6 +929,18 @@
 <!-- Mobile bottom-sheet scrim: dims/blocks the canvas while the sheet is open
      so browsing tools never edits the design by accident; tap to close. -->
 <div class="sheet-scrim" id="sheetScrim" aria-hidden="true"></div>
+
+<!-- Mobile right-side quick tab dock (req LO-a): right-hand access to the tool
+     tabs with tap-to-open / re-tap-to-close. Mirrors the bottom-sheet tabs and
+     drives the same sheet, so the non-overlap + keyboard behaviour is preserved. -->
+<nav class="quick-dock" id="quickDock" aria-label="ツール">
+  <button class="qd-btn" data-mtab="product"><svg viewBox="0 0 24 24"><path d="M8 4L3.5 6.5 5.5 10 8 8.8V20h8V8.8l2.5 1.2 2-3.5L16 4l-1.7.9a3.3 3.3 0 01-4.6 0z"/></svg><span class="qd-lab">商品</span></button>
+  <button class="qd-btn" data-mtab="text"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v12M9.5 18h5"/></svg><span class="qd-lab">文字</span></button>
+  <button class="qd-btn" data-mtab="image"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5L5 19.5"/></svg><span class="qd-lab">画像</span></button>
+  <button class="qd-btn" data-mtab="shape"><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="9" height="9" rx="1.5"/><circle cx="16" cy="16" r="5"/></svg><span class="qd-lab">図形</span></button>
+  <button class="qd-btn" data-mtab="arrange"><svg viewBox="0 0 24 24"><path d="M4 4v16"/><rect x="7.5" y="7" width="11" height="4" rx="1"/><rect x="7.5" y="14" width="7" height="4" rx="1"/></svg><span class="qd-lab">配置</span></button>
+  <button class="qd-btn" data-mtab="layer"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span class="qd-lab">層</span></button>
+</nav>
 
 <!-- Selected object toolbar -->
 <div class="objbar" id="objbar">
@@ -2865,11 +2896,35 @@ function renderLayers(){
     row.addEventListener('dragover',function(e){ e.preventDefault(); row.classList.add('dragover'); });
     row.addEventListener('dragleave',function(){ row.classList.remove('dragover'); });
     row.addEventListener('drop',function(e){ e.preventDefault(); row.classList.remove('dragover'); reorderLayer(dragObj, o); });
+    /* touch reorder (req LO-b): HTML5 DnD doesn't fire on touch, so drive it from
+       the grip handle with raw touch events */
+    row.querySelector('.grip').addEventListener('touchstart', function(e){
+      e.preventDefault(); dragObj=o; _touchDragRow=row; row.classList.add('dragging');
+    }, {passive:false});
     row._obj=o;
     layerList.appendChild(row);
   });
 }
-var dragObj=null;
+var dragObj=null, _touchDragRow=null;
+/* one set of document listeners handles the touch-drag movement & drop */
+document.addEventListener('touchmove', function(e){
+  if(!_touchDragRow) return;
+  var t=e.touches[0]; if(!t) return;
+  var el=document.elementFromPoint(t.clientX, t.clientY);
+  var over=el && el.closest ? el.closest('.layer') : null;
+  layerList.querySelectorAll('.layer').forEach(function(r){ r.classList.toggle('dragover', r===over && r._obj!==dragObj); });
+  e.preventDefault();
+}, {passive:false});
+function _endTouchDrag(){
+  if(!_touchDragRow) return;
+  var over=layerList.querySelector('.layer.dragover');
+  layerList.querySelectorAll('.layer').forEach(function(r){ r.classList.remove('dragover','dragging'); });
+  _touchDragRow=null;
+  if(over && over._obj && dragObj){ reorderLayer(dragObj, over._obj); }
+  dragObj=null;
+}
+document.addEventListener('touchend', _endTouchDrag);
+document.addEventListener('touchcancel', _endTouchDrag);
 function reorderLayer(src, target){
   if(!src||src===target) return;
   var objs=userObjects();                 // bottom..top
@@ -3638,6 +3693,10 @@ function setMobileTab(name){
   currentMTab=name;
   document.querySelectorAll('.mtab').forEach(function(b){ b.classList.toggle('active', b.dataset.mtab===name); });
   document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.toggle('m-active', c.dataset.tab===name); });
+  syncQuickDock();
+}
+function syncQuickDock(){
+  document.querySelectorAll('.qd-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mtab===currentMTab && sheetSnap!=='peek'); });
 }
 function computeSnaps(){
   /* use the TRUE visible height (visualViewport) so iOS Safari's dynamic toolbar
@@ -3674,6 +3733,7 @@ function snapTo(name){
   document.body.classList.toggle('sheet-full', name==='full');  /* scrim dims only at full (req 6a) */
   applySheetVis(snaps[name]);
   fitCanvas();                                              /* keep the design fully visible (non-overlap) */
+  syncQuickDock();
 }
 /* legacy aliases (used by templates / proof / wp-save flows) */
 function expandSheet(){ snapTo('mid'); }
@@ -3686,6 +3746,13 @@ document.getElementById('mtabs').addEventListener('click', function(e){
   if(b.dataset.mtab===currentMTab && sheetSnap!=='peek'){ snapTo('peek'); return; }  /* re-tap closes */
   setMobileTab(b.dataset.mtab);
   if(sheetSnap==='peek') snapTo('mid'); else applySheetVis(snaps[sheetSnap]);        /* keep height if already open */
+});
+/* right-side quick dock: tap opens the matching sheet tab; re-tap the active one closes */
+document.getElementById('quickDock').addEventListener('click', function(e){
+  var b=e.target.closest('.qd-btn'); if(!b) return;
+  if(b.dataset.mtab===currentMTab && sheetSnap!=='peek'){ snapTo('peek'); return; }
+  setMobileTab(b.dataset.mtab);
+  if(sheetSnap==='peek') snapTo('mid'); else applySheetVis(snaps[sheetSnap]);
 });
 /* grip tap cycles peek → mid → full → peek */
 document.getElementById('sheetGrip').addEventListener('click', function(){
