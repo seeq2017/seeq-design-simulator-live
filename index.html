@@ -84,8 +84,8 @@
   header .hsep{background:rgba(255,255,255,.14);}
   header .btn-ghost{color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.26);background:transparent;}
   header .btn-ghost:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);background:rgba(255,255,255,.06);}
-  header #btnPng{background:#fff;color:var(--black);box-shadow:none;}
-  header #btnPng:hover{background:var(--bg-2);}
+  header #btnExport{background:#fff;color:var(--black);box-shadow:none;}
+  header #btnExport:hover{background:var(--bg-2);}
   header .btn-primary{background:var(--red);color:#fff;box-shadow:var(--shadow-cta);}
   header .btn-primary:hover{background:var(--red-hover);}
 
@@ -362,6 +362,18 @@
     *,*::before,*::after{animation:none!important;}
   }
   ::selection{background:var(--red);color:#fff;}
+
+  /* ===== Export dropdown (PNG/JPG/SVG/PDF) ===== */
+  .exp-wrap{position:relative;display:inline-flex;}
+  .exp-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:172px;background:var(--panel,#fff);
+    border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow,0 8px 28px rgba(0,0,0,.16));
+    padding:5px;z-index:60;display:none;}
+  .exp-menu.show{display:block;}
+  .exp-menu button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;cursor:pointer;
+    padding:9px 11px;border-radius:8px;font-size:13px;font-family:inherit;color:var(--ink);text-align:left;font-weight:600;}
+  .exp-menu button:hover{background:#eef3f4;}
+  .exp-menu button small{margin-left:auto;color:var(--sub);font-weight:500;font-size:10.5px;}
+  .exp-menu .exp-ico{width:15px;height:15px;flex:0 0 auto;color:var(--accent,#E60012);}
 </style>
 </head>
 <body>
@@ -386,7 +398,15 @@
     <button class="icobtn" id="btnRedo" title="やり直す (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 00-5 5v0a5 5 0 005 5h6"/></svg></button>
     <span class="hsep"></span>
     <button class="btn btn-ghost" id="btnSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="label-pc">保存/読込</span></button>
-    <button class="btn btn-ghost" id="btnPng"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span class="label-pc">PNG</span></button>
+    <div class="exp-wrap">
+      <button class="btn btn-ghost" id="btnExport" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span class="label-pc">書き出し</span></button>
+      <div class="exp-menu" id="expMenu" role="menu">
+        <button data-fmt="png" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>PNG画像<small>透過</small></button>
+        <button data-fmt="jpg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>JPG画像<small>白背景</small></button>
+        <button data-fmt="svg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M12 11v10M4 7l8 4 8-4"/></svg>SVGベクター<small>編集可</small></button>
+        <button data-fmt="pdf" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M14 3v5h5"/></svg>PDF<small>印刷向け</small></button>
+      </div>
+    </div>
     <button class="btn btn-primary" id="btnQuote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg><span class="label-pc">見積もり依頼</span></button>
   </div>
 </header>
@@ -2596,17 +2616,71 @@ canvas.on('mouse:move', function(opt){ if(panning&&lastP){ var vpt=canvas.viewpo
 canvas.on('mouse:up', function(){ panning=false; lastP=null; });
 
 /* =====================================================================
-   PNG export  (current face)
+   Export  (current face) — PNG / JPG / SVG / PDF
    ===================================================================== */
-document.getElementById('btnPng').onclick=function(){
+function _dl(href, name, revoke){
+  var a=document.createElement('a'); a.href=href; a.download=name; a.click();
+  if(revoke) setTimeout(function(){ URL.revokeObjectURL(href); }, 1500);
+}
+/* render the current face at print resolution; runs with the design centred and
+   no selection handles / zoom transform, then restores state. `bg` fills the
+   transparent area (needed for opaque JPG/PDF). */
+function _renderForExport(opts){
   canvas.discardActiveObject(); refreshBars();
   var vpt=canvas.viewportTransform.slice();
+  var prevBg=canvas.backgroundColor;
   canvas.setViewportTransform([1,0,0,1,0,0]);
+  if(opts.bg) canvas.backgroundColor=opts.bg;
   canvas.renderAll();
-  var url=canvas.toDataURL({format:'png', multiplier:(BASE_W/canvas.getWidth())*2});
+  var out=opts.svg ? canvas.toSVG() : canvas.toDataURL({format:opts.format, quality:opts.quality, multiplier:opts.multiplier});
+  canvas.backgroundColor=prevBg;
   canvas.setViewportTransform(vpt); canvas.renderAll();
-  var a=document.createElement('a'); a.href=url; a.download='seeq-design-'+currentFace+'.png'; a.click();
-};
+  return out;
+}
+var EXPORT_MULT = function(){ return (BASE_W/canvas.getWidth())*2; };  /* ≈2x BASE = crisp */
+
+function exportPNG(){
+  _dl(_renderForExport({format:'png', multiplier:EXPORT_MULT()}), 'seeq-design-'+currentFace+'.png');
+}
+function exportJPG(){
+  _dl(_renderForExport({format:'jpeg', quality:0.92, multiplier:EXPORT_MULT(), bg:'#ffffff'}), 'seeq-design-'+currentFace+'.jpg');
+}
+function exportSVG(){
+  var svg=_renderForExport({svg:true});
+  _dl(URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'})), 'seeq-design-'+currentFace+'.svg', true);
+}
+/* jsPDF is only fetched the first time a PDF is requested (keeps initial load light) */
+var _jspdfP=null;
+function _ensureJsPDF(){
+  if(_jspdfP) return _jspdfP;
+  _jspdfP=new Promise(function(res,rej){
+    if(window.jspdf&&window.jspdf.jsPDF){ res(); return; }
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=function(){ res(); }; s.onerror=function(){ rej(); };
+    document.head.appendChild(s);
+  });
+  return _jspdfP;
+}
+function exportPDF(){
+  toast('PDFを生成しています…');
+  _ensureJsPDF().then(function(){
+    var url=_renderForExport({format:'jpeg', quality:0.95, multiplier:(BASE_W/canvas.getWidth())*3, bg:'#ffffff'});
+    var JsPDF=window.jspdf.jsPDF;
+    var pdf=new JsPDF({orientation:'portrait', unit:'pt', format:[BASE_W, BASE_H], compress:true});
+    pdf.addImage(url, 'JPEG', 0, 0, BASE_W, BASE_H);
+    pdf.save('seeq-design-'+currentFace+'.pdf');
+  }).catch(function(){ toast('PDFライブラリの読み込みに失敗しました'); });
+}
+var EXPORTERS={png:exportPNG, jpg:exportJPG, svg:exportSVG, pdf:exportPDF};
+
+var btnExport=document.getElementById('btnExport'), expMenu=document.getElementById('expMenu');
+btnExport.onclick=function(e){ e.stopPropagation(); var open=expMenu.classList.toggle('show'); btnExport.setAttribute('aria-expanded', open?'true':'false'); };
+expMenu.addEventListener('click', function(e){ var b=e.target.closest('button[data-fmt]'); if(!b) return;
+  expMenu.classList.remove('show'); btnExport.setAttribute('aria-expanded','false');
+  var fn=EXPORTERS[b.dataset.fmt]; if(fn) fn();
+});
+document.addEventListener('click', function(e){ if(!e.target.closest('.exp-wrap')){ expMenu.classList.remove('show'); btnExport.setAttribute('aria-expanded','false'); } });
 
 /* =====================================================================
    Save / Load (design key JSON)  — front-side only, no server
