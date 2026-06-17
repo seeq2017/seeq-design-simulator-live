@@ -26,6 +26,62 @@
   }catch(e){}
 })();
 </script>
+<!-- ============================================================
+     Brand presets (white-label config) — brands.jsx 正本の本番移植。
+     1エンジン×マルチブランド：logo · theme(:root変数) · labels を
+     data-brand で丸ごと切替。theme は :root 変数のローカル上書き＝
+     色のハードコードなしでシート全体が再テーマ。localStorage 不使用。
+     ?brand=seeq|mori か <html data-brand> で初期ブランドを選択。
+     ※エンジン本体(Fabric)ロジックには一切触れない＝顔だけ差し替え。
+     ============================================================ -->
+<script>
+(function(){
+  var BRANDS = {
+    seeq: {
+      id:'seeq', name:'SeeQ', en:'SEEQ', tagline:'オリジナルプリント作成ツール',
+      logo:{ type:'img' },
+      theme:{
+        '--red':'#E0382C','--red-hover':'#F0463A','--red-dark':'#B32C22',
+        '--blue':'#2563EB','--blue-hover':'#3B73F0',
+        '--hot':'#E0382C','--data':'#2563EB',
+        '--brand-soft':'#FDECEA','--shadow-cta':'0 12px 28px -10px rgba(224,56,44,0.34)'
+      },
+      labels:{ cta:'見積もり依頼', save:'保存/読込', estTitle:'このデザインで見積もり',
+        primary:'注文へ進む', unit:'枚', quoteBody:'本番では、このデザインデータ（前面・背面の画像とメタ情報）が SeeQ のお問い合わせ／見積フォームや LINE に連携されます。' }
+    },
+    mori: {
+      id:'mori', name:'森工業', en:'MORIKOGYO', tagline:'サイン・金属プレート作成ツール',
+      logo:{ type:'text', main:'森工業', sub:'METAL WORKS' },
+      theme:{
+        '--red':'#C9621C','--red-hover':'#DC742C','--red-dark':'#9C4A12',
+        '--blue':'#2563EB','--blue-hover':'#3B73F0',
+        '--hot':'#C9621C','--data':'#2563EB',
+        '--brand-soft':'#FBEEDE','--shadow-cta':'0 12px 28px -10px rgba(201,98,28,0.34)'
+      },
+      labels:{ cta:'見積り依頼', save:'データ入稿', estTitle:'この仕様で見積り依頼',
+        primary:'見積りへ進む', unit:'枚', quoteBody:'本番では、この仕様データ（デザイン画像・素材・サイズ・メタ情報）が 森工業 の見積り／お問い合わせフォームに連携されます。' }
+    }
+  };
+  var ORDER=['seeq','mori'];
+  function resolveBrand(){
+    try{ var p=new URLSearchParams(location.search).get('brand'); if(p && BRANDS[p]) return p; }catch(e){}
+    var d=document.documentElement.getAttribute('data-brand');
+    if(d && BRANDS[d]) return d;
+    return 'seeq';
+  }
+  function applyTheme(key){
+    var b=BRANDS[key]||BRANDS.seeq, root=document.documentElement;
+    root.setAttribute('data-brand', b.id);
+    var t=b.theme||{};
+    for(var k in t){ if(t.hasOwnProperty(k)) root.style.setProperty(k, t[k]); }
+    window.SEEQ_BRAND=b.id;
+  }
+  window.SEEQ_BRANDS=BRANDS; window.SEEQ_BRAND_ORDER=ORDER;
+  window.seeqApplyTheme=applyTheme; window.seeqResolveBrand=resolveBrand;
+  /* 起動フラッシュ防止：DOM/エンジン読込前にテーマ変数だけ先に当てる */
+  applyTheme(resolveBrand());
+})();
+</script>
 <style>
   /* ===== SeeQ Design System tokens (design/colors_and_type.css の正本を取り込み) ===== */
   :root{
@@ -40,6 +96,9 @@
     /* accents (差し色＝赤＋青のみ。LINE緑はLINE専用) */
     --red:#E60012;--red-hover:#FF1F31;--red-dark:#B8000E;
     --blue:#1E40AF;--blue-hover:#2A55D4;--blue-dark:#15348C;--line-green:#06C755;
+    /* ブランド可変トークン（BRANDS.theme が data-brand 単位で上書き＝シート全体が再テーマ）
+       --hot=主アクション(=赤系) / --data=データ・寸法(=青) / --brand-soft=淡い差し色面 */
+    --hot:var(--red);--data:var(--blue);--brand-soft:#FDECEE;
     /* type */
     --font-display:"Bebas Neue","Oswald","Noto Sans JP",system-ui,sans-serif;
     --font-jp:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
@@ -104,7 +163,21 @@
   header .btn-primary{background:var(--red);color:#fff;box-shadow:var(--shadow-cta);}
   header .btn-primary:hover{background:var(--red-hover);}
 
-  main{flex:1 1 auto;display:flex;min-height:0;overflow:hidden;}
+  /* ===== ブランド切替トグル（黒バー上） ＝ 1エンジン×マルチブランドの顔切替 ===== */
+  .brandtoggle{display:inline-flex;flex:0 0 auto;background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16);border-radius:var(--radius-pill,999px);padding:3px;gap:2px;}
+  .brandtoggle .bt{border:0;background:transparent;cursor:pointer;font-family:inherit;font-weight:800;
+    font-size:12px;letter-spacing:.02em;color:rgba(255,255,255,.62);padding:6px 13px;border-radius:999px;
+    line-height:1;white-space:nowrap;transition:background .15s,color .15s;}
+  .brandtoggle .bt:hover{color:#fff;}
+  .brandtoggle .bt.on{background:var(--red);color:#fff;box-shadow:0 2px 8px -2px rgba(0,0,0,.4);}
+  /* テキスト型ロゴ（森工業など type:'text'）。黒バー上は白で表示 */
+  .brand-logo-text{display:none;flex-direction:column;line-height:1;}
+  .brand-logo-text b{font-family:var(--font-jp);font-weight:900;font-size:17px;color:#fff;letter-spacing:.04em;}
+  .brand-logo-text i{font-style:normal;font-family:var(--font-display);font-size:9px;font-weight:400;
+    color:rgba(255,255,255,.5);letter-spacing:.22em;margin-top:3px;}
+
+  main{flex:1 1 auto;display:flex;min-height:0;overflow:hidden;position:relative;}
 
   /* Tool panel */
   .tools{
@@ -170,7 +243,7 @@
   .seg button:not(:last-child){border-right:1px solid var(--line);}
   .chiprow{display:flex;flex-wrap:wrap;gap:6px;}
   .chip{border:1px solid var(--line);background:#fbfdfd;border-radius:20px;padding:6px 11px;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink);transition:.12s;}
-  .chip:hover{border-color:var(--accent);background:#FDECEE;color:var(--accent-d);}
+  .chip:hover{border-color:var(--accent);background:var(--brand-soft);color:var(--accent-d);}
   .chip.chip-primary{background:var(--accent);border-color:var(--accent);color:#fff;padding:9px 15px;}
   .chip.chip-primary:hover{background:var(--accent-d,#B3000E);color:#fff;}
   .chip.chip-primary svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;stroke-width:2;}
@@ -186,23 +259,23 @@
   /* shapes */
   .shapes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .shape-btn{aspect-ratio:1;border:1px solid var(--line);border-radius:11px;background:#fbfdfd;cursor:pointer;display:grid;place-items:center;transition:.12s;}
-  .shape-btn:hover{border-color:var(--accent);background:#FDECEE;}
+  .shape-btn:hover{border-color:var(--accent);background:var(--brand-soft);}
   .shape-btn svg{width:24px;height:24px;fill:#39505a;}
 
   .upload{border:1.5px dashed #cdd9dc;border-radius:11px;padding:15px;text-align:center;cursor:pointer;color:var(--sub);font-size:12.5px;transition:.12s;background:#fbfdfd;}
-  .upload:hover{border-color:var(--accent);color:var(--accent-d);background:#FDECEE;}
+  .upload:hover{border-color:var(--accent);color:var(--accent-d);background:var(--brand-soft);}
   .upload svg{width:23px;height:23px;display:block;margin:0 auto 6px;stroke:var(--sub);fill:none;stroke-width:2;}
   .upnote{margin-top:5px;font-size:10.5px;color:#9bb0b4;letter-spacing:.02em;}
 
   /* preset positions */
   .presets{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
   .preset-btn{border:1px solid var(--line);background:#fbfdfd;border-radius:9px;padding:9px 6px;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink);transition:.12s;}
-  .preset-btn:hover{border-color:var(--accent);background:#FDECEE;color:var(--accent-d);}
+  .preset-btn:hover{border-color:var(--accent);background:var(--brand-soft);color:var(--accent-d);}
 
   /* layers */
   .layerlist{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;}
   .layer{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:#fbfdfd;cursor:pointer;transition:.1s;}
-  .layer.sel{border-color:var(--accent);background:#FDECEE;}
+  .layer.sel{border-color:var(--accent);background:var(--brand-soft);}
   .layer.dragover{border-style:dashed;border-color:var(--accent);}
   .layer.dragging{opacity:.5;}
   .layer .grip{cursor:grab;color:#b4c0c4;font-size:14px;line-height:1;flex:0 0 auto;touch-action:none;padding:2px 2px;}
@@ -224,7 +297,7 @@
   .obj-act{border:0;background:transparent;color:var(--ink);cursor:pointer;border-radius:var(--radius-md,4px);padding:7px 8px;display:grid;place-items:center;transition:.12s;min-width:38px;}
   .obj-act:hover{background:var(--bg-2);}
   .obj-act.danger{color:var(--red);}
-  .obj-act.danger:hover{background:#FDECEE;}
+  .obj-act.danger:hover{background:var(--brand-soft);}
   .obj-act svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
   .obj-act small{font-size:9px;display:block;margin-top:2px;color:var(--ink-3);}
   .compose-hint{display:none;font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.5;}
@@ -233,7 +306,7 @@
   .ctxmenu{position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;min-width:170px;}
   .ctxmenu.show{display:block;}
   .ctxmenu button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;cursor:pointer;padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit;color:var(--ink);text-align:left;}
-  .ctxmenu button:hover{background:#FDECEE;}
+  .ctxmenu button:hover{background:var(--brand-soft);}
   .ctxmenu button.danger:hover{background:#fdecef;color:#d6435c;}
   .ctxmenu .sep{height:1px;background:var(--line);margin:5px 2px;}
   .ctxmenu kbd{margin-left:auto;font-size:10.5px;color:var(--sub);font-family:inherit;}
@@ -243,7 +316,7 @@
   .modal-bg.show{display:grid;}
   .modal{background:#fff;border-radius:var(--radius-lg,8px);max-width:440px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
   .modal.center{text-align:center;}
-  .modal .ic{width:56px;height:56px;border-radius:50%;background:#FDECEE;display:grid;place-items:center;margin:0 auto 14px;}
+  .modal .ic{width:56px;height:56px;border-radius:50%;background:var(--brand-soft);display:grid;place-items:center;margin:0 auto 14px;}
   .modal .ic svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:2;}
   .modal h2{margin:0 0 8px;font-size:18px;}
   .modal p{margin:0 0 16px;color:var(--sub);font-size:13.5px;line-height:1.7;}
@@ -252,7 +325,7 @@
   /* product selector */
   .prodsel{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px;}
   .prod-btn{border:1px solid var(--line);background:#fbfdfd;border-radius:10px;padding:10px 6px;cursor:pointer;font-weight:700;font-size:12.5px;color:var(--sub);transition:.12s;}
-  .prod-btn:hover{border-color:var(--accent);background:#FDECEE;color:var(--accent-d);}
+  .prod-btn:hover{border-color:var(--accent);background:var(--brand-soft);color:var(--accent-d);}
   .prod-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 
   /* chips: selected (single-select) state */
@@ -318,8 +391,8 @@
   .fp-cat.on{background:var(--accent);color:#fff;border-color:var(--accent);}
   .fp-list{flex:1 1 auto;overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch;}
   .fp-item{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid transparent;}
-  .fp-item:hover{background:#FDECEE;}
-  .fp-item.cur{background:#FDECEE;border-color:var(--accent);}
+  .fp-item:hover{background:var(--brand-soft);}
+  .fp-item.cur{background:var(--brand-soft);border-color:var(--accent);}
   .fp-item .fp-prev{font-size:21px;line-height:1.15;color:var(--ink);}
   .fp-item .fp-lab{font-size:11px;color:var(--sub);}
   .fp-item.cur .fp-lab::after{content:'　使用中';color:var(--accent-d);font-weight:800;}
@@ -365,6 +438,10 @@
     .head-actions{gap:5px;}
     .head-actions .label-pc{display:none;}
     .btn{padding:9px 11px;}
+    /* ブランドトグルはモバイルでも視認できるよう残しつつ圧縮 */
+    .brandtoggle{padding:2px;}
+    .brandtoggle .bt{padding:6px 9px;font-size:11px;}
+    .brand-logo-text b{font-size:15px;}
 
     /* ---- bottom sheet (3-stage snap: peek / mid / full) ----
        Height is CONTENT-driven (head + a fixed-height scrollable body) and the
@@ -485,7 +562,7 @@
   /* ===== Proof (入稿データ) modal ===== */
   .modal.modal-wide{max-width:560px;}
   .proof-settings{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;}
-  .proof-tag{font-size:11.5px;font-weight:700;color:var(--accent-d,#B3000E);background:#FDECEE;
+  .proof-tag{font-size:11.5px;font-weight:700;color:var(--accent-d,#B3000E);background:var(--brand-soft);
     border-radius:999px;padding:4px 11px;}
   .proof-face{border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:10px;}
   .proof-face h4{margin:0 0 4px;font-size:13.5px;color:var(--ink);}
@@ -496,6 +573,85 @@
   .proof-prev .meta{flex:1 1 0;min-width:0;}
   .proof-prev .meta p{margin:0 0 6px;}
   .btn-xs{padding:7px 12px;font-size:12px;}
+
+  /* ===== AI 図案生成パネル ===== */
+  .ai-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;}
+  .ai-grid.hidden{display:none;}
+  .ai-cand{border:1.5px solid var(--line);border-radius:11px;overflow:hidden;cursor:pointer;background:#fff;
+    padding:0;aspect-ratio:1;display:block;transition:border-color .14s,box-shadow .14s,transform .1s;-webkit-tap-highlight-color:transparent;}
+  .ai-cand:hover{border-color:var(--accent);box-shadow:var(--shadow);}
+  .ai-cand:active{transform:scale(.97);}
+  .ai-cand.is-active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);}
+  .ai-cand svg{display:block;width:100%;height:100%;}
+  .ai-skel{aspect-ratio:1;border-radius:11px;background:linear-gradient(100deg,var(--bg-3) 30%,var(--bg-2) 50%,var(--bg-3) 70%);
+    background-size:200% 100%;animation:ai-shimmer 1.2s linear infinite;}
+  @keyframes ai-shimmer{from{background-position:200% 0;}to{background-position:-200% 0;}}
+  .ai-note{line-height:1.6;margin-top:8px;}
+  .ai-note.hidden,.ai-cand.hidden,#aiImport.hidden{display:none;}
+  #aiImport.hidden{display:none;}
+
+  /* ===== 森工業：サイズ／厚みコンフィギュレータ ===== */
+  .mmreadout{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .mmfield{flex:1 1 0;min-width:70px;border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:#fbfdfd;text-align:center;}
+  .mmfield label{display:block;font-size:10px;font-weight:700;color:var(--sub);letter-spacing:.04em;margin-bottom:2px;}
+  .mmfield .v{font-family:var(--font-display);font-size:19px;line-height:1;color:var(--data);}
+  .mmfield .v small{font-family:var(--font-jp);font-size:10px;color:var(--sub);margin-left:2px;}
+  .mmx{font-weight:800;color:var(--sub);}
+
+  /* ===== 見積サマリ（3Dサムネ＋仕様）===== */
+  .quote-summary{display:flex;gap:14px;align-items:center;text-align:left;border:1px solid var(--line);
+    border-radius:var(--radius-lg,8px);padding:12px;margin:0 0 16px;background:var(--bg-2);}
+  .quote-summary img{width:96px;height:96px;object-fit:contain;border-radius:8px;border:1px solid var(--line);
+    background:#fff center/contain no-repeat;flex:0 0 auto;}
+  .quote-summary img:not([src]),.quote-summary img[src=""]{display:none;}
+  .quote-spec{list-style:none;margin:0;padding:0;flex:1 1 0;min-width:0;font-size:12.5px;}
+  .quote-spec li{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--hair-soft);}
+  .quote-spec li:last-child{border-bottom:0;}
+  .quote-spec .k{color:var(--sub);font-weight:700;flex:0 0 auto;}
+  .quote-spec .v{color:var(--ink);font-weight:700;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .quote-spec .v.badge{color:var(--data);}
+
+  /* ===== 2D / 3D 切替トグル（黒バー上） ===== */
+  .viewtoggle{display:inline-flex;flex:0 0 auto;border:1px solid rgba(255,255,255,.22);
+    border-radius:var(--radius-pill,999px);overflow:hidden;margin-right:2px;}
+  .viewtoggle .vt{border:0;background:transparent;cursor:pointer;font-family:inherit;font-weight:800;
+    font-size:12px;color:rgba(255,255,255,.7);padding:7px 13px;display:inline-flex;align-items:center;gap:5px;
+    line-height:1;transition:background .15s,color .15s;}
+  .viewtoggle .vt svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;}
+  .viewtoggle .vt.on{background:var(--red);color:#fff;}
+
+  /* ===== 3D プレビュー・ステージ（共通機能：Three.js テクスチャ投影） ===== */
+  .stage3d{position:absolute;inset:0;z-index:60;display:none;flex-direction:column;
+    background:radial-gradient(120% 90% at 50% 0%,var(--bg) 0%,var(--bg-2) 55%,var(--bg-3) 100%);}
+  .stage3d.show{display:flex;}
+  .s3d-mount{flex:1 1 auto;min-height:0;position:relative;touch-action:none;cursor:grab;}
+  .s3d-mount:active{cursor:grabbing;}
+  .s3d-mount canvas{display:block;width:100%;height:100%;}
+  .s3d-fail{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:8px;color:var(--ink-3);text-align:center;padding:24px;font-weight:700;}
+  .s3d-fail small{font-size:12px;color:var(--ink-4);font-weight:400;}
+  .s3d-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--ink-3);font-size:13px;font-weight:700;}
+  .s3d-bar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;
+    gap:10px;padding:10px 12px;pointer-events:none;}
+  .s3d-bar>*{pointer-events:auto;}
+  .s3d-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:11.5px;color:var(--ink-3);
+    background:rgba(255,255,255,.72);border:1px solid var(--hair-soft);border-radius:999px;padding:4px 13px;pointer-events:none;}
+  .s3d-panel{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line);}
+  .s3d-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .s3d-group>.lbl{font-size:11px;font-weight:800;color:var(--sub);letter-spacing:.02em;}
+  .s3d-chip{border:1px solid var(--line);background:#fbfdfd;border-radius:999px;padding:6px 12px;cursor:pointer;
+    font-size:12px;font-weight:700;color:var(--sub);transition:.12s;-webkit-tap-highlight-color:transparent;}
+  .s3d-chip:hover{border-color:var(--accent);color:var(--accent-d);}
+  .s3d-chip.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .s3d-panel .spacer{flex:1 1 auto;}
+  @media (max-width:820px){
+    .s3d-panel{gap:6px 10px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));}
+    .s3d-group>.lbl{display:none;}
+    .s3d-chip{padding:7px 11px;}
+    .s3d-hint{bottom:10px;}
+  }
 </style>
 </head>
 <body>
@@ -512,10 +668,20 @@
       <path d="M 209.648438 200.488281 L 207.058594 200.488281 L 207.058594 196.628906 L 209.628906 196.628906 C 211.199219 196.628906 211.890625 197.351562 211.890625 198.507812 C 211.890625 199.789062 211.199219 200.488281 209.648438 200.488281 M 207.058594 191.011719 L 209.800781 191.011719 C 210.894531 191.011719 211.625 191.550781 211.625 192.582031 C 211.625 193.59375 211.066406 194.253906 209.707031 194.253906 L 207.058594 194.253906 Z M 196.148438 197.0625 C 196.953125 194.480469 197.65625 192.253906 198.007812 190.847656 L 198.027344 190.847656 C 198.378906 192.128906 199.019531 194.050781 200.03125 197.0625 Z M 212.753906 195.347656 C 213.65625 194.914062 214.441406 193.882812 214.441406 192.273438 C 214.441406 190.414062 213.234375 188.636719 210.03125 188.636719 L 204.257812 188.636719 L 204.257812 200.46875 L 200.050781 188.640625 L 196.191406 188.640625 L 192.214844 200.34375 L 188.503906 200.34375 L 188.503906 188.636719 L 185.429688 188.636719 L 185.429688 202.863281 L 193.746094 202.867188 L 194.394531 202.867188 L 195.488281 199.582031 L 200.691406 199.582031 L 201.867188 202.867188 L 205.109375 202.867188 L 205.109375 202.863281 L 210.242188 202.863281 C 213.042969 202.863281 214.824219 201.046875 214.824219 198.613281 C 214.824219 196.730469 213.65625 195.722656 212.753906 195.347656 "/>
       <path d="M 183.121094 154.355469 C 183.019531 154.355469 182.917969 154.355469 182.816406 154.351562 C 175.589844 154.132812 171.734375 149.882812 171.957031 142.382812 C 172.007812 140.722656 172.332031 138.890625 172.898438 136.9375 C 173.71875 136.074219 174.667969 135.351562 175.84375 135.214844 C 177.40625 135.03125 179.035156 136.214844 180.175781 137.011719 C 182.457031 138.597656 183.867188 139.886719 185.960938 142.160156 C 186.964844 143.636719 190.207031 147.71875 192.988281 151.1875 C 189.296875 153.234375 185.910156 154.355469 183.121094 154.355469 M 189.347656 93.4375 C 197.199219 88.449219 206.78125 85.53125 215.207031 85.53125 C 215.5625 85.53125 215.921875 85.539062 216.277344 85.546875 C 220.894531 85.6875 224.371094 86.820312 226.613281 88.910156 C 228.851562 91 229.925781 94.113281 229.800781 98.164062 C 229.480469 108.902344 222.6875 122.808594 211.632812 135.367188 C 207.191406 140.410156 202.574219 144.65625 198.183594 147.851562 C 197.71875 147.339844 197.265625 146.847656 196.839844 146.382812 C 195.289062 144.691406 185.664062 134.746094 182.777344 133.121094 C 179.886719 131.496094 177.945312 130.492188 175.730469 130.714844 C 175.582031 130.726562 175.4375 130.746094 175.292969 130.765625 C 178.027344 125.039062 182.296875 118.808594 187.59375 113.039062 C 197.332031 102.433594 208.023438 96.164062 216.320312 96.164062 C 216.484375 96.164062 216.644531 96.164062 216.804688 96.167969 C 219.078125 96.242188 220.457031 95.398438 220.5 93.925781 C 220.566406 91.738281 218.808594 90.53125 215.421875 90.429688 C 209.796875 90.269531 203.144531 92.707031 196.171875 97.503906 C 189.964844 101.773438 183.582031 107.890625 178.183594 114.734375 C 176.695312 113.820312 175.964844 112.605469 176.007812 111.113281 C 176.183594 105.238281 181.171875 98.632812 189.347656 93.4375 M 96.40625 151.347656 L 96.398438 151.421875 C 94.324219 169.285156 68.792969 197.257812 50.804688 197.257812 C 50.546875 197.253906 50.285156 197.25 50.03125 197.238281 C 46.5 197.074219 44.058594 196.6875 42.785156 195.242188 C 41.464844 193.742188 41.390625 191.105469 41.71875 187.054688 C 42.484375 177.480469 55.789062 166.773438 66.949219 160.515625 C 73.308594 156.945312 87.597656 149.816406 96.246094 148.316406 C 96.679688 149.019531 96.515625 150.417969 96.40625 151.347656 M 129.742188 129.46875 C 129.84375 129.480469 130.09375 129.46875 130.183594 129.496094 C 130.507812 129.59375 130.671875 129.738281 130.753906 129.898438 C 130.847656 130.085938 130.859375 130.476562 130.753906 130.933594 C 130.136719 133.535156 121.882812 138.90625 118.222656 138.71875 C 121.46875 134.132812 127.050781 129.230469 129.742188 129.46875 M 154.191406 127.554688 C 154.304688 127.539062 155.003906 127.527344 155.316406 127.589844 C 155.679688 127.664062 155.976562 128.042969 156.085938 128.191406 C 156.210938 128.363281 156.277344 128.726562 156.136719 129.164062 C 155.359375 131.609375 149.132812 137.007812 142.9375 139.03125 C 148.375 131.414062 151.367188 128.007812 154.191406 127.554688 M 247.726562 200.589844 C 247.617188 200.183594 247.4375 199.359375 246.871094 198.8125 C 246.5625 198.511719 246.109375 198.097656 245.554688 197.671875 C 244.449219 196.820312 244.988281 197.28125 243.363281 195.996094 C 237.675781 191.507812 230.964844 184.976562 225.558594 179.730469 C 218.328125 172.722656 214.746094 167.59375 207.867188 158.75 C 206.957031 157.582031 204.4375 154.746094 201.746094 151.769531 C 206.699219 148.246094 211.65625 143.816406 216.257812 138.792969 C 228.660156 125.25 236.28125 109.875 236.648438 97.664062 C 236.8125 92.242188 235.117188 87.933594 231.609375 84.855469 C 228.050781 81.730469 222.808594 80.046875 216.023438 79.839844 C 205.894531 79.539062 194.3125 83.054688 185.019531 89.25 C 175.355469 95.695312 169.675781 103.953125 169.433594 111.902344 C 169.320312 115.816406 172.160156 118.554688 174.671875 119.738281 C 170.960938 125.257812 168.308594 130.640625 166.886719 135.460938 C 161.0625 142.984375 151.71875 150.882812 143.328125 149.578125 C 142.339844 149.421875 141.527344 148.9375 141.160156 147.902344 C 140.832031 146.964844 140.8125 146.78125 140.910156 146.097656 C 140.917969 146.0625 140.855469 145.171875 142.53125 144.335938 C 149.410156 140.902344 159.644531 134.082031 161.488281 128.042969 C 161.890625 126.738281 161.285156 124.828125 160.363281 123.703125 C 159.570312 122.738281 157.386719 122.320312 156.3125 122.152344 C 151.265625 121.359375 145.46875 124.292969 138.65625 136.027344 C 137.972656 137.203125 137.273438 138.835938 136.921875 140.160156 C 136.582031 141.4375 136.332031 143.101562 136.207031 144 C 130.394531 149.15625 122.558594 152.578125 116.523438 150.761719 C 115.648438 150.496094 115.089844 149.8125 114.867188 148.722656 C 114.675781 147.78125 114.78125 146.71875 114.941406 146.039062 C 115.261719 144.6875 115.488281 144.035156 117.117188 143.976562 C 123.304688 143.722656 133.792969 137.84375 135.597656 130.246094 C 135.917969 128.894531 135.757812 127.371094 135.15625 126.0625 C 134.585938 124.816406 133.675781 123.902344 132.726562 123.617188 C 128.027344 122.199219 120.175781 125.664062 112.785156 138.628906 C 112.421875 139.226562 112.121094 139.632812 111.871094 139.917969 C 110.328125 140.125 108.175781 140.554688 106.085938 140.972656 C 104.394531 141.308594 102.652344 141.65625 101.28125 141.875 C 98.125 137.042969 92.839844 133.957031 86.394531 133.171875 C 83.261719 132.792969 79.492188 132.644531 75.847656 132.5 C 73.074219 132.390625 70.453125 132.285156 68.5 132.085938 C 66.765625 131.910156 65.628906 131.429688 65.019531 130.617188 C 64.511719 129.9375 64.378906 129.007812 64.609375 127.769531 C 65.976562 120.441406 73.359375 112.597656 84.863281 106.253906 C 94.867188 100.738281 106.5 97.292969 113.804688 97.679688 C 115.589844 97.773438 116.628906 98.101562 117.171875 98.738281 C 117.816406 99.496094 117.746094 100.730469 117.582031 102.261719 C 117.050781 107.234375 107.640625 113.886719 104.148438 115.574219 C 103.5625 115.859375 103 116.113281 102.457031 116.363281 C 99.789062 117.585938 97.863281 118.46875 97.390625 120.527344 C 97.101562 121.789062 97.183594 122.6875 97.640625 123.273438 C 98.085938 123.84375 98.898438 124.136719 100.125 124.164062 C 102.570312 124.21875 102.90625 124.070312 106.203125 121.570312 C 106.53125 121.320312 106.882812 121.050781 107.261719 120.765625 C 112.855469 116.546875 123.265625 108.695312 124.546875 101.382812 C 124.921875 99.246094 124.535156 97.394531 123.398438 95.890625 C 121.996094 94.027344 119.417969 92.773438 116.324219 92.445312 C 97.238281 90.40625 60.761719 106.933594 57.078125 127.414062 C 55.839844 134.292969 60.335938 136.375 65.375 137.597656 C 68.324219 138.3125 71.488281 138.230469 74.546875 138.148438 C 77.132812 138.082031 79.808594 138.015625 82.371094 138.417969 L 82.828125 138.492188 C 87.039062 139.15625 91.390625 139.839844 94.082031 143.53125 C 85.597656 145.332031 71.707031 151.183594 64.476562 155.34375 C 51.492188 162.816406 35.878906 174.488281 35.226562 187.683594 C 34.675781 198.847656 37.8125 202.289062 49.21875 203.027344 C 49.667969 203.058594 50.121094 203.070312 50.578125 203.070312 C 60.410156 203.070312 72.621094 196.425781 83.570312 185.042969 C 94.542969 173.632812 101.929688 159.933594 102.851562 149.285156 C 102.863281 149.121094 102.894531 148.917969 102.929688 148.679688 C 103.035156 147.945312 103.167969 147.039062 102.972656 146.492188 C 104.40625 146.09375 105.996094 145.800781 107.535156 145.511719 C 108.328125 145.367188 109.132812 145.214844 109.917969 145.050781 C 108.851562 149.894531 110.625 154.933594 113.632812 155.839844 C 114.550781 156.117188 115.308594 156.285156 116.226562 156.367188 C 123.011719 156.976562 130.007812 153.808594 136.214844 149.207031 C 136.800781 152.328125 138.4375 154.839844 140.785156 155.207031 C 141.820312 155.371094 142.847656 155.433594 143.863281 155.40625 C 152.015625 155.1875 159.492188 149.941406 165.683594 143.625 C 165.792969 150.203125 168.269531 155.402344 172.582031 158.011719 L 173.226562 158.410156 C 173.265625 158.441406 174.273438 159.132812 176.6875 159.742188 C 178.527344 160.203125 179.605469 160.296875 180.308594 160.296875 C 180.582031 160.296875 180.796875 160.285156 180.980469 160.269531 C 181.191406 160.257812 181.359375 160.246094 181.527344 160.265625 C 185.757812 160.136719 190.820312 158.421875 196.28125 155.289062 C 196.835938 155.984375 197.226562 156.476562 197.367188 156.664062 C 202.945312 164.175781 205.742188 168.4375 210.253906 174.640625 C 214.898438 181.023438 217.839844 186.40625 223.019531 193.042969 C 223.445312 193.589844 226.339844 196.894531 227.988281 198.164062 C 229.445312 199.285156 231.355469 201.417969 234.265625 202.3125 C 234.515625 202.390625 240.078125 203.574219 241.820312 202.90625 C 241.910156 202.871094 245.816406 202.480469 246.53125 201.945312 C 246.828125 201.726562 247.984375 201.515625 247.726562 200.589844 "/>
     </g></svg>
-    <span><span class="accent">デザインシミュレーター</span>
-      <small>オリジナルプリント作成ツール</small></span>
+    <span class="brand-logo-text" id="brandLogoText"><b id="brandLogoMain">森工業</b><i id="brandLogoSub">METAL WORKS</i></span>
+    <span class="brand-name"><span class="accent">デザインシミュレーター</span>
+      <small id="brandTagline">オリジナルプリント作成ツール</small></span>
+  </div>
+  <div class="brandtoggle" id="brandToggle" role="tablist" aria-label="ブランド切替">
+    <button class="bt" type="button" data-brand="seeq" role="tab">SeeQ</button>
+    <button class="bt" type="button" data-brand="mori" role="tab">森工業</button>
   </div>
   <div class="head-actions">
+    <div class="viewtoggle" id="viewToggle" role="tablist" aria-label="2D / 3D 切替">
+      <button class="vt on" data-view="2d" type="button" role="tab">2D</button>
+      <button class="vt" data-view="3d" type="button" role="tab"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg>3D</button>
+    </div>
+    <span class="hsep"></span>
     <button class="icobtn" id="btnUndo" title="元に戻す (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5v0a5 5 0 01-5 5H9"/></svg></button>
     <button class="icobtn" id="btnRedo" title="やり直す (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 00-5 5v0a5 5 0 005 5h6"/></svg></button>
     <span class="hsep"></span>
@@ -564,12 +730,21 @@
 
     <div class="card" data-tab="product">
       <h3><span class="dot"></span>商品・プリント面</h3>
-      <label class="fld">商品を選ぶ</label>
+      <label class="fld" id="lblProduct">商品を選ぶ</label>
       <div class="prodsel" id="prodSel"></div>
-      <label class="fld">プリント面</label>
+      <label class="fld" id="lblFace">プリント面</label>
       <div class="facetabs" id="faceTabs"></div>
-      <label class="fld">商品カラー</label>
+      <label class="fld" id="lblColor">商品カラー</label>
       <div class="swatches" id="swatches"></div>
+    </div>
+
+    <!-- 森工業：サイズ・厚みコンフィギュレータ（kind=plate のときのみ表示） -->
+    <div class="card hidden" data-tab="product" id="moriConfig">
+      <h3><span class="dot"></span>サイズ・厚み</h3>
+      <label class="fld">サイズ (mm)</label>
+      <div class="chiprow" id="moriSizes"></div>
+      <div class="mmreadout" id="moriReadout"></div>
+      <p class="mini note">コーナーR・自由サイズ（W/H入力）も対応。詳細はお見積りで承ります。</p>
     </div>
 
     <div class="card" data-tab="text">
@@ -732,6 +907,19 @@
           <div class="fxnote">簡易版：複製を上下反転し不透明度を下げて配置します。位置やサイズは個別に調整できます。（将来：フェードグラデ対応予定）</div>
         </div>
       </div>
+    </div>
+
+    <div class="card" data-tab="image" id="aiCard">
+      <h3><span class="dot"></span>AIで図案を生成</h3>
+      <textarea id="aiPrompt" rows="2" placeholder="作りたい図案を入力（例：ヴィンテージなロゴ）"></textarea>
+      <div class="chiprow mt-s" id="aiSuggest"></div>
+      <button class="btn btn-primary btn-block" id="aiGenerate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/></svg>
+        図案を生成
+      </button>
+      <div class="ai-grid hidden" id="aiGrid"></div>
+      <button class="btn btn-primary btn-block mt-s hidden" id="aiImport" disabled>＋ キャンバスに取り込む</button>
+      <p class="ai-note mini hidden" id="aiNote">※生成画像の商用利用可否はプロンプト内容により異なります。最終データは入稿前にご確認ください。<br>※現段階はプレースホルダ生成です（本番はGemini等のAIに接続）。</p>
     </div>
 
     <div class="card" data-tab="image">
@@ -923,6 +1111,22 @@
 
   <!-- desktop layer dock (req PC-a): JS relocates the layer card here on desktop -->
   <aside class="layer-dock" id="layerDock"></aside>
+
+  <!-- ===== 3D プレビュー・ステージ（2D編集と同じデザインデータをテクスチャ投影） ===== -->
+  <div class="stage3d" id="stage3d" aria-hidden="true">
+    <div class="s3d-mount" id="s3dMount"></div>
+    <div class="s3d-bar">
+      <button class="btn btn-ghost btn-xs" id="s3dBack" type="button">← 編集に戻る</button>
+      <button class="btn btn-primary btn-xs" id="s3dQuote" type="button">この3Dで見積へ</button>
+    </div>
+    <div class="s3d-hint">ドラッグで回転　·　ホイール／ピンチで拡大</div>
+    <div class="s3d-panel" id="s3dPanel">
+      <div class="s3d-group"><span class="lbl">質感</span><span class="s3d-chips" id="s3dFinish"></span></div>
+      <div class="s3d-group"><span class="lbl">環境光</span><span class="s3d-chips" id="s3dEnv"></span></div>
+      <div class="s3d-group" id="s3dUnderlayWrap" hidden><span class="s3d-chips" id="s3dUnderlay"></span></div>
+      <span class="spacer"></span>
+    </div>
+  </div>
 </main>
 
 <!-- Selected object toolbar (floating context toolbar — follows the selection) -->
@@ -1020,8 +1224,12 @@
 <div class="modal-bg" id="modal">
   <div class="modal center">
     <div class="ic"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
-    <h2>見積もり依頼を受け付けます</h2>
-    <p>※これはプロトタイプのデモ動作です。<br>本番では、このデザインデータ（前面・背面の画像とメタ情報）が SeeQ のお問い合わせ／見積フォームや LINE に連携されます。</p>
+    <h2 id="quoteTitle">見積もり依頼を受け付けます</h2>
+    <p id="quoteBody">※これはプロトタイプのデモ動作です。<br>本番では、このデザインデータ（前面・背面の画像とメタ情報）が SeeQ のお問い合わせ／見積フォームや LINE に連携されます。</p>
+    <div class="quote-summary" id="quoteSummary" hidden>
+      <img id="quoteThumb" alt="デザインプレビュー">
+      <ul class="quote-spec" id="quoteSpec"></ul>
+    </div>
     <button class="btn btn-primary btn-block" id="modalClose">閉じる</button>
   </div>
 </div>
@@ -1924,6 +2132,20 @@ function importSVG(file){
     }catch(e){ toast('SVGの解析に失敗しました'); }
   };
   reader.readAsText(file);
+}
+/* AI生成図案の取込：SVG文字列を編集可能なベクターとしてキャンバスへ。
+   既存のSVG取込パイプ(loadSVGFromString→groupSVGElements→placeImport)を流用。
+   本番で Gemini 等がラスター画像を返す場合は placeImport(fabric.Image,...) 経由で
+   既存の画像加工（背景透過・フィルタ）パイプへ合流させる。importFmt='ai'。 */
+function aiImportSVG(svgString, name){
+  try{
+    fabric.loadSVGFromString(svgString, function(objects, options){
+      if(!objects || !objects.length){ toast('図案を取り込めませんでした'); return; }
+      var grp=fabric.util.groupSVGElements(objects, options);
+      placeImport(grp, name||'AI図案', 'ai');
+      toast('図案を取り込みました');
+    });
+  }catch(e){ toast('図案の取り込みに失敗しました'); }
 }
 
 /* pdf / ai — rasterise page 1 at 2x via pdf.js (lazy) */
@@ -3325,6 +3547,47 @@ function renderProofCurrent(opt){
   canvas.setViewportTransform(pvpt); canvas.renderAll();
   return out;
 }
+/* ---- 3D preview texture source -----------------------------------------
+   Render the CURRENT face design (objects only — no product bg / no guide)
+   cropped to the print area into a transparent canvas (~targetPx long edge).
+   Same viewport-swap as the proof renderer, so 2D編集 と 3Dプレビュー が
+   同じデータを共有する（企画§4）。Fabric ロジックは不変＝読み出しのみ。 */
+function designTextureCanvas(targetPx){
+  targetPx=targetPx||1024;
+  var g=curFaceDef().guide, u=scaleUnit(), ar=g.w/g.h;
+  var outW = ar>=1 ? targetPx : Math.round(targetPx*ar);
+  var outH = ar>=1 ? Math.round(targetPx/ar) : targetPx;
+  var sX=outW/g.w, sY=outH/g.h;            /* output px per BASE unit */
+  var kX=sX/u, kY=sY/u;                     /* viewport scale: px per UNIT */
+  var tx=-g.x*sX, ty=-g.y*sY;
+  canvas.discardActiveObject();
+  var pvpt=canvas.viewportTransform.slice(), pw=canvas.getWidth(), ph=canvas.getHeight();
+  var pbgImg=canvas.backgroundImage, pbg=canvas.backgroundColor, gv=guide.visible;
+  guide.visible=false; canvas.backgroundImage=null; canvas.backgroundColor='';
+  canvas.setDimensions({width:outW, height:outH});
+  canvas.setViewportTransform([kX,0,0,kY,tx,ty]);
+  canvas.renderAll();
+  var out=document.createElement('canvas'); out.width=outW; out.height=outH;
+  try{ out.getContext('2d').drawImage(canvas.lowerCanvasEl,0,0); }catch(e){}
+  guide.visible=gv; canvas.backgroundImage=pbgImg; canvas.backgroundColor=pbg;
+  canvas.setDimensions({width:pw, height:ph});
+  canvas.setViewportTransform(pvpt); canvas.renderAll();
+  return out;
+}
+/* one frame of state the 3D module needs (texture + geometry + material) */
+function get3DFrame(targetPx){
+  var g=curFaceDef().guide, p=curProduct();
+  var f={ canvas:designTextureCanvas(targetPx), printAR:g.h/g.w,
+    color: currentColor.hex, productId: currentProduct, productLabel: p.label,
+    kind: (p.kind || (window.SEEQ_BRAND==='mori' ? 'plate' : 'apparel')) };
+  if(p.kind==='plate'){
+    var size=(p.sizes&&p.sizes.filter(function(s){return s.id===p._sizeId;})[0])||{w:1,h:1};
+    f.shape=p.shape; f.cornerR=p.cornerR; f.thickness=p.thickness; f.mm={w:size.w,h:size.h};
+    var mat=(p.colors||[]).filter(function(c){return c.hex===currentColor.hex;})[0];
+    if(mat){ f.finish=mat.finish; f.metal=mat.metal; f.rough=mat.rough; }
+  }
+  return f;
+}
 function loadFacePromise(arr){ return new Promise(function(res){ loadFace(arr, res); }); }
 
 /* generate proofs for every non-empty face of the current product + a preview */
@@ -3930,6 +4193,143 @@ initMobile();
 window.addEventListener('resize', function(){ clearTimeout(window._rz); window._rz=setTimeout(function(){ fitCanvas(); initMobile(); }, 180); });
 window.addEventListener('orientationchange', function(){ setTimeout(function(){ fitCanvas(); initMobile(); }, 250); });
 
+/* =====================================================================
+   森工業カタログ（看板/金属プレート）— data.jsx の MORI_* を本番の商品モデルに
+   準拠させて統合。商品カタログのデータ化＝Code担当領域。Fabricコア（オブジェクト
+   操作・Undo・レイヤー・書き出し等）には触れず、既存の商品/面/スウォッチ/プリセット
+   描画パイプを再利用する。ブランドで PRODUCT_ORDER を丸ごと差し替え。
+   ===================================================================== */
+var MORI_MAT_COLORS=[
+  {name:'アルミ複合板',hex:'#EBEEF1',dark:false,seam:'#C4CAD0',shade:'#F5F7F9',metal:0.15,rough:0.62,finish:'matte'},
+  {name:'ステンレス',  hex:'#CBD1D7',dark:false,seam:'#9CA4AC',shade:'#E0E5E9',metal:0.92,rough:0.32,finish:'hairline'},
+  {name:'アルミ',      hex:'#D4D9DE',dark:false,seam:'#AAB0B6',shade:'#E6EAED',metal:0.86,rough:0.40,finish:'metallic'},
+  {name:'真鍮',        hex:'#CBAA50',dark:false,seam:'#9C8033',shade:'#DDC26C',metal:0.90,rough:0.30,finish:'metallic'}
+];
+var MORI_SIZES=[
+  {id:'s1',name:'W300×H150',w:300,h:150}, {id:'s2',name:'W450×H300',w:450,h:300},
+  {id:'s3',name:'W600×H300',w:600,h:300}, {id:'s4',name:'W600×H450',w:600,h:450},
+  {id:'sq',name:'W300×H300',w:300,h:300}
+];
+function moriSizeOf(prod){ var id=prod._sizeId||prod.defaultSize; return prod.sizes.filter(function(s){return s.id===id;})[0]||prod.sizes[0]; }
+/* plate rect + inner print rect in BASE(480×560) coords, sized to mm aspect */
+function platePlacement(size){
+  var maxW=336, maxH=300, ar=size.w/size.h, w=maxW, h=w/ar;
+  if(h>maxH){ h=maxH; w=h*ar; }
+  var cx=240, cy=286;
+  var plate={x:Math.round(cx-w/2),y:Math.round(cy-h/2),w:Math.round(w),h:Math.round(h)};
+  var m=Math.max(15, Math.min(w,h)*0.11);
+  var print={x:Math.round(plate.x+m),y:Math.round(plate.y+m),w:Math.round(w-m*2),h:Math.round(h-m*2)};
+  return {plate:plate, print:print};
+}
+function plateRadius(prod,w,h){ if(prod.shape!=='round') return 0; return Math.min(Math.min(w,h)*(prod.cornerR||20)/100, Math.min(w,h)/2); }
+function matByHex(hex){ return MORI_MAT_COLORS.filter(function(c){return c.hex===hex;})[0]; }
+/* 2D background art for a plate: wall backdrop + shaped metal plate (+ sheen) */
+function plateSVG(prod, size, hex){
+  var pl=platePlacement(size).plate, mat=matByHex(hex)||MORI_MAT_COLORS[0];
+  var x=pl.x, y=pl.y, w=pl.w, h=pl.h, r=plateRadius(prod,w,h), seam=mat.seam, shade=mat.shade;
+  var body;
+  if(prod.shape==='oval'){
+    body='<ellipse cx="'+(x+w/2)+'" cy="'+(y+h/2)+'" rx="'+(w/2)+'" ry="'+(h/2)+'" fill="'+hex+'" stroke="'+seam+'" stroke-width="2.5"/>';
+  } else if(prod.shape==='cut'){
+    var c=Math.min(w,h)*0.16;
+    var pts=[[x+c,y],[x+w-c,y],[x+w,y+c],[x+w,y+h-c],[x+w-c,y+h],[x+c,y+h],[x,y+h-c],[x,y+c]].map(function(q){return q[0]+','+q[1];}).join(' ');
+    body='<polygon points="'+pts+'" fill="'+hex+'" stroke="'+seam+'" stroke-width="2.5"/>';
+  } else {
+    body='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+r+'" ry="'+r+'" fill="'+hex+'" stroke="'+seam+'" stroke-width="2.5"/>';
+  }
+  var sheen=(prod.shape==='rect'||prod.shape==='round')?'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+(h*0.46)+'" rx="'+r+'" fill="url(#plsheen)"/>':'';
+  var bolts='';
+  if(prod.shape==='rect'||prod.shape==='round'){
+    var bx=Math.min(18,w*0.08), pos=[[x+bx,y+bx],[x+w-bx,y+bx],[x+bx,y+h-bx],[x+w-bx,y+h-bx]];
+    bolts=pos.map(function(q){return '<circle cx="'+q[0]+'" cy="'+q[1]+'" r="3.4" fill="'+seam+'" opacity="0.8"/>';}).join('');
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+    +'<defs><linearGradient id="plsheen" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="'+shade+'" stop-opacity="0.55"/><stop offset="1" stop-color="'+shade+'" stop-opacity="0"/></linearGradient></defs>'
+    +'<rect x="0" y="0" width="480" height="560" fill="#edf0f3"/>'
+    +'<rect x="'+(x+7)+'" y="'+(y+12)+'" width="'+w+'" height="'+h+'" rx="'+r+'" fill="rgba(20,28,38,0.13)"/>'
+    + body + sheen + bolts + '</svg>';
+}
+function makePlateProduct(id,label,en,shape,cornerR){
+  var prod={ id:id, label:label, en:en, brand:'mori', kind:'plate', shape:shape, cornerR:cornerR,
+    thickness:3, material:true, sizes:MORI_SIZES, defaultSize:'s3', _sizeId:'s3', colors:MORI_MAT_COLORS };
+  var pr=platePlacement(moriSizeOf(prod)).print;
+  prod.faces=[{ id:'front', label:'おもて',
+    guide:{x:pr.x,y:pr.y,w:pr.w,h:pr.h}, presets:platePresets(pr),
+    svg:function(hex){ return plateSVG(prod, moriSizeOf(prod), hex); } }];
+  return prod;
+}
+function platePresets(pr){
+  var cx=pr.x+Math.round(pr.w/2);
+  return [
+    {label:'中央', x:cx, y:pr.y+Math.round(pr.h/2), w:Math.round(pr.w*0.8)},
+    {label:'中央大', x:cx, y:pr.y+Math.round(pr.h/2), w:Math.round(pr.w*0.97)},
+    {label:'上寄せ', x:cx, y:pr.y+Math.round(pr.h*0.32), w:Math.round(pr.w*0.7)},
+    {label:'下寄せ', x:cx, y:pr.y+Math.round(pr.h*0.68), w:Math.round(pr.w*0.7)}
+  ];
+}
+/* register plate products (kept out of PRODUCT_ORDER until brand=mori) */
+PRODUCTS['plate-rect'] =makePlateProduct('plate-rect','角型プレート','RECT PLATE','rect',0);
+PRODUCTS['plate-round']=makePlateProduct('plate-round','丸角プレート','ROUND PLATE','round',26);
+PRODUCTS['plate-oval'] =makePlateProduct('plate-oval','楕円プレート','OVAL PLATE','oval',0);
+PRODUCTS['plate-cut']  =makePlateProduct('plate-cut','カット看板','CUT SIGN','cut',14);
+ensureStateBuckets();
+
+var BRAND_CATALOG={ seeq:['tshirt','parka','tote'], mori:['plate-rect','plate-round','plate-oval','plate-cut'] };
+
+function setPlateSize(sizeId){
+  var prod=curProduct(); if(prod.kind!=='plate') return;
+  if(!prod.sizes.filter(function(s){return s.id===sizeId;}).length) return;
+  prod._sizeId=sizeId;
+  var place=platePlacement(moriSizeOf(prod)), f=prod.faces[0];
+  f.guide.x=place.print.x; f.guide.y=place.print.y; f.guide.w=place.print.w; f.guide.h=place.print.h;
+  f.presets=platePresets(place.print);
+  applyShirt._sig=null;                 /* force background regen */
+  positionGuide(); applyShirt(); buildPresets(); fitCanvas();
+  updateMoriUI(); commitHistory();
+}
+/* mori configurator UI (形状=商品セレクタ / 素材=スウォッチ / サイズ・厚み=ここ) */
+function updateMoriUI(){
+  var prod=curProduct(), isPlate=prod.kind==='plate';
+  var card=document.getElementById('moriConfig'); if(card) card.classList.toggle('hidden', !isPlate);
+  /* relabel product/color fields + hide single face for plates */
+  var lp=document.getElementById('lblProduct'), lc=document.getElementById('lblColor'),
+      lf=document.getElementById('lblFace'), ft=document.getElementById('faceTabs');
+  if(lp) lp.textContent=isPlate?'形状を選ぶ':'商品を選ぶ';
+  if(lc) lc.textContent=isPlate?'素材を選ぶ':'商品カラー';
+  if(lf) lf.style.display=isPlate?'none':'';
+  if(ft) ft.style.display=isPlate?'none':'';
+  if(!isPlate) return;
+  var sizes=document.getElementById('moriSizes');
+  if(sizes){ sizes.innerHTML='';
+    prod.sizes.forEach(function(s){
+      var c=document.createElement('span'); c.className='chip'+(s.id===(prod._sizeId||prod.defaultSize)?' on':'');
+      c.textContent=s.name; c.onclick=function(){ setPlateSize(s.id); };
+      sizes.appendChild(c);
+    });
+  }
+  var ro=document.getElementById('moriReadout');
+  if(ro){ var sz=moriSizeOf(prod);
+    ro.innerHTML='<div class="mmfield"><label>幅 W</label><div class="v">'+sz.w+'<small>mm</small></div></div>'
+      +'<span class="mmx">×</span><div class="mmfield"><label>高さ H</label><div class="v">'+sz.h+'<small>mm</small></div></div>'
+      +'<div class="mmfield"><label>厚み t</label><div class="v">'+prod.thickness+'<small>mm</small></div></div>';
+  }
+}
+/* swap the visible catalog when the brand changes (seeq apparel ⇄ mori plates) */
+function applyBrandCatalog(brand){
+  var order=BRAND_CATALOG[brand]||BRAND_CATALOG.seeq;
+  if(PRODUCT_ORDER[0]!==order[0]){
+    PRODUCT_ORDER.length=0; Array.prototype.push.apply(PRODUCT_ORDER, order);
+    renderProductSelector();
+    if(currentProduct!==order[0]) switchProduct(order[0]); else { renderSwatches(curColors()); applyShirt(); }
+  }
+  updateMoriUI();
+}
+window.addEventListener('seeq:brandchange', function(e){ applyBrandCatalog((e.detail&&e.detail.brand)||'seeq'); });
+/* if booted with ?brand=mori, the brand tail will fire brandchange after this;
+   also apply now in case the catalog already needs to reflect the resolved brand */
+applyBrandCatalog(window.SEEQ_BRAND||'seeq');
+
 /* expose for verification/testing */
 window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FONTS:FONTS, FONT_CATS:FONT_CATS,
   undo:undo, redo:redo, switchFace:switchFace,
@@ -3938,10 +4338,480 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   exportDesign:exportDesign, importDesign:importDesign, commitHistory:commitHistory,
   registerTemplates:registerTemplates, applyTemplate:applyTemplate, TEMPLATES:TEMPLATES,
   generateProofBundle:generateProofBundle, proofGeometry:proofGeometry, emitProof:emitProof, PRINT:PRINT,
+  designTextureCanvas:designTextureCanvas, get3DFrame:get3DFrame, designThumb:designThumb,
+  aiImportSVG:aiImportSVG,
+  setPlateSize:setPlateSize, applyBrandCatalog:applyBrandCatalog, updateMoriUI:updateMoriUI,
+  MORI_MAT_COLORS:MORI_MAT_COLORS, MORI_SIZES:MORI_SIZES, BRAND_CATALOG:BRAND_CATALOG,
   wpSaveDesign:wpSaveDesign, wpSaveTemplate:wpSaveTemplate, SEEQ_EMBED:SEEQ_EMBED, updateWpUI:updateWpUI,
   snapTo:function(n){snapTo(n);}, computeSnaps:computeSnaps, setMobileTab:setMobileTab,
   getSheet:function(){return {snap:sheetSnap, snaps:snaps, vis:getComputedStyle(document.documentElement).getPropertyValue('--sheet-vis').trim(), bodyOpen:document.body.classList.contains('sheet-open'), toolsH:Math.round(toolsEl.getBoundingClientRect().height), toolsTop:Math.round(toolsEl.getBoundingClientRect().top)};},
   state:function(){return {undo:undoStack.length, redo:redoStack.length, product:currentProduct, face:currentFace, color:currentColor.hex, objs:userObjects().length};}};
+
+/* =====================================================================
+   Brand: 完全適用（ロゴ・ラベル・トグル・選択UIの差し色）
+   テーマ変数は head の seeqApplyTheme が既に適用済み。ここでは DOM の
+   顔（ロゴ/ラベル/タイトル）とトグル状態、Fabric の選択ハンドル色を
+   ブランドに合わせる。エンジンの操作ロジックは不変（見た目のみ）。
+   ===================================================================== */
+(function(){
+  var BRANDS=window.SEEQ_BRANDS; if(!BRANDS) return;
+  var logoImg   = document.querySelector('.brand .logo');
+  var logoText  = document.getElementById('brandLogoText');
+  var logoMain  = document.getElementById('brandLogoMain');
+  var logoSub   = document.getElementById('brandLogoSub');
+  var tagline   = document.getElementById('brandTagline');
+  var ctaLabel  = document.querySelector('#btnQuote .label-pc');
+  var quoteTitle= document.getElementById('quoteTitle');
+  var quoteBody = document.getElementById('quoteBody');
+  var toggle    = document.getElementById('brandToggle');
+
+  function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function applyBrand(key){
+    var b=BRANDS[key]||BRANDS.seeq, L=b.labels||{};
+    window.seeqApplyTheme(b.id);
+    /* ロゴ：img型はSVG表示、text型はテキストロゴへ差し替え */
+    if(b.logo && b.logo.type==='text'){
+      if(logoImg)  logoImg.style.display='none';
+      if(logoText){ logoText.style.display='flex';
+        if(logoMain) logoMain.textContent=b.logo.main||b.name;
+        if(logoSub)  logoSub.textContent =b.logo.sub||''; }
+    } else {
+      if(logoImg)  logoImg.style.display='';
+      if(logoText) logoText.style.display='none';
+    }
+    /* ラベル／文言 */
+    if(tagline && b.tagline) tagline.textContent=b.tagline;
+    if(ctaLabel && L.cta)    ctaLabel.textContent=L.cta;
+    if(quoteTitle && L.estTitle) quoteTitle.textContent=L.estTitle+'を受け付けます';
+    if(quoteBody && L.quoteBody) quoteBody.innerHTML='※これはプロトタイプのデモ動作です。<br>'+L.quoteBody;
+    document.title=b.name+' デザインシミュレーター';
+    /* トグルの選択状態 */
+    if(toggle) toggle.querySelectorAll('.bt').forEach(function(btn){ btn.classList.toggle('on', btn.dataset.brand===b.id); });
+    /* Fabric 選択ハンドル＋プリント範囲ガイドを差し色に（見た目のみ・export除外要素のみ） */
+    try{
+      var red=cssVar('--red')||'#E0382C';
+      if(window.fabric) fabric.Object.prototype.set({cornerStrokeColor:red, borderColor:red});
+      var S=window.SeeQ;
+      if(S && S.canvas){
+        S.canvas.getObjects().forEach(function(o){
+          if(o.excludeFromExport && o.strokeDashArray && o.stroke){ o.set('stroke', red); }
+        });
+        S.canvas.requestRenderAll();
+      }
+    }catch(e){}
+    window.SEEQ_BRAND=b.id;
+    try{ window.dispatchEvent(new CustomEvent('seeq:brandchange',{detail:{brand:b.id}})); }catch(e){}
+  }
+  window.seeqApplyBrand=applyBrand;
+  if(toggle) toggle.addEventListener('click', function(e){
+    var btn=e.target.closest('.bt'); if(btn) applyBrand(btn.dataset.brand);
+  });
+  applyBrand(window.SEEQ_BRAND||'seeq');
+})();
+
+/* =====================================================================
+   3D プレビュー（共通機能 / 企画§4）— Three.js テクスチャ投影
+   2D編集の結果(window.SeeQ.get3DFrame)を CanvasTexture 化 → メッシュ前面UVへ。
+   SeeQ=湾曲した布パネル / 森工業=押し出し金属プレート。回転・ズーム・質感
+   トグル・環境光・白押さえ。onThumb で3D静止画を取得し見積に同梱。
+   three は初回3D表示時に遅延ロード（初期表示を軽く保つ）。WebGL非対応は
+   静止フォールバック。エンジン本体(Fabric)には触れず読み出しのみ。
+   ===================================================================== */
+(function(){
+  var THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  var ENV_PRESETS={
+    studio:{key:1.15,fill:0.55,amb:0.55,hemi:0.5,envI:1.0,kc:0xffffff,bg:['#eef2f6','#d6dde4']},
+    outdoor:{key:1.5,fill:0.4,amb:0.5,hemi:0.75,envI:1.25,kc:0xfff4e6,bg:['#eaf1f8','#c7d3df']},
+    indoor:{key:0.85,fill:0.5,amb:0.6,hemi:0.4,envI:0.8,kc:0xffe9cf,bg:['#ece7e1','#cfc7bd']}
+  };
+  var FINISH_PROPS={
+    metallic:{metal:0.95,rough:0.28}, hairline:{metal:0.85,rough:0.5},
+    matte:{metal:0.1,rough:0.82}, gloss:{metal:0.3,rough:0.08},
+    cloth:{metal:0.0,rough:0.92}, worn:{metal:0.0,rough:0.78}
+  };
+  var FINISH_OPTS={
+    apparel:[{k:'cloth',label:'標準'},{k:'worn',label:'ヴィンテージ'}],
+    plate:[{k:'metallic',label:'メタリック'},{k:'hairline',label:'ヘアライン'},{k:'matte',label:'マット'},{k:'gloss',label:'グロス'}]
+  };
+  var ENV_OPTS=[{k:'studio',label:'スタジオ'},{k:'outdoor',label:'屋外'},{k:'indoor',label:'屋内'}];
+
+  var mount=document.getElementById('s3dMount');
+  var stage=document.getElementById('stage3d');
+  var viewToggle=document.getElementById('viewToggle');
+  var finishWrap=document.getElementById('s3dFinish');
+  var envWrap=document.getElementById('s3dEnv');
+  var underlayOuter=document.getElementById('s3dUnderlayWrap');
+  var underlayWrap=document.getElementById('s3dUnderlay');
+  if(!mount||!stage) return;
+
+  var st=null;                 /* three runtime (renderer/scene/...) once inited */
+  var opt={ finish:'cloth', env:'studio', underlay:false, kind:'apparel' };
+  var threeLoading=null, failed=false;
+
+  function hexInt(h){ return parseInt(String(h||'#cccccc').replace('#',''),16)||0xcccccc; }
+  function ensureThree(){
+    if(window.THREE) return Promise.resolve(window.THREE);
+    if(threeLoading) return threeLoading;
+    threeLoading=new Promise(function(res,rej){
+      var s=document.createElement('script'); s.src=THREE_URL; s.async=true;
+      s.onload=function(){ res(window.THREE); };
+      s.onerror=function(){ rej(new Error('three load failed')); };
+      document.head.appendChild(s);
+    });
+    return threeLoading;
+  }
+  function envEquirect(THREE,bg){
+    var c=document.createElement('canvas'); c.width=512; c.height=256; var x=c.getContext('2d');
+    var g=x.createLinearGradient(0,0,0,256); g.addColorStop(0,bg[0]); g.addColorStop(0.5,bg[0]); g.addColorStop(1,bg[1]);
+    x.fillStyle=g; x.fillRect(0,0,512,256);
+    var hl=x.createRadialGradient(256,40,10,256,40,230);
+    hl.addColorStop(0,'rgba(255,255,255,0.9)'); hl.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=hl; x.fillRect(0,0,512,150);
+    var t=new THREE.CanvasTexture(c); t.mapping=THREE.EquirectangularReflectionMapping; return t;
+  }
+  function plateShape(THREE,shape,w,h,r){
+    var s=new THREE.Shape(), hw=w/2, hh=h/2;
+    if(shape==='oval'){ s.absellipse(0,0,hw,hh,0,Math.PI*2,false,0); return s; }
+    if(shape==='cut'){ var c=Math.min(w,h)*0.16;
+      s.moveTo(-hw+c,-hh); s.lineTo(hw-c,-hh); s.lineTo(hw,-hh+c); s.lineTo(hw,hh-c);
+      s.lineTo(hw-c,hh); s.lineTo(-hw+c,hh); s.lineTo(-hw,hh-c); s.lineTo(-hw,-hh+c); s.closePath(); return s; }
+    var rr=Math.min(r,Math.min(hw,hh));
+    s.moveTo(-hw+rr,-hh); s.lineTo(hw-rr,-hh); s.quadraticCurveTo(hw,-hh,hw,-hh+rr);
+    s.lineTo(hw,hh-rr); s.quadraticCurveTo(hw,hh,hw-rr,hh); s.lineTo(-hw+rr,hh);
+    s.quadraticCurveTo(-hw,hh,-hw,hh-rr); s.lineTo(-hw,-hh+rr); s.quadraticCurveTo(-hw,-hh,-hw+rr,-hh); return s;
+  }
+  function curveGeo(geo,width){
+    var pos=geo.attributes.position;
+    for(var i=0;i<pos.count;i++){ var x=pos.getX(i); pos.setZ(i, Math.cos((x/width)*Math.PI)*width*0.07); }
+    pos.needsUpdate=true; geo.computeVertexNormals();
+  }
+
+  function showFail(){
+    failed=true;
+    if(mount.querySelector('.s3d-fail')) return;
+    var d=document.createElement('div'); d.className='s3d-fail';
+    d.innerHTML='<div>3Dプレビューは、この環境では表示できません</div><small>WebGL対応ブラウザでご利用ください</small>';
+    mount.appendChild(d);
+  }
+  function setLoading(on){
+    var ex=mount.querySelector('.s3d-loading');
+    if(on){ if(!ex){ var d=document.createElement('div'); d.className='s3d-loading'; d.textContent='3Dを準備中…'; mount.appendChild(d);} }
+    else if(ex){ ex.remove(); }
+  }
+
+  function init(THREE){
+    var renderer;
+    try{ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true}); }
+    catch(e){ showFail(); return false; }
+    var w=mount.clientWidth||600, h=mount.clientHeight||420;
+    renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+    renderer.setSize(w,h);
+    if('outputColorSpace' in renderer) renderer.outputColorSpace=THREE.SRGBColorSpace; else renderer.outputEncoding=THREE.sRGBEncoding;
+    renderer.domElement.style.display='block'; mount.appendChild(renderer.domElement);
+    var scene=new THREE.Scene();
+    var camera=new THREE.PerspectiveCamera(34,w/h,0.1,100);
+    var key=new THREE.DirectionalLight(0xffffff,1.15); key.position.set(3,5,5);
+    var fill=new THREE.DirectionalLight(0xffffff,0.5); fill.position.set(-4,1,2);
+    var amb=new THREE.AmbientLight(0xffffff,0.55);
+    var hemi=new THREE.HemisphereLight(0xffffff,0x9aa3ab,0.5);
+    scene.add(key,fill,amb,hemi);
+    var orbit={theta:-0.5,phi:1.32,radius:5.4,auto:true};
+    var target=new THREE.Vector3(0,0,0);
+    var dom=renderer.domElement, dragging=false,lx=0,ly=0,pinch=0;
+    function onDown(e){ dragging=true; orbit.auto=false; lx=e.clientX; ly=e.clientY; try{ e.pointerId!=null&&dom.setPointerCapture(e.pointerId);}catch(_){} }
+    function onMove(e){ if(!dragging)return; orbit.theta-=(e.clientX-lx)*0.01; orbit.phi=Math.max(0.35,Math.min(2.7,orbit.phi-(e.clientY-ly)*0.01)); lx=e.clientX; ly=e.clientY; }
+    function onUp(){ dragging=false; }
+    function onWheel(e){ e.preventDefault(); orbit.auto=false; orbit.radius=Math.max(2.6,Math.min(9,orbit.radius*(1+(e.deltaY>0?0.08:-0.08)))); }
+    function tDist(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY); }
+    function onTS(e){ if(e.touches.length===2){ pinch=tDist(e.touches); orbit.auto=false; } }
+    function onTM(e){ if(e.touches.length===2){ e.preventDefault(); var d=tDist(e.touches); if(pinch) orbit.radius=Math.max(2.6,Math.min(9,orbit.radius*(pinch/d))); pinch=d; } }
+    dom.addEventListener('pointerdown',onDown); window.addEventListener('pointermove',onMove); window.addEventListener('pointerup',onUp);
+    dom.addEventListener('wheel',onWheel,{passive:false}); dom.addEventListener('touchstart',onTS,{passive:false}); dom.addEventListener('touchmove',onTM,{passive:false});
+    var raf=0, running=false, frame=0, thumbDone=false;
+    function renderFrame(){
+      var sp=orbit.phi, st2=orbit.theta, r=orbit.radius;
+      camera.position.set(r*Math.sin(sp)*Math.sin(st2), r*Math.cos(sp), r*Math.sin(sp)*Math.cos(st2));
+      camera.lookAt(target); renderer.render(scene,camera);
+    }
+    function grabThumb(){ try{ window.SEEQ_3D_THUMB=renderer.domElement.toDataURL('image/png'); thumbDone=true; }catch(_){} }
+    function loop(){
+      raf=requestAnimationFrame(loop);
+      if(orbit.auto) orbit.theta+=0.0045;
+      renderFrame(); frame++;
+      if(!thumbDone && frame===4) grabThumb();
+    }
+    var ro=new ResizeObserver(function(){ var ww=mount.clientWidth,hh=mount.clientHeight; if(ww&&hh){ renderer.setSize(ww,hh); camera.aspect=ww/hh; camera.updateProjectionMatrix(); } });
+    ro.observe(mount);
+    st={THREE:THREE,renderer:renderer,scene:scene,camera:camera,lights:{key:key,fill:fill,amb:amb,hemi:hemi},
+      orbit:orbit,group:null,pmrem:null,env:null,
+      start:function(){ if(!running){ running=true; thumbDone=false; frame=0; loop(); } },
+      stop:function(){ running=false; cancelAnimationFrame(raf); },
+      resetThumb:function(){ thumbDone=false; frame=0; },
+      renderFrame:renderFrame, grabThumb:grabThumb
+    };
+    return true;
+  }
+
+  function build(){
+    if(!st) return;
+    var THREE=st.THREE;
+    var frame=window.SeeQ && window.SeeQ.get3DFrame ? window.SeeQ.get3DFrame(1024) : null;
+    if(!frame) return;
+    opt.kind=frame.kind;
+    /* dispose old */
+    if(st.group){ st.scene.remove(st.group); st.group.traverse(function(o){ if(o.geometry)o.geometry.dispose(); if(o.material){ var m=o.material; if(m.map)m.map.dispose(); m.dispose(); } }); }
+    var pre=ENV_PRESETS[opt.env]||ENV_PRESETS.studio;
+    if(st.env) st.env.dispose();
+    if(!st.pmrem) st.pmrem=new THREE.PMREMGenerator(st.renderer);
+    var eqt=envEquirect(THREE,pre.bg);
+    st.scene.environment=st.pmrem.fromEquirectangular(eqt).texture; st.env=eqt;
+    st.lights.key.intensity=pre.key; st.lights.key.color.setHex(pre.kc);
+    st.lights.fill.intensity=pre.fill; st.lights.amb.intensity=pre.amb; st.lights.hemi.intensity=pre.hemi;
+
+    var group=new THREE.Group();
+    var isPlate=frame.kind==='plate';
+    var fp=FINISH_PROPS[opt.finish]||(isPlate?FINISH_PROPS.metallic:FINISH_PROPS.cloth);
+    var arWH=isPlate ? (frame.mm ? frame.mm.w/frame.mm.h : 1/(frame.printAR||1)) : 0.82;
+    var maxDim=2.5, pw=maxDim, ph=maxDim/arWH; if(ph>maxDim){ ph=maxDim; pw=maxDim*arWH; }
+    var depth=Math.max(0.06,(frame.thickness||3)/26);
+
+    /* base body */
+    if(isPlate){
+      var shape=plateShape(THREE, frame.shape||'round', pw, ph, (frame.cornerR||18)/100*Math.min(pw,ph)*1.6);
+      var geo=new THREE.ExtrudeGeometry(shape,{depth:depth,bevelEnabled:true,bevelThickness:depth*0.18,bevelSize:depth*0.18,bevelSegments:2,steps:1}); geo.center();
+      group.add(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:hexInt(frame.color),metalness:fp.metal,roughness:fp.rough,envMapIntensity:pre.envI})));
+    } else {
+      var fGeo=new THREE.PlaneGeometry(pw,ph,24,24); curveGeo(fGeo,pw);
+      group.add(new THREE.Mesh(fGeo,new THREE.MeshStandardMaterial({color:hexInt(frame.color),metalness:0,roughness:fp.rough,side:THREE.DoubleSide,envMapIntensity:pre.envI*0.5})));
+    }
+
+    /* design texture plane (front) */
+    var tex=new THREE.CanvasTexture(frame.canvas);
+    if('colorSpace' in tex) tex.colorSpace=THREE.SRGBColorSpace; else tex.encoding=THREE.sRGBEncoding;
+    try{ tex.anisotropy=st.renderer.capabilities.getMaxAnisotropy?st.renderer.capabilities.getMaxAnisotropy():4; }catch(_){}
+    tex.needsUpdate=true;
+    var dW=pw*(isPlate?0.86:0.92), dH=dW*(frame.printAR||1);
+    var depthHalf=isPlate?(depth/2+0.012):0.045;
+    if(opt.underlay && isPlate){
+      var wGeo=new THREE.PlaneGeometry(dW,dH,1,1);
+      var wPlane=new THREE.Mesh(wGeo,new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.7,metalness:0}));
+      wPlane.position.z=depth/2+0.006; group.add(wPlane);
+    }
+    var dGeo=new THREE.PlaneGeometry(dW,dH,isPlate?1:20,isPlate?1:20); if(!isPlate) curveGeo(dGeo,dW);
+    var dMat=new THREE.MeshStandardMaterial({map:tex,transparent:true,metalness:0,roughness:0.55,envMapIntensity:0.4});
+    var dPlane=new THREE.Mesh(dGeo,dMat); dPlane.position.z=depthHalf; group.add(dPlane);
+
+    st.scene.add(group); st.group=group; st.resetThumb();
+    /* 明示的に1回レンダー＋サムネ取得（RAF が間引かれても見積用静止画を確保） */
+    try{ st.renderFrame(); st.grabThumb(); }catch(_){}
+  }
+
+  /* ---- chip UI ---- */
+  function chip(label,active){
+    var b=document.createElement('button'); b.type='button'; b.className='s3d-chip'+(active?' on':'');
+    b.textContent=label; return b;
+  }
+  function renderChips(){
+    var kind=opt.kind;
+    finishWrap.innerHTML=''; (FINISH_OPTS[kind]||FINISH_OPTS.apparel).forEach(function(o){
+      var b=chip(o.label, opt.finish===o.k); b.dataset.k=o.k;
+      b.onclick=function(){ opt.finish=o.k; build(); renderChips(); }; finishWrap.appendChild(b);
+    });
+    envWrap.innerHTML=''; ENV_OPTS.forEach(function(o){
+      var b=chip(o.label, opt.env===o.k); b.dataset.k=o.k;
+      b.onclick=function(){ opt.env=o.k; build(); renderChips(); }; envWrap.appendChild(b);
+    });
+    if(kind==='plate'){ underlayOuter.hidden=false; underlayWrap.innerHTML='';
+      var u=chip('白押さえ', opt.underlay); u.onclick=function(){ opt.underlay=!opt.underlay; build(); renderChips(); }; underlayWrap.appendChild(u);
+    } else { underlayOuter.hidden=true; }
+  }
+
+  /* ---- enter / exit ---- */
+  function setView(v){
+    viewToggle && viewToggle.querySelectorAll('.vt').forEach(function(b){ b.classList.toggle('on', b.dataset.view===v); });
+  }
+  function enter3D(){
+    setView('3d'); stage.classList.add('show'); stage.setAttribute('aria-hidden','false');
+    try{ window.SeeQ && window.SeeQ.snapTo && window.SeeQ.snapTo('peek'); }catch(_){}
+    if(failed){ return; }
+    setLoading(true);
+    ensureThree().then(function(THREE){
+      setLoading(false);
+      if(!st){ if(!init(THREE)){ return; } }
+      /* default finish per kind, before first build */
+      var probe=window.SeeQ && window.SeeQ.get3DFrame ? window.SeeQ.get3DFrame(8) : null;
+      if(probe){ opt.kind=probe.kind;
+        if(!FINISH_OPTS[opt.kind].some(function(o){return o.k===opt.finish;})){
+          opt.finish=(probe.finish && FINISH_OPTS[opt.kind].some(function(o){return o.k===probe.finish;})) ? probe.finish : FINISH_OPTS[opt.kind][0].k;
+        }
+      }
+      renderChips(); build(); st.start();
+    }).catch(function(){ setLoading(false); showFail(); });
+  }
+  function exit3D(){
+    setView('2d'); stage.classList.remove('show'); stage.setAttribute('aria-hidden','true');
+    if(st) st.stop();
+  }
+  window.seeqEnter3D=enter3D; window.seeqExit3D=exit3D;
+
+  /* ---- wiring ---- */
+  if(viewToggle) viewToggle.addEventListener('click',function(e){
+    var b=e.target.closest('.vt'); if(!b) return;
+    if(b.dataset.view==='3d') enter3D(); else exit3D();
+  });
+  var backBtn=document.getElementById('s3dBack'); if(backBtn) backBtn.onclick=exit3D;
+  var quoteBtn=document.getElementById('s3dQuote'); if(quoteBtn) quoteBtn.onclick=function(){ exit3D(); var q=document.getElementById('btnQuote'); if(q) q.click(); };
+  /* rebuild texture when returning to 3D after edits is handled by enter3D()->build() */
+})();
+
+/* =====================================================================
+   見積サマリ（企画§6 / 見積依頼）— モーダルに 3Dサムネ＋仕様サマリを同梱。
+   ブランドで CTA・単位が変わる。3Dサムネ(window.SEEQ_3D_THUMB)が無ければ
+   2Dデザインサムネにフォールバック。本番はこの一式を WP/LINE/フォームへ送信。
+   ===================================================================== */
+(function(){
+  var btnQuote=document.getElementById('btnQuote');
+  var summary=document.getElementById('quoteSummary');
+  var thumbImg=document.getElementById('quoteThumb');
+  var specUl=document.getElementById('quoteSpec');
+  if(!btnQuote||!summary) return;
+
+  function row(k,v,opts){ opts=opts||{};
+    var li=document.createElement('li');
+    var kk=document.createElement('span'); kk.className='k'; kk.textContent=k;
+    var vv=document.createElement('span'); vv.className='v'+(opts.badge?' badge':'');
+    if(opts.dot){ var d=document.createElement('span'); d.style.cssText='display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1px solid var(--hair);background:'+opts.dot; vv.appendChild(d); }
+    vv.appendChild(document.createTextNode(v));
+    li.appendChild(kk); li.appendChild(vv); return li;
+  }
+  function populate(){
+    try{
+      var S=window.SeeQ; if(!S) { summary.hidden=true; return; }
+      var stt=S.state(); var B=(window.SEEQ_BRANDS||{})[window.SEEQ_BRAND||'seeq']||{};
+      var prod=(S.PRODUCTS&&S.PRODUCTS[stt.product])||{};
+      /* thumb: 3D優先→2Dデザインサムネ */
+      var thumb=window.SEEQ_3D_THUMB || (S.designThumb?S.designThumb():'');
+      if(thumb){ thumbImg.src=thumb; thumbImg.style.display=''; } else { thumbImg.removeAttribute('src'); thumbImg.style.display='none'; }
+      /* spec */
+      specUl.innerHTML='';
+      specUl.appendChild(row('ブランド', B.name||'SeeQ'));
+      specUl.appendChild(row('商品', prod.label||stt.product));
+      var colObj=(prod.colors||[]).filter(function(c){return c.hex===stt.color;})[0];
+      specUl.appendChild(row(prod.kind==='plate'?'素材':'カラー', colObj?colObj.name:(stt.color||'').toUpperCase(), {dot: stt.color}));
+      if(prod.kind==='plate'){
+        var sz=(prod.sizes||[]).filter(function(s){return s.id===(prod._sizeId||prod.defaultSize);})[0];
+        if(sz) specUl.appendChild(row('サイズ', 'W'+sz.w+'×H'+sz.h+' / 厚'+prod.thickness+'mm', {badge:true}));
+      }
+      specUl.appendChild(row('デザイン要素', stt.objs+' 点'));
+      specUl.appendChild(row('プレビュー', window.SEEQ_3D_THUMB?'3D 静止画 同梱':'2D 画像 同梱'));
+      summary.hidden=false;
+    }catch(e){ summary.hidden=true; }
+  }
+  /* engine の onclick がモーダルを開いた直後に内容を流し込む */
+  btnQuote.addEventListener('click', function(){ setTimeout(populate, 0); });
+})();
+
+/* =====================================================================
+   AI生成図案（企画§3-⑤ / AIPanel.jsx 移植）— プロンプト→候補4枚→取込。
+   いまは外部APIなしの決定論プレースホルダSVG。本番は generate() 内の
+   「★AI結線ポイント」を Gemini 等の呼び出しに差し替えるだけ（候補配列を
+   {id,svg|imageUrl} で返す→ renderCandidates）。取込は window.SeeQ.aiImportSVG。
+   ===================================================================== */
+(function(){
+  var promptEl=document.getElementById('aiPrompt');
+  var suggestEl=document.getElementById('aiSuggest');
+  var genBtn=document.getElementById('aiGenerate');
+  var grid=document.getElementById('aiGrid');
+  var importBtn=document.getElementById('aiImport');
+  var noteEl=document.getElementById('aiNote');
+  if(!promptEl||!genBtn||!grid) return;
+
+  var PALETTES=[
+    ['#0A0A0A','#E0382C','#F4F4F0'], ['#1E3A8A','#2563EB','#EAF0FF'],
+    ['#1F6B3B','#3FB36A','#EAF6EE'], ['#7A4B12','#C9621C','#FBEEDE'],
+    ['#0A0A0A','#E4B100','#FBF6E3']
+  ];
+  var SUGGEST={
+    seeq:['ヴィンテージなロゴ','和柄の家紋風','ミニマルな英字エンブレム','手描き風イラスト'],
+    mori:['店名サインのロゴ','金属に映える紋章','シンプルな案内ピクト','老舗風の筆ロゴ']
+  };
+  function hash(s){ var h=0; s=String(s||''); for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))&0xffffffff; } return Math.abs(h); }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function candidates(prompt){
+    var seed=hash(prompt||'design'), initial=esc(((prompt||'A').trim()[0]||'A').toUpperCase()), out=[];
+    for(var i=0;i<4;i++){
+      var pal=PALETTES[(seed+i)%PALETTES.length], d=pal[0], a=pal[1], bg=pal[2], inner='', kind=(seed+i)%4;
+      if(kind===0){
+        inner='<circle cx="100" cy="100" r="84" fill="'+bg+'"/><circle cx="100" cy="100" r="84" fill="none" stroke="'+d+'" stroke-width="5"/><circle cx="100" cy="100" r="64" fill="none" stroke="'+a+'" stroke-width="3"/>'
+          +'<text x="100" y="118" text-anchor="middle" font-family="\'Bebas Neue\',sans-serif" font-size="78" fill="'+d+'">'+initial+'</text>'
+          +'<text x="100" y="160" text-anchor="middle" font-family="\'Oswald\',sans-serif" font-size="13" letter-spacing="3" fill="'+a+'">SINCE 2026</text>';
+      } else if(kind===1){
+        inner='<path d="M100 22 L168 46 V104 C168 150 138 174 100 188 C62 174 32 150 32 104 V46 Z" fill="'+bg+'" stroke="'+d+'" stroke-width="5"/>'
+          +'<path d="M100 60 L118 96 L100 132 L82 96 Z" fill="'+a+'"/><rect x="60" y="142" width="80" height="9" rx="4" fill="'+d+'"/>';
+      } else if(kind===2){
+        inner='<circle cx="100" cy="100" r="84" fill="'+bg+'"/><path d="M100 168 C100 120 100 70 100 40" stroke="'+d+'" stroke-width="5" fill="none"/>'
+          +'<path d="M100 96 C70 86 56 60 60 44 C84 44 102 66 100 96 Z" fill="'+a+'"/>'
+          +'<path d="M100 116 C130 106 144 80 140 64 C116 64 98 86 100 116 Z" fill="'+d+'"/>'
+          +'<path d="M100 138 C76 132 64 112 68 98 C88 98 102 116 100 138 Z" fill="'+a+'"/>';
+      } else {
+        inner='<rect x="24" y="24" width="152" height="152" rx="10" fill="'+bg+'"/><rect x="44" y="54" width="112" height="20" rx="10" fill="'+d+'"/>'
+          +'<rect x="44" y="90" width="78" height="20" rx="10" fill="'+a+'"/><rect x="44" y="126" width="112" height="20" rx="10" fill="'+d+'"/><circle cx="140" cy="136" r="14" fill="'+a+'"/>';
+      }
+      out.push({ id:'ai-'+seed+'-'+i, svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'+inner+'</svg>' });
+    }
+    return out;
+  }
+
+  var cands=[], sel=null;
+  function brandSugg(){ return SUGGEST[window.SEEQ_BRAND]||SUGGEST.seeq; }
+  function renderSuggest(){
+    suggestEl.innerHTML='';
+    brandSugg().forEach(function(s){
+      var c=document.createElement('span'); c.className='chip'; c.textContent=s;
+      c.onclick=function(){ promptEl.value=s; };
+      suggestEl.appendChild(c);
+    });
+    promptEl.placeholder='作りたい図案を入力（例：'+brandSugg()[0]+'）';
+  }
+  function showSkeletons(){
+    grid.classList.remove('hidden'); grid.innerHTML='';
+    for(var i=0;i<4;i++){ var d=document.createElement('div'); d.className='ai-skel'; grid.appendChild(d); }
+    importBtn.classList.add('hidden'); noteEl.classList.add('hidden');
+  }
+  function renderCandidates(){
+    grid.classList.remove('hidden'); grid.innerHTML=''; sel=null;
+    cands.forEach(function(c){
+      var b=document.createElement('button'); b.type='button'; b.className='ai-cand'; b.innerHTML=c.svg; b.dataset.id=c.id;
+      b.onclick=function(){
+        sel=c; grid.querySelectorAll('.ai-cand').forEach(function(x){ x.classList.toggle('is-active', x.dataset.id===c.id); });
+        importBtn.disabled=false;
+      };
+      grid.appendChild(b);
+    });
+    importBtn.classList.remove('hidden'); importBtn.disabled=true; noteEl.classList.remove('hidden');
+  }
+  function generate(){
+    if(genBtn.disabled) return;
+    genBtn.disabled=true; var label=genBtn.innerHTML; genBtn.textContent='生成中…';
+    showSkeletons();
+    var p=promptEl.value.trim()||brandSugg()[0];
+    /* ★AI結線ポイント：本番はここで Gemini 等を呼び、候補(SVG or 画像URL)を取得して
+       cands に詰める。背景透過が必要なラスターは window.SeeQ.aiImportSVG ではなく
+       既存の画像加工パイプ（fabric.Image→背景透過）に流す。 */
+    setTimeout(function(){
+      cands=candidates(p); renderCandidates();
+      genBtn.disabled=false; genBtn.innerHTML=label;
+    }, 750);
+  }
+  genBtn.addEventListener('click', generate);
+  importBtn.addEventListener('click', function(){
+    if(!sel || !window.SeeQ || !window.SeeQ.aiImportSVG) return;
+    window.SeeQ.aiImportSVG(sel.svg, 'AI図案');
+  });
+  window.addEventListener('seeq:brandchange', renderSuggest);
+  renderSuggest();
+})();
 </script>
 </body>
 </html>
