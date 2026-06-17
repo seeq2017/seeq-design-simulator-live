@@ -3568,7 +3568,12 @@ function designTextureCanvas(targetPx){
   canvas.setViewportTransform([kX,0,0,kY,tx,ty]);
   canvas.renderAll();
   var out=document.createElement('canvas'); out.width=outW; out.height=outH;
-  try{ out.getContext('2d').drawImage(canvas.lowerCanvasEl,0,0); }catch(e){}
+  /* Retina対策：enableRetinaScaling 環境では lowerCanvasEl の描画バッファが論理
+     サイズの devicePixelRatio 倍になる。3引数 drawImage だと等倍コピーで左上
+     1/dpr² しか取り込めず、中央のデザインが欠落して3D面が無地になる（実機Retina）。
+     9引数でソース全域(=バッファ)を out 全体へスケール写像して取り込む。 */
+  try{ var src=canvas.lowerCanvasEl;
+    out.getContext('2d').drawImage(src, 0,0, src.width, src.height, 0,0, outW, outH); }catch(e){}
   guide.visible=gv; canvas.backgroundImage=pbgImg; canvas.backgroundColor=pbg;
   canvas.setDimensions({width:pw, height:ph});
   canvas.setViewportTransform(pvpt); canvas.renderAll();
