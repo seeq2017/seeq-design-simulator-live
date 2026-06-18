@@ -3588,6 +3588,9 @@ function get3DFrame(targetPx){
   if(p.kind==='plate'){
     var size=(p.sizes&&p.sizes.filter(function(s){return s.id===p._sizeId;})[0])||{w:1,h:1};
     f.shape=p.shape; f.cornerR=p.cornerR; f.thickness=p.thickness; f.mm={w:size.w,h:size.h};
+    /* プリント領域がプレート面に占める比率（3Dのデザインプレーンを実寸で前面に配置するため） */
+    var pl=platePlacement(size);
+    f.printRatioW = pl.print.w/pl.plate.w; f.printRatioH = pl.print.h/pl.plate.h;
     var mat=(p.colors||[]).filter(function(c){return c.hex===currentColor.hex;})[0];
     if(mat){ f.finish=mat.finish; f.metal=mat.metal; f.rough=mat.rough; }
   }
@@ -4581,13 +4584,19 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
     var maxDim=2.5, pw=maxDim, ph=maxDim/arWH; if(ph>maxDim){ ph=maxDim; pw=maxDim*arWH; }
     var depth=Math.max(0.06,(frame.thickness||3)/26);
 
-    /* base body */
+    /* base body — bodyFrontZ＝デザイン面を必ず手前に置くための「実際の前面z」 */
+    var bodyFrontZ;
     if(isPlate){
       var shape=plateShape(THREE, frame.shape||'round', pw, ph, (frame.cornerR||18)/100*Math.min(pw,ph)*1.6);
-      var geo=new THREE.ExtrudeGeometry(shape,{depth:depth,bevelEnabled:true,bevelThickness:depth*0.18,bevelSize:depth*0.18,bevelSegments:2,steps:1}); geo.center();
+      var geo=new THREE.ExtrudeGeometry(shape,{depth:depth,bevelEnabled:true,bevelThickness:depth*0.18,bevelSize:depth*0.18,bevelSegments:2,steps:1});
+      geo.center(); geo.computeBoundingBox();
+      /* 押し出し＋ベベルで前面capは depth/2 より前に出る。boundingBox から実前面zを取り、
+         デザイン面をその手前へ置く（depth/2 固定だと cap の裏に隠れてプレートが無地になる）。 */
+      bodyFrontZ=(geo.boundingBox&&geo.boundingBox.max&&geo.boundingBox.max.z)||(depth/2);
       group.add(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:hexInt(frame.color),metalness:fp.metal,roughness:fp.rough,envMapIntensity:pre.envI})));
     } else {
       var fGeo=new THREE.PlaneGeometry(pw,ph,24,24); curveGeo(fGeo,pw);
+      bodyFrontZ=0;
       group.add(new THREE.Mesh(fGeo,new THREE.MeshStandardMaterial({color:hexInt(frame.color),metalness:0,roughness:fp.rough,side:THREE.DoubleSide,envMapIntensity:pre.envI*0.5})));
     }
 
@@ -4596,16 +4605,20 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
     if('colorSpace' in tex) tex.colorSpace=THREE.SRGBColorSpace; else tex.encoding=THREE.sRGBEncoding;
     try{ tex.anisotropy=st.renderer.capabilities.getMaxAnisotropy?st.renderer.capabilities.getMaxAnisotropy():4; }catch(_){}
     tex.needsUpdate=true;
-    var dW=pw*(isPlate?0.86:0.92), dH=dW*(frame.printAR||1);
-    var depthHalf=isPlate?(depth/2+0.012):0.045;
+    /* デザイン面サイズ：プレートはプリント領域がプレート面に占める実比率、布は前面の92% */
+    var dW, dH;
+    if(isPlate){ dW=pw*(frame.printRatioW||0.86); dH=ph*(frame.printRatioH||0.86); }
+    else { dW=pw*0.92; dH=dW*(frame.printAR||1); }
+    var designZ=isPlate?(bodyFrontZ+0.012):0.045;   /* 実前面より手前 */
+    var underZ =isPlate?(bodyFrontZ+0.006):0.04;     /* デザインの直後・プレート前面の手前 */
     if(opt.underlay && isPlate){
       var wGeo=new THREE.PlaneGeometry(dW,dH,1,1);
       var wPlane=new THREE.Mesh(wGeo,new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.7,metalness:0}));
-      wPlane.position.z=depth/2+0.006; group.add(wPlane);
+      wPlane.position.z=underZ; group.add(wPlane);
     }
     var dGeo=new THREE.PlaneGeometry(dW,dH,isPlate?1:20,isPlate?1:20); if(!isPlate) curveGeo(dGeo,dW);
     var dMat=new THREE.MeshStandardMaterial({map:tex,transparent:true,metalness:0,roughness:0.55,envMapIntensity:0.4});
-    var dPlane=new THREE.Mesh(dGeo,dMat); dPlane.position.z=depthHalf; group.add(dPlane);
+    var dPlane=new THREE.Mesh(dGeo,dMat); dPlane.position.z=designZ; group.add(dPlane);
 
     st.scene.add(group); st.group=group; st.resetThumb();
     /* 明示的に1回レンダー＋サムネ取得（RAF が間引かれても見積用静止画を確保） */
