@@ -254,7 +254,15 @@
     color:var(--accent-d,#B3000E);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:4px 0;}
   .bg-adv{margin-top:8px;padding:11px;border:1px dashed var(--line);border-radius:11px;background:#fbfdfd;}
   .bg-adv.hidden{display:none;}
-  .bg-state{font-size:11.5px;font-weight:700;color:var(--accent-d,#B3000E);margin:9px 0 0;min-height:1em;}
+  .bg-state{font-size:11.5px;font-weight:700;color:var(--accent-d,#B3000E);margin:9px 0 0;min-height:1em;line-height:1.6;}
+  .bg-state.is-busy{color:var(--sub);display:flex;align-items:center;gap:7px;}
+  .bg-spin{display:inline-block;width:13px;height:13px;flex:0 0 13px;border-radius:50%;
+    border:2px solid var(--line);border-top-color:var(--accent);animation:bg-spin .8s linear infinite;}
+  @keyframes bg-spin{to{transform:rotate(360deg);}}
+  .chip.is-busy,.chip.is-disabled{opacity:.55;pointer-events:none;cursor:default;}
+  .chip.chip-ai{background:linear-gradient(135deg,var(--accent),#7a1fa2);border-color:transparent;color:#fff;padding:9px 15px;}
+  .chip.chip-ai:hover{filter:brightness(1.08);color:#fff;}
+  .chip.chip-ai svg{width:14px;height:14px;vertical-align:-2px;margin-right:5px;stroke:currentColor;fill:none;stroke-width:2;}
 
   /* shapes */
   .shapes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
@@ -1039,9 +1047,10 @@
       </div>
       <div class="field">
         <label class="fld">背景を透過</label>
-        <p class="bg-help">写真やイラストの背景（地色）を消してプリントに馴染ませます。ボタンを押すと地色を自動で見つけて透過します。</p>
+        <p class="bg-help">写真やイラストの背景を消してプリントに馴染ませます。<b>AIで背景を削除</b>は人物・商品などの輪郭をAIが判定してきれいに切り抜きます（数秒かかります）。単色背景のイラストなら「かんたん透過」でも十分です。</p>
         <div class="chiprow">
-          <span class="chip chip-primary" id="bgAutoRemove"><svg viewBox="0 0 24 24"><path d="M3 3l18 18M9 5h6a4 4 0 014 4v6M5 9v6a4 4 0 004 4h6"/></svg>背景を自動で透過</span>
+          <span class="chip chip-ai" id="bgAiRemove" title="AIが被写体を判定して背景だけを消します"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg>AIで背景を削除</span>
+          <span class="chip" id="bgAutoRemove" title="地色（単色）を自動で見つけて透過します"><svg viewBox="0 0 24 24" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;stroke:currentColor;fill:none;stroke-width:2"><path d="M3 3l18 18M9 5h6a4 4 0 014 4v6M5 9v6a4 4 0 004 4h6"/></svg>かんたん透過</span>
           <span class="chip" id="bgUndo" title="直前の透過を取り消します">↺ やり直す</span>
         </div>
         <p class="bg-state" id="bgState"></p>
@@ -2791,6 +2800,7 @@ document.getElementById('cropReset').onclick=function(){
 document.getElementById('bgThresh').oninput=function(){ document.getElementById('threshVal').textContent=this.value; };
 document.getElementById('bgFeather').oninput=function(){ document.getElementById('featherVal').textContent=this.value; };
 document.getElementById('imgBgRemove').onclick=function(){
+  if(_bgBusy) return;
   var o=activeImage(); if(!o) return;
   var col=hexToRgb(document.getElementById('bgKeyColor').value);
   var tol=parseInt(document.getElementById('bgThresh').value,10);
@@ -2807,7 +2817,7 @@ document.getElementById('imgBgRemove').onclick=function(){
    syncImagePanel which would wipe a freshly-set status line. Stash the message and
    let syncImagePanel display it once after the re-select. */
 var _pendingBgMsg='';
-function setBgState(msg){ var el=document.getElementById('bgState'); if(el) el.textContent=msg||''; }
+function setBgState(msg){ var el=document.getElementById('bgState'); if(!el) return; el.classList.remove('is-busy'); el.textContent=msg||''; }
 function autoDetectBgColor(img){
   var el=img._originalElement||img.getElement();
   var w=el.naturalWidth||el.width, h=el.naturalHeight||el.height; if(!w||!h) return null;
@@ -2829,15 +2839,143 @@ function autoDetectBgColor(img){
 }
 function rgbToHex(c){ return '#'+[c.r,c.g,c.b].map(function(v){return ('0'+v.toString(16)).slice(-2);}).join(''); }
 document.getElementById('bgAutoRemove').onclick=function(){
+  if(_bgBusy) return;
   var o=activeImage(); if(!o){ toast('画像を選択してください'); return; }
+  runColorKeyAuto(o,'');
+};
+/* shared by the "かんたん透過" chip and by the AI fallback path */
+function runColorKeyAuto(o, prefix){
   var col=autoDetectBgColor(o);
-  if(!col){ toast('地色を判定できませんでした。手動で色を指定してください'); document.getElementById('bgAdv').classList.remove('hidden'); return; }
+  if(!col){
+    toast('地色を判定できませんでした。手動で色を指定してください');
+    document.getElementById('bgAdv').classList.remove('hidden');
+    setBgState((prefix||'')+'地色を判定できませんでした。下の「細かく調整する」で色を指定してください。');
+    return false;
+  }
   /* mirror the detected colour into the manual picker so refinement starts there */
   document.getElementById('bgKeyColor').value=rgbToHex(col);
-  _pendingBgMsg='背景を透過しました。きれいに消えない時は「細かく調整する」で範囲を強めてください。';
+  _pendingBgMsg=(prefix||'')+'背景を透過しました。きれいに消えない時は「細かく調整する」で範囲を強めてください。';
   removeColorBg(o, col, 52, 24);
+  return true;
+}
+
+/* ===== AI背景削除（BRIA プロキシ） =====================================
+   POST https://shohan.jp/api/bg/remove に画像バイナリを送ると、被写体だけを
+   残した RGBA PNG がバイナリで返る。制限は 10MB / 12回・分 / 同時3。
+   429・503・通信断などで失敗した場合は、従来の色キー方式（かんたん透過）へ
+   自動的にフォールバックし、日本語で理由を伝える。
+   ブラウザ内完結・localStorage 不使用の制約はそのまま。 */
+var BG_API='https://shohan.jp/api/bg/remove';
+var BG_MAX_SIDE=2000, BG_MAX_BYTES=9*1024*1024, BG_TIMEOUT=60000;
+var _bgBusy=false;
+function setBgBusy(on,msg){
+  _bgBusy=!!on;
+  var el=document.getElementById('bgState');
+  if(el){
+    if(on){
+      el.classList.add('is-busy');
+      el.innerHTML='<span class="bg-spin"></span><span class="bg-busy-msg"></span>';
+      el.querySelector('.bg-busy-msg').textContent=msg||'処理中です…';
+    } else { el.classList.remove('is-busy'); }
+  }
+  ['bgAiRemove','bgAutoRemove','bgUndo'].forEach(function(id){
+    var c=document.getElementById(id); if(c) c.classList.toggle('is-busy', !!on);
+  });
+}
+function canvasToBlob(cv,type,q,cb){
+  try{
+    if(cv.toBlob){ cv.toBlob(function(b){ cb(b); },type,q); return; }
+    var du=cv.toDataURL(type,q), bin=atob(du.split(',')[1]), arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    cb(new Blob([arr],{type:type}));
+  }catch(e){ cb(null); }
+}
+/* Encode the source pixels for upload: long side ≤ BG_MAX_SIDE, PNG first
+   (lossless, keeps any existing alpha); if that busts the 10MB cap fall back
+   to JPEG on white, then to a smaller JPEG. */
+function encodeForBgApi(el,cb){
+  var w=el.naturalWidth||el.width, h=el.naturalHeight||el.height;
+  if(!w||!h){ cb(null); return; }
+  function draw(side,white){
+    var sc=Math.min(1, side/Math.max(w,h));
+    var cv=document.createElement('canvas');
+    cv.width=Math.max(1,Math.round(w*sc)); cv.height=Math.max(1,Math.round(h*sc));
+    var cx=cv.getContext('2d');
+    if(white){ cx.fillStyle='#ffffff'; cx.fillRect(0,0,cv.width,cv.height); }
+    cx.drawImage(el,0,0,cv.width,cv.height);
+    return cv;
+  }
+  canvasToBlob(draw(BG_MAX_SIDE,false),'image/png',undefined,function(b){
+    if(!b){ cb(null); return; }
+    if(b.size<=BG_MAX_BYTES){ cb(b); return; }
+    canvasToBlob(draw(BG_MAX_SIDE,true),'image/jpeg',0.92,function(b2){
+      if(b2&&b2.size<=BG_MAX_BYTES){ cb(b2); return; }
+      canvasToBlob(draw(1400,true),'image/jpeg',0.86,function(b3){ cb(b3||b2||b); });
+    });
+  });
+}
+function bgApiErrorMsg(status, serverMsg){
+  if(status===429) return 'AI背景削除がこみ合っています（短い時間に使いすぎました）。1分ほどおいてからもう一度お試しください。';
+  if(status===413) return '画像のデータが大きすぎます。もう少し小さい画像でお試しください。';
+  if(status===415) return serverMsg||'この画像形式には対応していません（PNG / JPEG / WEBP をお使いください）。';
+  if(status===502||status===503||status===504) return 'AI背景削除が一時的に混み合っています。少し時間をおいてお試しください。';
+  if(status>=500) return 'AI背景削除でエラーが発生しました。少し時間をおいてお試しください。';
+  if(status===403) return 'AI背景削除はこのページからはご利用いただけません。';
+  if(status===0)   return 'AI背景削除に接続できませんでした。通信環境をご確認ください。';
+  return serverMsg||'AI背景削除に失敗しました。';
+}
+/* API failed → tell the user why, then quietly do the colour-key removal so
+   they still get a usable cut-out instead of nothing. */
+function bgFallback(o,msg){
+  setBgBusy(false);
+  toast(msg);
+  if(o && canvas.getObjects().indexOf(o)>=0 && runColorKeyAuto(o, msg+'かわりに')) return;
+  setBgState(msg);
+}
+function aiRemoveBg(o){
+  var el=o._originalElement||o.getElement();
+  setBgBusy(true,'AIが背景を切り抜いています…（数秒〜十数秒）');
+  encodeForBgApi(el,function(blob){
+    if(!blob){ bgFallback(o,'この画像は読み込めませんでした。'); return; }
+    var ctl=(window.AbortController? new AbortController() : null);
+    var timer=setTimeout(function(){ if(ctl) ctl.abort(); },BG_TIMEOUT);
+    var opt={method:'POST',mode:'cors',headers:{'Content-Type':blob.type||'image/png'},body:blob};
+    if(ctl) opt.signal=ctl.signal;
+    fetch(BG_API,opt).then(function(res){
+      if(!res.ok){
+        return res.text().then(function(txt){
+          var m=''; try{ var j=JSON.parse(txt); m=(j&&j.message)||''; }catch(e){}
+          throw {status:res.status,msg:m};
+        },function(){ throw {status:res.status,msg:''}; });
+      }
+      return res.blob();
+    }).then(function(out){
+      clearTimeout(timer);
+      if(!out||out.size<100||(out.type&&out.type.indexOf('image')!==0)) throw {status:0,msg:'画像を受け取れませんでした。'};
+      var fr=new FileReader();
+      fr.onload=function(){
+        setBgBusy(false);
+        _pendingBgMsg='AIで背景を削除しました。ふちを整えたい時は「細かく調整する」もお試しください。';
+        swapImagePixels(o, fr.result, function(ni){ if(!ni) setBgState('切り抜き結果を読み込めませんでした。'); });
+      };
+      fr.onerror=function(){ bgFallback(o,'切り抜き結果を読み込めませんでした。'); };
+      fr.readAsDataURL(out);
+    })['catch'](function(err){
+      clearTimeout(timer);
+      var msg=(err&&err.name==='AbortError')
+        ? 'AI背景削除の応答が遅いため中断しました。時間をおいてお試しください。'
+        : bgApiErrorMsg((err&&err.status)||0, err&&err.msg);
+      bgFallback(o,msg);
+    });
+  });
+}
+document.getElementById('bgAiRemove').onclick=function(){
+  if(_bgBusy) return;
+  var o=activeImage(); if(!o){ toast('画像を選択してください'); return; }
+  aiRemoveBg(o);
 };
 document.getElementById('bgUndo').onclick=function(){
+  if(_bgBusy) return;
   _pendingBgMsg='透過を取り消しました。';
   if(typeof undo==='function') undo();
   setBgState('透過を取り消しました。');
@@ -2870,19 +3008,32 @@ function removeColorBg(img,col,tol,feather){
     }
   }
   cx.putImageData(data,0,0);
-  fabric.Image.fromURL(tmp.toDataURL(),function(ni){
+  swapImagePixels(img, tmp.toDataURL());
+}
+/* Replace an image object's pixels with `url`, carrying over every transform,
+   filter, crop and clip setting. The new pixels may have a DIFFERENT natural
+   size than the old ones (the AI cut-out is sent downscaled), so the scale is
+   re-derived from the displayed size instead of being copied verbatim — the
+   object keeps exactly the same footprint on the canvas. */
+function swapImagePixels(img, url, done){
+  var dispW=img.getScaledWidth(), dispH=img.getScaledHeight();
+  fabric.Image.fromURL(url,function(ni){
+    if(!ni||!ni.width){ if(done) done(null); return; }
     ni.set({left:img.left,top:img.top,scaleX:img.scaleX,scaleY:img.scaleY,angle:img.angle,
       originX:img.originX,originY:img.originY,opacity:img.opacity,flipX:img.flipX,flipY:img.flipY,name:img.name,
       clipShape:img.clipShape,cornerRad:img.cornerRad,filterKey:img.filterKey,
       adj:img.adj?JSON.parse(JSON.stringify(img.adj)):defaultAdj(),
       cropTrim:img.cropTrim?JSON.parse(JSON.stringify(img.cropTrim)):{t:0,b:0,l:0,r:0}});
     applyCrop(ni);
+    if(dispW>2 && dispH>2 && ni.width && ni.height){ ni.set({scaleX:dispW/ni.width, scaleY:dispH/ni.height}); }
     rebuildFilters(ni);
     rebuildClip(ni);
     var idx=canvas.getObjects().indexOf(img);
     canvas.remove(img); canvas.add(ni); if(idx>0) canvas.moveTo(ni,idx); canvas.sendToBack(guide);
     canvas.setActiveObject(ni);
+    ni.setCoords();
     canvas.requestRenderAll(); commitHistory();
+    if(done) done(ni);
   });
 }
 /* read the four corner colours of an image and offer them as quick picks */
@@ -4343,6 +4494,7 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   undo:undo, redo:redo, switchFace:switchFace,
   switchProduct:switchProduct, PRODUCTS:PRODUCTS,
   rebuildFilters:rebuildFilters, applyCrop:applyCrop, removeColorBg:removeColorBg, activeImage:activeImage,
+  aiRemoveBg:aiRemoveBg, swapImagePixels:swapImagePixels, BG_API:BG_API,
   exportDesign:exportDesign, importDesign:importDesign, commitHistory:commitHistory,
   registerTemplates:registerTemplates, applyTemplate:applyTemplate, TEMPLATES:TEMPLATES,
   generateProofBundle:generateProofBundle, proofGeometry:proofGeometry, emitProof:emitProof, PRINT:PRINT,
