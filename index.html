@@ -46,8 +46,8 @@
         '--hot':'#E0382C','--data':'#2563EB',
         '--brand-soft':'#FDECEA','--shadow-cta':'0 12px 28px -10px rgba(224,56,44,0.34)'
       },
-      labels:{ cta:'見積もり依頼', save:'保存/読込', estTitle:'このデザインで見積もり',
-        primary:'注文へ進む', unit:'枚', quoteBody:'本番では、このデザインデータ（前面・背面の画像とメタ情報）が SeeQ のお問い合わせ／見積フォームや LINE に連携されます。' }
+      labels:{ cta:'見積もり依頼', save:'保存', estTitle:'このデザインで見積もり',
+        primary:'注文へ進む', unit:'枚', quoteBody:'この内容でお見積もりをご案内します。担当者が確認のうえ、あらためてご連絡いたします。' }
     },
     mori: {
       id:'mori', name:'森工業', en:'MORIKOGYO', tagline:'サイン・金属プレート作成ツール',
@@ -58,8 +58,8 @@
         '--hot':'#C9621C','--data':'#2563EB',
         '--brand-soft':'#FBEEDE','--shadow-cta':'0 12px 28px -10px rgba(201,98,28,0.34)'
       },
-      labels:{ cta:'見積り依頼', save:'データ入稿', estTitle:'この仕様で見積り依頼',
-        primary:'見積りへ進む', unit:'枚', quoteBody:'本番では、この仕様データ（デザイン画像・素材・サイズ・メタ情報）が 森工業 の見積り／お問い合わせフォームに連携されます。' }
+      labels:{ cta:'見積り依頼', save:'保存', estTitle:'この仕様で見積り依頼',
+        primary:'見積りへ進む', unit:'枚', quoteBody:'この仕様でお見積りをご案内します。担当者が確認のうえ、あらためてご連絡いたします。' }
     }
   };
   var ORDER=['seeq','mori'];
@@ -427,6 +427,19 @@
     z-index:120;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:opacity .2s;opacity:0;pointer-events:none;
   }
   .toast.show{opacity:1;}
+  /* 取り消し付きトースト（削除など、確認ダイアログを出さない操作の受け皿） */
+  .toast.has-act{pointer-events:auto;display:flex;align-items:center;gap:14px;}
+  .toast .t-act{border:0;background:transparent;color:#8fd8ff;font-family:inherit;font-size:13px;
+    font-weight:800;cursor:pointer;padding:6px 2px;min-height:32px;}
+  .label-mb{display:none;}          /* スマホだけに出る短縮ラベル（P0-4） */
+  /* 上級者向けの折りたたみ（デザインキー等） */
+  .adv-fold{margin-top:14px;border-top:1px solid var(--line);padding-top:10px;}
+  .adv-fold>summary{cursor:pointer;font-size:12px;font-weight:800;color:var(--sub);
+    list-style:none;padding:6px 0;-webkit-tap-highlight-color:transparent;}
+  .adv-fold>summary::-webkit-details-marker{display:none;}
+  .adv-fold>summary::before{content:'▸ ';}
+  .adv-fold[open]>summary::before{content:'▾ ';}
+  .save-lead{font-size:12.5px;line-height:1.7;color:var(--sub);margin:0 0 12px;}
 
   /* The bottom sheet is NON-MODAL (UX research: MD3 / NN-g / iOS HIG advise
      against an always-on scrim). The canvas stays fully interactive while the
@@ -443,10 +456,20 @@
     .brand small{display:none;}
     .brand .logo{height:24px;}
     .brand>span{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .head-actions{gap:5px;}
+    .head-actions{gap:3px;}
     .head-actions .label-pc{display:none;}
-    .btn{padding:9px 11px;}
-    /* ブランドトグルはモバイルでも視認できるよう残しつつ圧縮 */
+    .btn{padding:9px 10px;}
+    /* P0-4：スマホでも主要CTAが何のボタンか分かるように短縮ラベルを出す。
+       アイコンとの併記だとヘッダーが1行増えてキャンバスを圧迫するので、
+       スマホではアイコンを畳んで文字だけにする（高さは従来どおり）。 */
+    .head-actions .label-mb{display:inline;font-size:11.5px;font-weight:800;}
+    header .btn{height:44px;padding:9px 12px;}
+    header .btn svg{display:none;}
+    .viewtoggle .vt svg{display:none;}
+    /* P0-4：タップ目標44px（Undo/Redo・ズーム・選択ツールバー・各種閉じる） */
+    header .icobtn{width:44px;height:44px;}
+    .zoombar button{width:44px;height:44px;}
+    .zoombar .zlabel{min-width:52px;}
     .brandtoggle{padding:2px;}
     .brandtoggle .bt{padding:6px 9px;font-size:11px;}
     .brand-logo-text b{font-size:15px;}
@@ -476,7 +499,7 @@
       touch-action:none;user-select:none;-webkit-user-select:none;}
     .sheet-grip{width:40px;height:4px;border-radius:3px;background:#cfd9dc;margin:8px auto 4px;cursor:grab;}
     /* explicit close so users aren't forced to discover the swipe gesture */
-    .sheet-close{display:none;position:absolute;top:5px;right:8px;z-index:2;width:30px;height:30px;
+    .sheet-close{display:none;position:absolute;top:2px;right:4px;z-index:2;width:44px;height:44px;
       border:0;background:#eef3f4;border-radius:50%;align-items:center;justify-content:center;
       color:var(--ink-3,#5a6b72);cursor:pointer;-webkit-tap-highlight-color:transparent;}
     .sheet-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;}
@@ -504,7 +527,7 @@
        never steals the touch (req 4c/6a/6b). Compact, single row. */
     .objbar{top:0;left:0;bottom:auto;transform:none;padding:3px;gap:1px;
       flex-wrap:nowrap;max-width:96vw;transition:opacity .12s ease;}
-    .obj-act{min-width:0;width:40px;padding:6px 3px;}
+    .obj-act{min-width:0;width:44px;min-height:44px;padding:8px 3px;}
     .obj-act svg{width:18px;height:18px;}
     .obj-act small{font-size:8px;margin-top:1px;}
     .objbar.manip{opacity:0;pointer-events:none;}   /* hidden during drag/scale/rotate */
@@ -533,7 +556,10 @@
     .facetab{padding:12px;font-size:14px;}
     .preset-btn{padding:13px 8px;font-size:13px;}
     .layer{padding:11px 10px;}
-    .layer button{width:34px;height:34px;}
+    .layer button{width:40px;height:40px;}
+    .fp-close{width:44px;height:44px;font-size:20px;}
+    .die-seg button{padding:11px 13px;}
+    .die-panel .btn-xs{padding:11px 13px;}
     .layer button svg{width:18px;height:18px;}
 
     /* prevent page scroll/zoom while manipulating the canvas */
@@ -566,6 +592,10 @@
   .exp-menu button small{margin-left:auto;color:var(--sub);font-weight:500;font-size:10.5px;}
   .exp-menu .exp-ico{width:15px;height:15px;flex:0 0 auto;color:var(--accent,#E60012);}
   .exp-sep{height:1px;background:var(--line);margin:5px 4px;}
+  /* P0-7：既定は「画像を保存」1本。専門的な形式は畳んでおく */
+  .exp-menu .exp-more{color:var(--sub);font-size:12px;font-weight:700;}
+  .exp-extra.hidden{display:none;}
+  .exp-extra{border-top:1px dashed var(--line);margin-top:4px;padding-top:4px;}
 
   /* ===== Proof (入稿データ) modal ===== */
   .modal.modal-wide{max-width:560px;}
@@ -731,22 +761,25 @@
       <button class="vt" data-view="3d" type="button" role="tab"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg><span class="vt-label">3D</span></button>
     </div>
     <span class="hsep"></span>
-    <button class="icobtn" id="btnUndo" title="元に戻す (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5v0a5 5 0 01-5 5H9"/></svg></button>
-    <button class="icobtn" id="btnRedo" title="やり直す (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 00-5 5v0a5 5 0 005 5h6"/></svg></button>
+    <button class="icobtn" id="btnUndo" title="ひとつ戻る (Ctrl+Z)" aria-label="ひとつ戻る"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5v0a5 5 0 01-5 5H9"/></svg></button>
+    <button class="icobtn" id="btnRedo" title="やり直す (Ctrl+Shift+Z)" aria-label="やり直す"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 00-5 5v0a5 5 0 005 5h6"/></svg></button>
     <span class="hsep"></span>
-    <button class="btn btn-ghost" id="btnSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="label-pc">保存/読込</span></button>
+    <button class="btn btn-ghost" id="btnSave" title="デザインを保存する" aria-label="デザインを保存する"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="label-pc">保存</span><span class="label-mb">保存</span></button>
     <div class="exp-wrap">
-      <button class="btn btn-ghost" id="btnExport" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span class="label-pc">書き出し</span></button>
+      <button class="btn btn-ghost" id="btnExport" aria-haspopup="true" aria-expanded="false" title="画像を保存する" aria-label="画像を保存する"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span class="label-pc">画像を保存</span><span class="label-mb">画像</span></button>
       <div class="exp-menu" id="expMenu" role="menu">
-        <button data-fmt="png" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>PNG画像<small>透過</small></button>
-        <button data-fmt="jpg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>JPG画像<small>白背景</small></button>
-        <button data-fmt="svg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M12 11v10M4 7l8 4 8-4"/></svg>SVGベクター<small>編集可</small></button>
-        <button data-fmt="pdf" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M14 3v5h5"/></svg>PDF<small>印刷向け</small></button>
-        <div class="exp-sep"></div>
-        <button data-fmt="proof" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>入稿データ<small>印刷工程用</small></button>
+        <button data-fmt="png" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>画像を保存<small>PNG・背景なし</small></button>
+        <button type="button" class="exp-more" id="expMore" aria-expanded="false">その他の形式 ▾</button>
+        <div class="exp-extra hidden" id="expExtra">
+          <button data-fmt="jpg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>JPG画像<small>白い背景つき</small></button>
+          <button data-fmt="svg" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M12 11v10M4 7l8 4 8-4"/></svg>SVG<small>拡大しても粗くならない</small></button>
+          <button data-fmt="pdf" role="menuitem"><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M14 3v5h5"/></svg>PDF<small>印刷向け</small></button>
+        </div>
+        <div class="exp-sep" id="expProofSep" hidden></div>
+        <button data-fmt="proof" role="menuitem" id="expProof" hidden><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>入稿データ<small>運用者向け</small></button>
       </div>
     </div>
-    <button class="btn btn-primary" id="btnQuote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg><span class="label-pc">見積もり依頼</span></button>
+    <button class="btn btn-primary" id="btnQuote" title="見積もりを依頼する" aria-label="見積もりを依頼する"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg><span class="label-pc">見積もり依頼</span><span class="label-mb">見積</span></button>
   </div>
 </header>
 
@@ -842,10 +875,11 @@
         </div>
       </div>
       <div class="field">
-        <label class="fld">文字サイズ</label>
+        <label class="fld">文字サイズ <span id="fontSizeVal" class="mini">40</span></label>
         <div class="row">
-          <button class="btn btn-ghost" id="fontSmaller">－</button>
-          <button class="btn btn-ghost" id="fontBigger">＋</button>
+          <button class="btn btn-ghost" id="fontSmaller" title="小さく" aria-label="文字を小さく">－</button>
+          <input type="range" id="fontSizeR" min="8" max="200" step="1" value="40" aria-label="文字サイズ">
+          <button class="btn btn-ghost" id="fontBigger" title="大きく" aria-label="文字を大きく">＋</button>
         </div>
       </div>
       <div class="field">
@@ -939,7 +973,7 @@
 
         <!-- 湾曲 -->
         <div class="fxbody hidden" data-fxbody="curve">
-          <div class="field"><label class="fld">湾曲・アーチ <span id="curveVal" class="mini">0</span></label><input type="range" id="curveR" min="-100" max="100" step="1" value="0"></div>
+          <div class="field"><label class="fld">湾曲・アーチ <span id="curveVal" class="mini">0</span> <span class="mini" style="color:var(--sub);font-weight:400">（縦書きでは使えません）</span></label><input type="range" id="curveR" min="-100" max="100" step="1" value="0"></div>
         </div>
 
         <!-- 3D風 -->
@@ -968,7 +1002,7 @@
       </button>
       <div class="ai-grid hidden" id="aiGrid"></div>
       <button class="btn btn-primary btn-block mt-s hidden" id="aiImport" disabled>＋ キャンバスに取り込む</button>
-      <p class="ai-note mini hidden" id="aiNote">※生成画像の商用利用可否はプロンプト内容により異なります。最終データは入稿前にご確認ください。<br>※現段階はプレースホルダ生成です（本番はGemini等のAIに接続）。</p>
+      <p class="ai-note mini hidden" id="aiNote">※生成した図案の商用利用可否は内容により異なります。仕上がりデータは印刷前にご確認ください。</p>
     </div>
 
     <div class="card" data-tab="image">
@@ -1092,7 +1126,7 @@
         <div class="chiprow">
           <span class="chip chip-ai" id="bgAiRemove" title="AIが被写体を判定して背景だけを消します"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg>AIで背景を削除</span>
           <span class="chip" id="bgAutoRemove" title="地色（単色）を自動で見つけて透過します"><svg viewBox="0 0 24 24" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;stroke:currentColor;fill:none;stroke-width:2"><path d="M3 3l18 18M9 5h6a4 4 0 014 4v6M5 9v6a4 4 0 004 4h6"/></svg>かんたん透過</span>
-          <span class="chip" id="bgUndo" title="直前の透過を取り消します">↺ やり直す</span>
+          <span class="chip" id="bgUndo" title="直前の透過を取り消します">↺ ひとつ戻る</span>
         </div>
         <p class="bg-state" id="bgState"></p>
         <button type="button" class="bg-adv-toggle" id="bgAdvToggle">細かく調整する ▾</button>
@@ -1119,11 +1153,11 @@
         </div>
       </div>
       <div class="field">
-        <label class="fld">この画像から入稿データを作る</label>
-        <p class="bg-help">背景を消した画像から、<b>カットライン</b>付きの入稿データ（Illustrator用SVG・mm実寸）を作ります。アクキーは<b>白版</b>と<b>丸穴</b>も一緒に作れます。</p>
+        <label class="fld">この画像でグッズを作る</label>
+        <p class="bg-help">背景を消した画像から、切り抜き線つきの印刷用データ（Illustrator用SVG・mm実寸）を作ります。アクリルキーホルダーは、裏の白い下地と金具用の丸穴も一緒に作れます。</p>
         <div class="chiprow">
-          <span class="chip chip-primary" id="btnMakeSticker"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9h-9z"/><path d="M12 3v9h9"/></svg>ステッカー用データ作成</span>
-          <span class="chip chip-primary" id="btnMakeAcryl"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="7" r="1.6"/></svg>アクキー用データ作成</span>
+          <span class="chip chip-primary" id="btnMakeSticker"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9h-9z"/><path d="M12 3v9h9"/></svg>ステッカーを作る</span>
+          <span class="chip chip-primary" id="btnMakeAcryl"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="7" r="1.6"/></svg>アクリルキーホルダーを作る</span>
         </div>
         <p class="bg-state" id="dieLaunchState"></p>
       </div>
@@ -1159,7 +1193,7 @@
 
   <section class="stage" id="stage">
     <div class="canvas-wrap"><canvas id="c"></canvas></div>
-    <div class="stage-hint" id="stageHint">プリント面：前面　／　破線の枠内がプリント可能エリアの目安です　·　Ctrl／Alt＋ホイールで拡大縮小</div>
+    <div class="stage-hint" id="stageHint">プリント面：おもて　／　破線の枠内がプリント可能エリアの目安です　·　Ctrl／Alt＋ホイールで拡大縮小</div>
     <div class="zoombar">
       <button id="zOut" title="縮小">－</button>
       <div class="zlabel" id="zLabel">100%</div>
@@ -1195,14 +1229,14 @@
         <div class="die-drop" id="dieDrop">
           <div>画像をここにドロップ、または</div>
           <button class="btn btn-primary btn-xs" id="diePick" type="button">画像を選ぶ</button>
-          <small>PNG / JPG（透過PNGは背景削除をスキップして即カットライン生成）</small>
+          <small>PNG / JPG（背景が透明な画像はそのまま切り抜き線を作ります）</small>
         </div>
       </div>
       <input type="file" id="dieFile" accept="image/png,image/jpeg,image/webp" hidden>
     </div>
     <div class="s3d-bar">
       <button class="btn btn-ghost btn-xs" id="dieBack" type="button">← 編集に戻る</button>
-      <button class="btn btn-primary btn-xs" id="dieExport" type="button">入稿SVGを書き出し</button>
+      <button class="btn btn-primary btn-xs" id="dieExport" type="button">印刷用データを保存</button>
     </div>
     <div class="die-panel" id="diePanel">
       <div class="die-grp"><span class="lbl">背景削除</span>
@@ -1285,19 +1319,24 @@
 <!-- Save/Load modal -->
 <div class="modal-bg" id="saveModal">
   <div class="modal">
-    <h2>デザインの保存 / 読込</h2>
-    <p>下のデザインキー（テキスト）をコピーして保存しておくと、後で貼り付けて同じデザインを復元できます。JSONファイルのダウンロード／読込も可能です。<br><span class="mini">※現段階はフロント内のみ。会員保存・サーバー連携は別途設計予定です。</span></p>
-    <textarea id="designKey" placeholder="ここにデザインキーが表示されます / 復元するキーを貼り付け"></textarea>
-    <div class="row mt-m">
-      <button class="btn btn-ghost" id="copyKey">キーをコピー</button>
-      <button class="btn btn-ghost" id="dlJson">JSONダウンロード</button>
-    </div>
-    <div class="row mt-s">
-      <button class="btn btn-ghost" id="loadFileBtn">ファイルから読込</button>
-      <button class="btn btn-primary" id="applyKey">キーから復元</button>
-    </div>
+    <h2>デザインを保存する</h2>
+    <p class="save-lead" id="saveLead">作ったデザインはページを閉じると消えてしまいます。保存しておくと、あとで続きから編集できます。</p>
+    <button class="btn btn-primary btn-block" id="btnWpSave" hidden>この内容で保存する（会員）</button>
+    <p class="save-lead mt-s" id="saveGuestNote" hidden>会員ログインすると、そのまま保存して後から呼び出せます。ログインしない場合は、下の「保存用のことば」を控えてください。</p>
+    <details class="adv-fold" id="keyFold">
+      <summary>保存用のことば（上級者向け・ログインなしで使えます）</summary>
+      <p class="save-lead mt-s">下のテキストをすべてコピーしてメモ帳などに貼り付けて保存してください。次に開いたとき、ここに貼り付けると同じデザインに戻せます。</p>
+      <textarea id="designKey" placeholder="ここに保存用のことばが表示されます / 戻したいことばを貼り付け"></textarea>
+      <div class="row mt-m">
+        <button class="btn btn-ghost" id="copyKey">コピーする</button>
+        <button class="btn btn-ghost" id="dlJson">ファイルに保存</button>
+      </div>
+      <div class="row mt-s">
+        <button class="btn btn-ghost" id="loadFileBtn">ファイルから戻す</button>
+        <button class="btn btn-primary" id="applyKey">ことばから戻す</button>
+      </div>
+    </details>
     <input type="file" id="jsonInput" accept="application/json,.json" hidden>
-    <button class="btn btn-primary btn-block mt-m" id="btnWpSave" hidden>会員保存（WordPress）</button>
     <button class="btn btn-ghost btn-block mt-s" id="btnSaveTpl" hidden>テンプレートとして登録（運用者）</button>
     <button class="btn btn-ghost btn-block mt-l" id="saveClose">閉じる</button>
   </div>
@@ -1317,13 +1356,14 @@
         <button class="btn btn-ghost btn-xs" id="proofPreviewDl">プレビューを保存</button>
       </div>
     </div>
-    <label class="fld">入稿メタ情報（JSON）</label>
-    <textarea id="proofMeta" readonly placeholder="メタ情報"></textarea>
-    <div class="row mt-s">
-      <button class="btn btn-ghost" id="proofMetaCopy">メタをコピー</button>
-      <button class="btn btn-ghost" id="proofMetaDl">メタJSON保存</button>
-    </div>
-    <p class="mini note">「見積/注文」連携時は、この入稿データ一式を WordPress 側へ送信します（postMessage <code>seeq:proof</code>／要件書 第7章）。</p>
+    <details class="adv-fold">
+      <summary>入稿メタ情報（JSON）</summary>
+      <textarea id="proofMeta" readonly placeholder="メタ情報"></textarea>
+      <div class="row mt-s">
+        <button class="btn btn-ghost" id="proofMetaCopy">メタをコピー</button>
+        <button class="btn btn-ghost" id="proofMetaDl">メタJSON保存</button>
+      </div>
+    </details>
     <button class="btn btn-ghost btn-block mt-l" id="proofClose">閉じる</button>
   </div>
 </div>
@@ -1351,8 +1391,8 @@
 <div class="modal-bg" id="modal">
   <div class="modal center">
     <div class="ic"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
-    <h2 id="quoteTitle">見積もり依頼を受け付けます</h2>
-    <p id="quoteBody">※これはプロトタイプのデモ動作です。<br>本番では、このデザインデータ（前面・背面の画像とメタ情報）が SeeQ のお問い合わせ／見積フォームや LINE に連携されます。</p>
+    <h2 id="quoteTitle">見積もりのご依頼を受け付けます</h2>
+    <p id="quoteBody">この内容でお見積もりをご案内します。担当者が確認のうえ、あらためてご連絡いたします。</p>
     <div class="quote-summary" id="quoteSummary" hidden>
       <img id="quoteThumb" alt="デザインプレビュー">
       <ul class="quote-spec" id="quoteSpec"></ul>
@@ -1700,7 +1740,7 @@ function diecutHintSVG(label){
     +'<circle cx="240" cy="250" r="34" fill="none" stroke="#9aa6b2" stroke-width="4"/>'
     +'<path d="M240 236v28M226 250h28" stroke="#9aa6b2" stroke-width="4" stroke-linecap="round"/>'
     +'<text x="240" y="322" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="700" fill="#5b6672">'+(label||'入稿データに変換')+'</text>'
-    +'<text x="240" y="348" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="12.5" fill="#8a96a2">「変換」を押して画像から入稿データを作成</text>'
+    +'<text x="240" y="348" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="12.5" fill="#8a96a2">「変換」を押して画像からグッズ用データを作成</text>'
     +'</svg>';
 }
 function makeDiecutProduct(id,label,en,tplId){
@@ -1715,7 +1755,7 @@ var PRODUCTS = {
   tshirt: {
     label:'Tシャツ',
     faces:[
-      { id:'front', label:'前面',
+      { id:'front', label:'おもて',
         svg:function(hex,dark){ return tshirtSVG(hex,dark,false); },
         guide:{x:140,y:150,w:200,h:250},
         presets:[
@@ -1724,7 +1764,7 @@ var PRODUCTS = {
           {label:'右胸ワンポイント', x:292, y:178, w:72},
           {label:'中央大', x:240, y:300, w:300}
         ] },
-      { id:'back', label:'背面',
+      { id:'back', label:'うら',
         svg:function(hex,dark){ return tshirtSVG(hex,dark,true); },
         guide:{x:120,y:150,w:240,h:300},
         presets:[
@@ -1738,7 +1778,7 @@ var PRODUCTS = {
   parka: {
     label:'パーカー',
     faces:[
-      { id:'front', label:'前面',
+      { id:'front', label:'おもて',
         svg:function(hex,dark){ return parkaSVG(hex,dark,false); },
         guide:{x:152,y:180,w:176,h:170},   /* chest-to-belly, avoiding the pocket */
         presets:[
@@ -1747,7 +1787,7 @@ var PRODUCTS = {
           {label:'右胸ワンポイント', x:284, y:200, w:66},
           {label:'腹中央', x:240, y:320, w:200}
         ] },
-      { id:'back', label:'背面',
+      { id:'back', label:'うら',
         svg:function(hex,dark){ return parkaSVG(hex,dark,true); },
         guide:{x:128,y:170,w:224,h:300},
         presets:[
@@ -1762,7 +1802,7 @@ var PRODUCTS = {
     label:'トートバッグ',
     colors: TOTE_COLORS,
     faces:[
-      { id:'front', label:'表面',
+      { id:'front', label:'おもて',
         svg:function(hex,dark){ return toteSVG(hex,dark,false); },
         guide:{x:140,y:210,w:200,h:240},
         presets:[
@@ -1771,7 +1811,7 @@ var PRODUCTS = {
           {label:'ワンポイント', x:240, y:280, w:90},
           {label:'大きく', x:240, y:340, w:240}
         ] },
-      { id:'back', label:'裏面',
+      { id:'back', label:'うら',
         svg:function(hex,dark){ return toteSVG(hex,dark,true); },
         guide:{x:140,y:210,w:200,h:240},
         presets:[
@@ -1973,7 +2013,26 @@ function resetZoom(){ canvas.setViewportTransform([1,0,0,1,0,0]); zoomLevel=1; d
 /* =====================================================================
    History (Undo / Redo) — snapshots both faces
    ===================================================================== */
-var undoStack=[], redoStack=[], histGuard=false, histTimer=null, MAX_HIST=60;
+var undoStack=[], redoStack=[], histGuard=false, histTimer=null, MAX_HIST=30;
+
+/* P0-10 履歴の軽量化：スナップショットは全面ぶんのJSONなので、画像を貼るほど
+   1世代が数MB級に膨らむ（スマホでUndoが重くなる主因）。画像の dataURL は
+   プール（参照テーブル）に1本だけ持ち、スナップショット内は '@img:N' の
+   トークンに置き換える。faceState 本体・デザインキー書き出しは無加工のまま。 */
+var _imgPool=[], _imgPoolIdx={};
+function internSrc(v){
+  if(typeof v!=='string' || v.length<512) return v;
+  var k=_imgPoolIdx[v];
+  if(k===undefined){ k=_imgPool.length; _imgPool.push(v); _imgPoolIdx[v]=k; }
+  return '@img:'+k;
+}
+function expandSrc(v){
+  if(typeof v!=='string' || v.lastIndexOf('@img:',0)!==0) return v;
+  var i=+v.slice(5);
+  return (_imgPool[i]!=null) ? _imgPool[i] : v;
+}
+function histReplacer(k,v){ return (k==='src'||k==='origSrc') ? internSrc(v) : v; }
+function histReviver(k,v){ return (k==='src'||k==='origSrc') ? expandSrc(v) : v; }
 
 function dumpFace(){
   var arr=[];
@@ -2021,11 +2080,11 @@ function snapshot(){
   return JSON.stringify({
     product:currentProduct, face:currentFace, color:currentColor.hex,
     state:faceState
-  });
+  }, histReplacer);
 }
 
 function restoreSnapshot(json, cb){
-  var st = JSON.parse(json);
+  var st = JSON.parse(json, histReviver);
   faceState = st.state || {};
   ensureStateBuckets();
   currentProduct = (st.product && PRODUCTS[st.product]) ? st.product : 'tshirt';
@@ -2607,8 +2666,24 @@ document.getElementById('lineHR').oninput=function(){ var o=activeText(); docume
 document.getElementById('lineHR').onchange=commitHistory;
 document.getElementById('charSR').oninput=function(){ var o=activeText(); document.getElementById('charSVal').textContent=this.value; if(o){o.set('charSpacing',parseInt(this.value,10)); if(o.curve)applyCurve(o); canvas.requestRenderAll();} };
 document.getElementById('charSR').onchange=commitHistory;
-document.getElementById('fontBigger').onclick=function(){ var o=activeText(); if(o){o.set('fontSize',o.fontSize*1.12); if(o.fx&&o.fx.type==='gradient')applyTextFx(o); else if(o.curve)applyCurve(o); canvas.requestRenderAll(); commitHistory();} };
-document.getElementById('fontSmaller').onclick=function(){ var o=activeText(); if(o){o.set('fontSize',Math.max(6,o.fontSize/1.12)); if(o.fx&&o.fx.type==='gradient')applyTextFx(o); else if(o.curve)applyCurve(o); canvas.requestRenderAll(); commitHistory();} };
+/* 文字サイズ：－/＋に加えて数値表示とスライダー（P0-8）。
+   内部値はキャンバス座標なので、表示はスライダーと同じ生の数値で統一する。 */
+function applyFontSize(o, px){
+  o.set('fontSize', Math.max(8, Math.min(200, Math.round(px))));
+  if(o.fx&&o.fx.type==='gradient') applyTextFx(o); else if(o.curve) applyCurve(o);
+  canvas.requestRenderAll(); syncFontSizeUI(o);
+}
+function syncFontSizeUI(o){
+  o=o||activeText(); if(!o) return;
+  var r=document.getElementById('fontSizeR'), v=document.getElementById('fontSizeVal');
+  var n=Math.round(o.fontSize);
+  if(r) r.value=Math.max(8,Math.min(200,n));
+  if(v) v.textContent=n;
+}
+document.getElementById('fontBigger').onclick=function(){ var o=activeText(); if(o){ applyFontSize(o,o.fontSize*1.12); commitHistory(); } };
+document.getElementById('fontSmaller').onclick=function(){ var o=activeText(); if(o){ applyFontSize(o,o.fontSize/1.12); commitHistory(); } };
+document.getElementById('fontSizeR').oninput=function(){ var o=activeText(); if(o) applyFontSize(o,+this.value); else document.getElementById('fontSizeVal').textContent=this.value; };
+document.getElementById('fontSizeR').onchange=commitHistory;
 
 /* =====================================================================
    Effects panel wiring
@@ -2747,6 +2822,7 @@ document.getElementById('dirSeg').addEventListener('click',function(e){
 
 function syncTextPanel(){
   var o=activeText(); if(!o) return;
+  syncFontSizeUI(o);
   fontSelect.value=o.fontFamily; fontBtnName.textContent=fontLabelByCss(o.fontFamily);
   if(typeof o.fill==='string') document.getElementById('textFill').value=(o.fill[0]==='#'?o.fill.slice(0,7):'#222222');
   if(typeof o.stroke==='string'&&o.stroke[0]==='#') document.getElementById('textStroke').value=o.stroke.slice(0,7);
@@ -3121,6 +3197,7 @@ function aiRemoveBg(o){
       var fr=new FileReader();
       fr.onload=function(){
         setBgBusy(false);
+        track('bg:ai_ok');
         _pendingBgMsg='AIで背景を削除しました。ふちを整えたい時は「細かく調整する」もお試しください。';
         swapImagePixels(o, fr.result, function(ni){ if(!ni) setBgState('切り抜き結果を読み込めませんでした。'); });
       };
@@ -3160,9 +3237,10 @@ function launchDiecut(tplId,label){
   var url=imageToDataURL(o);
   if(!url){ toast('この画像は変換できません'); return; }
   var st=document.getElementById('dieLaunchState');
-  if(st) st.textContent=label+'の入稿データを準備しています…';
+  if(st) st.textContent=label+'のデータを準備しています…';
+  track('diecut:open',{template:tplId});
   window.SEEQ_DIECUT.openWith(tplId,url).then(function(){
-    if(st) st.textContent=label+'の画面を開きました。フチ・角丸・サイズを整えて「入稿SVGを書き出し」を押してください。';
+    if(st) st.textContent=label+'の画面を開きました。フチ・角丸・サイズを整えて「印刷用データを保存」を押してください。';
   })['catch'](function(){
     if(st) st.textContent='';
     toast('画像を読み込めませんでした');
@@ -3170,6 +3248,16 @@ function launchDiecut(tplId,label){
 }
 document.getElementById('btnMakeSticker').onclick=function(){ launchDiecut('sticker','ステッカー'); };
 document.getElementById('btnMakeAcryl').onclick=function(){ launchDiecut('acryl','アクリルキーホルダー'); };
+/* P0-6 用語：縦書きと湾曲は同時に使えない仕様なので、その場で理由を伝える */
+(function(){
+  var seg=document.getElementById('dirSeg');
+  if(!seg) return;
+  seg.addEventListener('click', function(e){
+    var b=e.target.closest('[data-dir]'); if(!b) return;
+    var o=(typeof activeText==='function')?activeText():null;
+    if(b.dataset.dir==='v' && o && o.curve) toast('縦書きでは湾曲（アーチ）は使えないため、湾曲を解除しました');
+  });
+})();
 document.getElementById('bgUndo').onclick=function(){
   if(_bgBusy) return;
   _pendingBgMsg='透過を取り消しました。';
@@ -3390,9 +3478,12 @@ function duplicateActive(){
 }
 function deleteActive(){
   var o=canvas.getActiveObject(); if(!o) return;
+  var n=(o.type==='activeSelection') ? o.getObjects().length : 1;
   if(o.type==='activeSelection'){ o.forEachObject(function(x){canvas.remove(x);}); }
   else canvas.remove(o);
   canvas.discardActiveObject(); canvas.requestRenderAll(); refreshBars(); renderLayers(); commitHistory();
+  /* 確認ダイアログの代わりに、ワンタップで戻せるトーストを出す（P0-5） */
+  toast(n>1?(n+'個を削除しました'):'削除しました', {action:'元に戻す', onAction:function(){ undo(); }});
 }
 function toggleGroup(){
   var o=canvas.getActiveObject(); if(!o) return;
@@ -4033,7 +4124,7 @@ var btnExport=document.getElementById('btnExport'), expMenu=document.getElementB
 btnExport.onclick=function(e){ e.stopPropagation(); var open=expMenu.classList.toggle('show'); btnExport.setAttribute('aria-expanded', open?'true':'false'); };
 expMenu.addEventListener('click', function(e){ var b=e.target.closest('button[data-fmt]'); if(!b) return;
   expMenu.classList.remove('show'); btnExport.setAttribute('aria-expanded','false');
-  var fn=EXPORTERS[b.dataset.fmt]; if(fn) fn();
+  var fn=EXPORTERS[b.dataset.fmt]; if(fn){ track('export',{format:b.dataset.fmt}); fn(); }
 });
 document.addEventListener('click', function(e){ if(!e.target.closest('.exp-wrap')){ expMenu.classList.remove('show'); btnExport.setAttribute('aria-expanded','false'); } });
 
@@ -4044,6 +4135,7 @@ var saveModal=document.getElementById('saveModal');
 document.getElementById('btnSave').onclick=function(){
   document.getElementById('designKey').value=exportDesign();
   saveModal.classList.add('show');
+  track('save:open');
 };
 document.getElementById('saveClose').onclick=function(){ saveModal.classList.remove('show'); };
 saveModal.onclick=function(e){ if(e.target===saveModal) saveModal.classList.remove('show'); };
@@ -4051,10 +4143,14 @@ function exportDesign(){
   saveCurrentFace();
   return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState});
 }
-function importDesign(json){
+/* opts.confirm=true のときは、いま編集中のデザインが消えることを必ず確認する。
+   テンプレート適用にだけ確認があって、より危険な全置換に無かった非対称の解消（P0-5）。 */
+function importDesign(json, opts){
   var st;
-  try{ st=JSON.parse(json); }catch(e){ toast('デザインキーの形式が正しくありません'); return; }
+  try{ st=JSON.parse(json); }catch(e){ toast('保存用のことばの形式が正しくないようです'); return; }
   if(!st || !st.state){ toast('読み込めるデータがありません'); return; }
+  if(opts && opts.confirm && hasAnyDesign()
+     && !window.confirm('いま編集中のデザインを、読み込んだ内容に置き換えます。よろしいですか？')) return;
   histGuard=true;
   faceState = st.state || {};
   ensureStateBuckets();
@@ -4068,13 +4164,13 @@ function importDesign(json){
   saveModal.classList.remove('show');
 }
 document.getElementById('copyKey').onclick=function(){ var t=document.getElementById('designKey'); t.select(); try{document.execCommand('copy');toast('コピーしました');}catch(e){} };
-document.getElementById('applyKey').onclick=function(){ importDesign(document.getElementById('designKey').value.trim()); };
+document.getElementById('applyKey').onclick=function(){ importDesign(document.getElementById('designKey').value.trim(), {confirm:true}); };
 document.getElementById('dlJson').onclick=function(){
   var blob=new Blob([exportDesign()],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='seeq-design.json'; a.click();
 };
 document.getElementById('loadFileBtn').onclick=function(){ document.getElementById('jsonInput').click(); };
-document.getElementById('jsonInput').onchange=function(e){ var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(ev){ importDesign(ev.target.result); }; r.readAsText(f); this.value=''; };
+document.getElementById('jsonInput').onchange=function(e){ var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(ev){ importDesign(ev.target.result, {confirm:true}); }; r.readAsText(f); this.value=''; };
 
 /* =====================================================================
    Templates — "load only" structure (企画書 第3章)
@@ -4231,8 +4327,42 @@ function wpSaveTemplate(){
 }
 function updateWpUI(){
   var s=document.getElementById('btnWpSave'); if(s) s.hidden=!SEEQ_EMBED.embedded;
+  var g=document.getElementById('saveGuestNote'); if(g) g.hidden=!SEEQ_EMBED.embedded;
   var t=document.getElementById('btnSaveTpl'); if(t) t.hidden=!SEEQ_EMBED.isAdmin;
+  /* 会員保存が使えない環境では「保存用のことば」を最初から開いておく（迷子防止） */
+  var f=document.getElementById('keyFold'); if(f && !SEEQ_EMBED.embedded) f.open=true;
+  applyUIPolicy();
 }
+
+/* =====================================================================
+   顧客向け表示ポリシー（P0-2 / P0-3 / P0-7 / D-3案a）
+   --------------------------------------------------------------------
+   顧客画面に出さないものを1か所で束ねる。コードは消さずにフラグで隠すだけ
+   なので、URLパラメータ（?admin=1 / ?ai=1）や WP の seeq:init(isAdmin) で
+   いつでも復帰できる。
+     ・入稿データ書き出し … 運用者のみ（D-3 案a）
+     ・AI図案生成       … 一旦非表示（お客様は手元のAIで作った画像を持ち込む）
+     ・ブランド切替タブ  … 顧客には無意味なので既定オフ（?brand= 指定時のみ）
+   ===================================================================== */
+var SEEQ_UI={ admin:false, aiArt:false, brandSwitch:false };
+try{
+  var _q=new URLSearchParams(location.search);
+  SEEQ_UI.admin      = _q.get('admin')==='1';
+  SEEQ_UI.aiArt      = _q.get('ai')==='1';
+  SEEQ_UI.brandSwitch= _q.has('brand');
+}catch(e){}
+function isAdminUI(){ return SEEQ_UI.admin || (typeof SEEQ_EMBED!=='undefined' && SEEQ_EMBED.isAdmin); }
+function applyUIPolicy(){
+  var adm=isAdminUI();
+  var bt=document.getElementById('brandToggle');
+  if(bt) bt.style.display=(SEEQ_UI.brandSwitch||adm)?'':'none';
+  var ai=document.getElementById('aiCard');
+  if(ai) ai.classList.toggle('hidden', !SEEQ_UI.aiArt);
+  var pf=document.getElementById('expProof'), ps=document.getElementById('expProofSep');
+  if(pf) pf.hidden=!adm;
+  if(ps) ps.hidden=!adm;
+}
+applyUIPolicy();
 window.addEventListener('message', function(e){
   var d=e.data; if(!d||typeof d!=='object') return;
   /* once the parent declares its origin, accept inbound only from it */
@@ -4252,7 +4382,7 @@ window.addEventListener('message', function(e){
       break;
     case 'seeq:load':
       if(d.payload && d.payload.design_json){
-        importDesign(typeof d.payload.design_json==='string'?d.payload.design_json:JSON.stringify(d.payload.design_json));
+        importDesign(typeof d.payload.design_json==='string'?d.payload.design_json:JSON.stringify(d.payload.design_json), {confirm:true});
         toast('デザインを読み込みました');
       }
       break;
@@ -4269,14 +4399,26 @@ updateWpUI();
    Quote modal + toast
    ===================================================================== */
 var modal=document.getElementById('modal');
-document.getElementById('btnQuote').onclick=function(){ modal.classList.add('show'); };
+document.getElementById('btnQuote').onclick=function(){ modal.classList.add('show'); track('quote:open',{product:currentProduct}); };
 document.getElementById('modalClose').onclick=function(){ modal.classList.remove('show'); };
 modal.onclick=function(e){ if(e.target===modal) modal.classList.remove('show'); };
 var toastTimer;
-function toast(msg){
+/* toast(メッセージ) / toast(メッセージ, {action:'元に戻す', onAction:fn, ms:4000})
+   確認ダイアログを増やさずに事故を取り消せるようにするための受け皿（P0-5）。 */
+function toast(msg, opt){
+  opt=opt||{};
   var t=document.getElementById('_toast');
   if(!t){ t=document.createElement('div'); t.id='_toast'; t.className='toast'; document.body.appendChild(t); }
-  t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.classList.remove('show');},1600);
+  t.textContent=msg;
+  t.classList.toggle('has-act', !!opt.action);
+  if(opt.action){
+    var b=document.createElement('button');
+    b.className='t-act'; b.type='button'; b.textContent=opt.action;
+    b.onclick=function(){ t.classList.remove('show'); t.classList.remove('has-act'); if(opt.onAction) opt.onAction(); };
+    t.appendChild(b);
+  }
+  t.classList.add('show'); clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.classList.remove('show');}, opt.ms||(opt.action?4200:1600));
 }
 
 /* history buttons */
@@ -4496,6 +4638,7 @@ upEl.addEventListener('touchstart', function(e){
   if(e.touches.length===2){
     var o=canvas.getActiveObject();
     pinch.on=true; pinch.dist=touchDist(e.touches); pinch.ang=touchAngle(e.touches); pinch.obj=o;
+    pinch.mx=null; pinch.my=null;                     // 2本指の中点（パン用・P0-9）
     if(o && o.selectable!==false && !o.locked){
       pinch.sx=o.scaleX; pinch.sy=o.scaleY; pinch.a=o.angle;
       o.lockMovementX=true; o.lockMovementY=true;     // hold position while pinching
@@ -4516,6 +4659,12 @@ upEl.addEventListener('touchmove', function(e){
       var r=upEl.getBoundingClientRect();
       var mx=(e.touches[0].clientX+e.touches[1].clientX)/2 - r.left;
       var my=(e.touches[0].clientY+e.touches[1].clientY)/2 - r.top;
+      /* P0-9：2本指の中点の移動ぶんだけキャンバスを動かす＝拡大後に見たい所へ寄れる */
+      if(pinch.mx!=null){
+        var dx=mx-pinch.mx, dy=my-pinch.my;
+        if(dx||dy) canvas.relativePan(new fabric.Point(dx,dy));
+      }
+      pinch.mx=mx; pinch.my=my;
       setZoom(pinch.zoom*sc, new fabric.Point(mx,my));
     }
   }
@@ -4533,6 +4682,55 @@ upEl.addEventListener('touchend', endPinch, {passive:true});
 upEl.addEventListener('touchcancel', endPinch, {passive:true});
 
 /* =====================================================================
+   P0-1 離脱ガード ＋「消える前に保存」の案内
+   --------------------------------------------------------------------
+   localStorage不使用の方針はそのままに、うっかりリロード／戻るでデザインが
+   無言で消える事故だけを止める。iframe 内では警告が出ないブラウザもあるので、
+   親ページ（WordPress）にも seeq:dirty を通知して同じガードを張れるようにする。
+   ===================================================================== */
+function hasAnyDesign(){
+  try{
+    if(userObjects().length) return true;
+    for(var k in faceState){ if(faceState[k] && faceState[k].length) return true; }
+  }catch(e){}
+  return false;
+}
+var _dirtyNotified=false, _saveHintShown=false;
+function markDirty(){
+  if(!hasAnyDesign()) return;
+  if(!_dirtyNotified){ _dirtyNotified=true; wpPost('seeq:dirty', {dirty:true}); track('design:start'); }
+  if(!_saveHintShown){
+    _saveHintShown=true;
+    setTimeout(function(){
+      if(!hasAnyDesign()) return;
+      toast('作ったデザインは自動では残りません。「保存」から控えておくと安心です', {ms:5200});
+    }, 20000);
+  }
+}
+window.addEventListener('beforeunload', function(e){
+  if(!hasAnyDesign()) return;
+  e.preventDefault(); e.returnValue=''; return '';
+});
+canvas.on('object:added', function(){ markDirty(); });
+
+/* D-7：利用計測の「口」だけ用意する。外部サービスへは一切送らず、Cookie も
+   localStorage も使わない。親ページ（WordPress）へ postMessage するだけなので、
+   GA4 等への接続可否・粒度は WP 側で決められる。 */
+function track(ev, detail){ try{ wpPost('seeq:track', {event:ev, detail:detail||null}); }catch(e){} }
+
+/* P0-7：書き出しメニューの「その他の形式」開閉 */
+(function(){
+  var more=document.getElementById('expMore'), extra=document.getElementById('expExtra');
+  if(!more||!extra) return;
+  more.onclick=function(e){
+    e.stopPropagation();
+    var open = extra.classList.toggle('hidden')===false;
+    more.setAttribute('aria-expanded', open?'true':'false');
+    more.textContent = open ? 'その他の形式 ▴' : 'その他の形式 ▾';
+  };
+})();
+
+/* =====================================================================
    Init
    ===================================================================== */
 document.fonts && document.fonts.ready.then(function(){ canvas.requestRenderAll(); });
@@ -4545,6 +4743,7 @@ fitCanvas();
 renderLayers();
 seedHistory();
 initMobile();
+track('app:open',{product:currentProduct});
 window.addEventListener('resize', function(){ clearTimeout(window._rz); window._rz=setTimeout(function(){ fitCanvas(); initMobile(); }, 180); });
 window.addEventListener('orientationchange', function(){ setTimeout(function(){ fitCanvas(); initMobile(); }, 250); });
 
@@ -4741,7 +4940,7 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
     if(tagline && b.tagline) tagline.textContent=b.tagline;
     if(ctaLabel && L.cta)    ctaLabel.textContent=L.cta;
     if(quoteTitle && L.estTitle) quoteTitle.textContent=L.estTitle+'を受け付けます';
-    if(quoteBody && L.quoteBody) quoteBody.innerHTML='※これはプロトタイプのデモ動作です。<br>'+L.quoteBody;
+    if(quoteBody && L.quoteBody) quoteBody.textContent=L.quoteBody;
     document.title=b.name+' デザインシミュレーター';
     /* トグルの選択状態 */
     if(toggle) toggle.querySelectorAll('.bt').forEach(function(btn){ btn.classList.toggle('on', btn.dataset.brand===b.id); });
@@ -5526,7 +5725,7 @@ var SeeQDieCut=(function(){
     a.href=url; a.download='seeq-'+(tplOf().type||'diecut')+'-cutdata.svg'; a.click();
     setTimeout(function(){ URL.revokeObjectURL(url); },1500);
     toast&&toast(bad ? '書き出しました（穴の位置に注意：フチに近すぎます）'
-                     : '入稿SVGを書き出しました（'+effDpi()+'dpi・mm実寸）');
+                     : '印刷用データを保存しました（'+effDpi()+'dpi・mm実寸）');
   }
 
   /* ---- UIバインド ---- */
