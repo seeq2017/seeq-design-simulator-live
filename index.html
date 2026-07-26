@@ -441,6 +441,21 @@
   .adv-fold[open]>summary::before{content:'▾ ';}
   .save-lead{font-size:12.5px;line-height:1.7;color:var(--sub);margin:0 0 12px;}
 
+  /* P0-4：タップ目標44pxは「画面幅」ではなく「指かどうか」で決まる。タブレット
+     （820pxより広いのに指で操作する）を取りこぼさないよう pointer:coarse でも
+     同じ寸法を当てる。マウスのPCには影響しない。 */
+  @media (pointer:coarse){
+    header .icobtn{width:44px;height:44px;}
+    header .btn{height:44px;}
+    .zoombar button{width:44px;height:44px;}
+    .zoombar .zlabel{min-width:52px;}
+    .obj-act{min-width:44px;min-height:44px;}
+    .sheet-close,.fp-close{width:44px;height:44px;}
+    .layer button{width:40px;height:40px;}
+    .die-seg button{padding:11px 13px;}
+    .swatch{width:38px;height:38px;}
+  }
+
   /* The bottom sheet is NON-MODAL (UX research: MD3 / NN-g / iOS HIG advise
      against an always-on scrim). The canvas stays fully interactive while the
      sheet is open, so the scrim is removed entirely. */
