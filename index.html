@@ -660,6 +660,47 @@
     .s3d-chip{padding:7px 11px;}
     .s3d-hint{bottom:10px;}
   }
+
+  /* ===== 入稿データ変換ステージ（ダイカット系） ===== */
+  .die-mount{cursor:default;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;}
+  .die-mount:active{cursor:default;}
+  .die-canvas-wrap{position:relative;max-width:100%;max-height:100%;border-radius:8px;overflow:hidden;
+    box-shadow:0 6px 26px rgba(16,24,34,.12);
+    background:conic-gradient(from 90deg,#fff 0 25%,#eef1f4 0 50%,#fff 0 75%,#eef1f4 0) 0 0/18px 18px;}
+  .die-canvas-wrap canvas{display:block;max-width:100%;max-height:calc(100vh - 220px);touch-action:none;}
+  .die-canvas-wrap.brush canvas{cursor:crosshair;}
+  .die-drop{position:absolute;inset:16px;border:2px dashed #b9c3cd;border-radius:14px;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#7b8792;background:rgba(255,255,255,.7);
+    text-align:center;padding:20px;font-weight:700;font-size:14px;}
+  .die-drop.hide{display:none;}
+  .die-drop small{font-weight:400;font-size:12px;color:#96a1ac;}
+  .die-drop .btn{pointer-events:auto;}
+  .die-panel{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line);
+    max-height:44vh;overflow-y:auto;}
+  .die-grp{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .die-grp>.lbl{font-size:11px;font-weight:800;color:var(--sub);letter-spacing:.02em;}
+  .die-sld{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--sub);font-weight:700;}
+  .die-sld input[type=range]{width:96px;}
+  .die-sld .val{min-width:38px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .die-seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;}
+  .die-seg button{border:0;background:#fbfdfd;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px;
+    color:var(--sub);padding:6px 11px;-webkit-tap-highlight-color:transparent;}
+  .die-seg button.on{background:var(--accent);color:#fff;}
+  .die-sep-v{width:1px;align-self:stretch;background:var(--line);margin:0 2px;}
+  .die-panel .spacer{flex:1 1 auto;}
+  .die-grp.hidden{display:none;}
+  .die-canvas-wrap.hole canvas{cursor:copy;}
+  /* 実効解像度・穴の可否などの入稿チェック表示 */
+  .die-info{font-size:11px;font-weight:700;color:var(--sub);line-height:1.5;max-width:340px;}
+  .die-info b{color:var(--ink);}
+  .die-info .ng{color:#c0392b;}
+  .die-info .ok{color:#1f7a5a;}
+  @media (max-width:820px){
+    .die-panel{gap:6px 10px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));}
+    .die-grp>.lbl{font-size:10px;}
+    .die-sld input[type=range]{width:74px;}
+  }
 </style>
 </head>
 <body>
@@ -687,7 +728,7 @@
   <div class="head-actions">
     <div class="viewtoggle" id="viewToggle" role="tablist" aria-label="2D / 3D 切替">
       <button class="vt on" data-view="2d" type="button" role="tab">2D</button>
-      <button class="vt" data-view="3d" type="button" role="tab"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg>3D</button>
+      <button class="vt" data-view="3d" type="button" role="tab"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg><span class="vt-label">3D</span></button>
     </div>
     <span class="hsep"></span>
     <button class="icobtn" id="btnUndo" title="元に戻す (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5v0a5 5 0 01-5 5H9"/></svg></button>
@@ -1077,6 +1118,15 @@
           </div>
         </div>
       </div>
+      <div class="field">
+        <label class="fld">この画像から入稿データを作る</label>
+        <p class="bg-help">背景を消した画像から、<b>カットライン</b>付きの入稿データ（Illustrator用SVG・mm実寸）を作ります。アクキーは<b>白版</b>と<b>丸穴</b>も一緒に作れます。</p>
+        <div class="chiprow">
+          <span class="chip chip-primary" id="btnMakeSticker"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9h-9z"/><path d="M12 3v9h9"/></svg>ステッカー用データ作成</span>
+          <span class="chip chip-primary" id="btnMakeAcryl"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="7" r="1.6"/></svg>アクキー用データ作成</span>
+        </div>
+        <p class="bg-state" id="dieLaunchState"></p>
+      </div>
     </div>
 
     <div class="card" data-tab="shape">
@@ -1134,6 +1184,74 @@
       <div class="s3d-group"><span class="lbl">環境光</span><span class="s3d-chips" id="s3dEnv"></span></div>
       <div class="s3d-group" id="s3dUnderlayWrap" hidden><span class="s3d-chips" id="s3dUnderlay"></span></div>
       <span class="spacer"></span>
+    </div>
+  </div>
+
+  <!-- 入稿データ変換ステージ（ダイカットステッカー／アクリル） -->
+  <div class="stage3d" id="stageDie" aria-hidden="true">
+    <div class="s3d-mount die-mount" id="dieMount">
+      <div class="die-canvas-wrap" id="dieWrap">
+        <canvas id="dieCanvas" width="10" height="10"></canvas>
+        <div class="die-drop" id="dieDrop">
+          <div>画像をここにドロップ、または</div>
+          <button class="btn btn-primary btn-xs" id="diePick" type="button">画像を選ぶ</button>
+          <small>PNG / JPG（透過PNGは背景削除をスキップして即カットライン生成）</small>
+        </div>
+      </div>
+      <input type="file" id="dieFile" accept="image/png,image/jpeg,image/webp" hidden>
+    </div>
+    <div class="s3d-bar">
+      <button class="btn btn-ghost btn-xs" id="dieBack" type="button">← 編集に戻る</button>
+      <button class="btn btn-primary btn-xs" id="dieExport" type="button">入稿SVGを書き出し</button>
+    </div>
+    <div class="die-panel" id="diePanel">
+      <div class="die-grp"><span class="lbl">背景削除</span>
+        <span class="die-seg" id="dieBgSeg">
+          <button data-bg="colorkey" class="on" type="button">色で自動</button>
+          <button data-bg="skip" type="button">透過PNG</button>
+        </span>
+      </div>
+      <div class="die-grp" id="dieKeyGrp">
+        <span class="die-sld">しきい値<input type="range" id="dieThr" min="20" max="140" step="2" value="60"><span class="val" id="dieThrV">60</span></span>
+      </div>
+      <div class="die-sep-v"></div>
+      <div class="die-grp"><span class="lbl">手直し</span>
+        <span class="die-seg" id="dieBrushSeg">
+          <button data-brush="off" class="on" type="button">なし</button>
+          <button data-brush="erase" type="button">消しゴム</button>
+          <button data-brush="restore" type="button">復元</button>
+        </span>
+        <span class="die-sld">太さ<input type="range" id="dieBrush" min="6" max="80" step="2" value="26"><span class="val" id="dieBrushV">26</span></span>
+      </div>
+      <div class="die-sep-v"></div>
+      <div class="die-grp"><span class="lbl">カットライン</span>
+        <span class="die-sld">フチ<input type="range" id="dieOff" min="0" max="8" step="0.5" value="3"><span class="val" id="dieOffV">3.0mm</span></span>
+        <span class="die-sld">角丸<input type="range" id="dieRound" min="0" max="4" step="1" value="2"><span class="val" id="dieRoundV">2</span></span>
+        <span class="die-sld">平滑<input type="range" id="dieSmooth" min="0.4" max="3" step="0.2" value="1.2"><span class="val" id="dieSmoothV">1.2</span></span>
+      </div>
+      <div class="die-sep-v"></div>
+      <div class="die-grp hidden" id="dieWhiteGrp"><span class="lbl">白版</span>
+        <span class="die-seg" id="dieWhiteSeg">
+          <button data-white="on" class="on" type="button">つくる</button>
+          <button data-white="off" type="button">なし</button>
+        </span>
+        <span class="die-sld">内側<input type="range" id="dieWhiteInset" min="0" max="2" step="0.1" value="0.5"><span class="val" id="dieWhiteInsetV">0.5mm</span></span>
+      </div>
+      <div class="die-grp hidden" id="dieHoleGrp"><span class="lbl">穴</span>
+        <span class="die-seg" id="dieHoleSeg">
+          <button data-hole="place" type="button">位置をタップ</button>
+          <button data-hole="off" class="on" type="button">確定</button>
+        </span>
+        <span class="die-sld">径<input type="range" id="dieHoleDia" min="2" max="10" step="0.5" value="5"><span class="val" id="dieHoleDiaV">5.0mm</span></span>
+        <button class="btn btn-ghost btn-xs" id="dieHoleDel" type="button">穴を削除</button>
+      </div>
+      <div class="die-sep-v"></div>
+      <div class="die-grp"><span class="lbl">仕上がり</span>
+        <span class="die-sld">長辺<input type="range" id="dieSize" min="30" max="200" step="5" value="80"><span class="val" id="dieSizeV">80mm</span></span>
+      </div>
+      <span class="spacer"></span>
+      <span class="die-info" id="dieInfo"></span>
+      <button class="btn btn-ghost btn-xs" id="dieReplace" type="button">画像を差し替え</button>
     </div>
   </div>
 </main>
@@ -1549,6 +1667,50 @@ function toteSVG(color, dark, back){
    PRODUCTS  — data-driven product / face definitions
    each face: { id, label, svg(hex,dark,back), guide{x,y,w,h}, presets[] }
    ===================================================================== */
+/* =====================================================================
+   入稿データ変換テンプレート（ダイカット系）— 画像→カットライン付きSVGへの変換
+   --------------------------------------------------------------------
+   モックアップ(kind:'mockup')・3D とは別系統の「入稿データ変換」モード。
+   商品は kind:'diecut' として登録し、専用ステージ(SeeQDieCut)を開く。
+   変換パイプライン本体（アルファ→輪郭→外側オフセット→角丸→分離SVG）は
+   背景削除エンジンに一切依存しない。エンジンは colorkey(既存・無料) を既定に、
+   AI(MODNet等/商用可のみ)を後付けできる差し替え口として設計。
+   ===================================================================== */
+var DIECUT_TEMPLATES = {
+  sticker: {
+    label:'ダイカットステッカー', en:'DIE-CUT STICKER', type:'sticker',
+    defaultLongEdgeMM:80,       /* アートワーク長辺の既定実寸 */
+    whitePlate:false, hole:false,
+    params:{ offsetMM:3, round:2, smooth:1.2, alphaThr:128, keyTol:60 }
+  },
+  acryl: {
+    label:'アクリルキーホルダー', en:'ACRYLIC KEYRING', type:'acryl',
+    defaultLongEdgeMM:60,
+    /* whitePlate: 白インク版（カットラインより内側へ inset した閉領域・穴は抜く）
+       hole      : タップで配置する丸穴。holeEdgeMM = 穴のフチからカット線までの最低クリアランス */
+    whitePlate:true, hole:true, holeDiaMM:5, holeEdgeMM:4, whiteInsetMM:0.5,
+    params:{ offsetMM:2.5, round:2, smooth:1.2, alphaThr:128, keyTol:60 }
+  }
+};
+/* 2D編集キャンバスに出す案内下絵（diecutは専用ステージで作業するのでプレースホルダ） */
+function diecutHintSVG(label){
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+    +'<rect x="0" y="0" width="480" height="560" fill="#eef1f4"/>'
+    +'<rect x="70" y="150" width="340" height="260" rx="16" fill="#fff" stroke="#cdd5dd" stroke-width="2" stroke-dasharray="9 7"/>'
+    +'<circle cx="240" cy="250" r="34" fill="none" stroke="#9aa6b2" stroke-width="4"/>'
+    +'<path d="M240 236v28M226 250h28" stroke="#9aa6b2" stroke-width="4" stroke-linecap="round"/>'
+    +'<text x="240" y="322" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="700" fill="#5b6672">'+(label||'入稿データに変換')+'</text>'
+    +'<text x="240" y="348" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="12.5" fill="#8a96a2">「変換」を押して画像から入稿データを作成</text>'
+    +'</svg>';
+}
+function makeDiecutProduct(id,label,en,tplId){
+  var prod={ id:id, label:label, en:en, brand:'seeq', kind:'diecut', diecut:tplId,
+    colors:[{name:(DIECUT_TEMPLATES[tplId].type==='acryl'?'クリア':'透明フチ'),hex:'#ffffff',dark:false}] };
+  prod.faces=[{ id:'front', label:'おもて', guide:{x:90,y:130,w:300,h:300}, presets:[],
+    svg:function(){ return diecutHintSVG(label); } }];
+  return prod;
+}
+
 var PRODUCTS = {
   tshirt: {
     label:'Tシャツ',
@@ -1621,7 +1783,9 @@ var PRODUCTS = {
     ]
   }
 };
-var PRODUCT_ORDER = ['tshirt','parka','tote'];
+PRODUCTS['diecut-sticker'] = makeDiecutProduct('diecut-sticker','ダイカットステッカー','DIE-CUT STICKER','sticker');
+PRODUCTS['diecut-acryl']   = makeDiecutProduct('diecut-acryl','アクリルキーホルダー','ACRYLIC KEYRING','acryl');
+var PRODUCT_ORDER = ['tshirt','parka','tote','diecut-sticker','diecut-acryl'];
 
 /* =====================================================================
    Canvas / state
@@ -1963,6 +2127,8 @@ function switchProduct(prod){
   applyShirt();
   loadFace(faceState[stateKey()], function(){ renderLayers(); refreshBars(); });
   commitHistory();
+  /* プレビュー系モジュール（3D / スマートモックアップ）が商品交代を知るためのフック */
+  try{ window.dispatchEvent(new CustomEvent('seeq:productchange',{detail:{product:prod}})); }catch(_){}
 }
 
 /* =====================================================================
@@ -2974,6 +3140,36 @@ document.getElementById('bgAiRemove').onclick=function(){
   var o=activeImage(); if(!o){ toast('画像を選択してください'); return; }
   aiRemoveBg(o);
 };
+
+/* ===== 入稿データ作成への導線 =====================================
+   背景を消した画像を、そのままダイカット変換ステージ(SeeQDieCut)へ渡す。
+   商品は切り替えず、テンプレ（ステッカー／アクリル）だけを指定して開くので
+   作りかけのデザインは 2D 側にそのまま残る。 */
+function imageToDataURL(o){
+  var el=o._originalElement||o.getElement();
+  var w=el.naturalWidth||el.width, h=el.naturalHeight||el.height;
+  if(!w||!h) return null;
+  var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  try{ cv.getContext('2d').drawImage(el,0,0,w,h); return cv.toDataURL('image/png'); }catch(e){ return null; }
+}
+function launchDiecut(tplId,label){
+  if(_bgBusy) return;
+  var o=activeImage();
+  if(!o){ toast('先に画像を選択してください'); return; }
+  if(!window.SEEQ_DIECUT){ toast('入稿データ変換を読み込めませんでした'); return; }
+  var url=imageToDataURL(o);
+  if(!url){ toast('この画像は変換できません'); return; }
+  var st=document.getElementById('dieLaunchState');
+  if(st) st.textContent=label+'の入稿データを準備しています…';
+  window.SEEQ_DIECUT.openWith(tplId,url).then(function(){
+    if(st) st.textContent=label+'の画面を開きました。フチ・角丸・サイズを整えて「入稿SVGを書き出し」を押してください。';
+  })['catch'](function(){
+    if(st) st.textContent='';
+    toast('画像を読み込めませんでした');
+  });
+}
+document.getElementById('btnMakeSticker').onclick=function(){ launchDiecut('sticker','ステッカー'); };
+document.getElementById('btnMakeAcryl').onclick=function(){ launchDiecut('acryl','アクリルキーホルダー'); };
 document.getElementById('bgUndo').onclick=function(){
   if(_bgBusy) return;
   _pendingBgMsg='透過を取り消しました。';
@@ -4434,7 +4630,7 @@ PRODUCTS['plate-oval'] =makePlateProduct('plate-oval','楕円プレート','OVAL
 PRODUCTS['plate-cut']  =makePlateProduct('plate-cut','カット看板','CUT SIGN','cut',14);
 ensureStateBuckets();
 
-var BRAND_CATALOG={ seeq:['tshirt','parka','tote'], mori:['plate-rect','plate-round','plate-oval','plate-cut'] };
+var BRAND_CATALOG={ seeq:['tshirt','parka','tote','diecut-sticker','diecut-acryl'], mori:['plate-rect','plate-round','plate-oval','plate-cut'] };
 
 function setPlateSize(sizeId){
   var prod=curProduct(); if(prod.kind!=='plate') return;
@@ -4454,10 +4650,11 @@ function updateMoriUI(){
   /* relabel product/color fields + hide single face for plates */
   var lp=document.getElementById('lblProduct'), lc=document.getElementById('lblColor'),
       lf=document.getElementById('lblFace'), ft=document.getElementById('faceTabs');
+  var single=prod.faces.length<2;      /* 面が1つだけの商品（プレート/缶バッジ）は面タブを出さない */
   if(lp) lp.textContent=isPlate?'形状を選ぶ':'商品を選ぶ';
-  if(lc) lc.textContent=isPlate?'素材を選ぶ':'商品カラー';
-  if(lf) lf.style.display=isPlate?'none':'';
-  if(ft) ft.style.display=isPlate?'none':'';
+  if(lc) lc.textContent=isPlate?'素材を選ぶ':(prod.kind==='diecut'?'仕上がり':'商品カラー');
+  if(lf) lf.style.display=single?'none':'';
+  if(ft) ft.style.display=single?'none':'';
   if(!isPlate) return;
   var sizes=document.getElementById('moriSizes');
   if(sizes){ sizes.innerHTML='';
@@ -4833,6 +5030,642 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   var backBtn=document.getElementById('s3dBack'); if(backBtn) backBtn.onclick=exit3D;
   var quoteBtn=document.getElementById('s3dQuote'); if(quoteBtn) quoteBtn.onclick=function(){ exit3D(); var q=document.getElementById('btnQuote'); if(q) q.click(); };
   /* rebuild texture when returning to 3D after edits is handled by enter3D()->build() */
+})();
+
+/* =====================================================================
+   入稿データ変換エンジン（SeeQDieCut）— 画像→カットライン付きSVG
+   --------------------------------------------------------------------
+   画像 → [背景削除(colorkey既定 / 透過PNGはskip) ＋ 手動ブラシ]
+        → アルファマスク → 内穴埋め → 外側オフセット(距離変換ディレーション)
+        → 輪郭トレース(Mooreトレース) → RDP簡略化 → Chaikin角丸
+        → 分離レイヤーSVG（Artwork埋込ラスタ ＋ CutContourベクター）
+   ・パイプライン本体は背景削除エンジン非依存。colorkey は既存の色キー方式と
+     同じ考え方をワーキングバッファ上に実装（AI差し替え口は engine で用意）。
+   ・Fabric コア・既存3D・モックアップには一切触れない独立モジュール。
+   ===================================================================== */
+var SeeQDieCut=(function(){
+  var PAD=80;                 /* オフセットが収まるようワーキング画像の周囲に取る余白(px) */
+  var WORK_MAX=1200;          /* ワーキング解像度の長辺上限 */
+  var CUT_COLOR='#EC008C';    /* CutContour相当のマゼンタ（印刷所でスポットに設定） */
+
+  /* ---- 画素演算プリミティブ（エンジン非依存の幾何処理） ---- */
+  function edt1d(f,d,n){
+    var v=new Int32Array(n), z=new Float64Array(n+1), k=0;
+    v[0]=0; z[0]=-1e20; z[1]=1e20;
+    for(var q=1;q<n;q++){
+      var s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);
+      while(s<=z[k]){ k--; s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]); }
+      k++; v[k]=q; z[k]=s; z[k+1]=1e20;
+    }
+    k=0;
+    for(var q2=0;q2<n;q2++){ while(z[k+1]<q2) k++; var dx=q2-v[k]; d[q2]=dx*dx+f[v[k]]; }
+  }
+  /* 各画素から最近傍 seed(=1) までのユークリッド距離(px) */
+  function distTransform(bin,w,h){
+    var INF=1e20, g=new Float64Array(w*h), i;
+    for(i=0;i<w*h;i++) g[i]=bin[i]?0:INF;
+    var colf=new Float64Array(h), cold=new Float64Array(h), x,y;
+    for(x=0;x<w;x++){ for(y=0;y<h;y++) colf[y]=g[y*w+x]; edt1d(colf,cold,h); for(y=0;y<h;y++) g[y*w+x]=cold[y]; }
+    var rowf=new Float64Array(w), rowd=new Float64Array(w);
+    for(y=0;y<h;y++){ for(x=0;x<w;x++) rowf[x]=g[y*w+x]; edt1d(rowf,rowd,w); for(x=0;x<w;x++) g[y*w+x]=rowd[x]; }
+    var out=new Float32Array(w*h); for(i=0;i<w*h;i++) out[i]=Math.sqrt(g[i]); return out;
+  }
+  /* 外縁からの背景フラッドフィルで、内側の穴（囲まれた背景）を前景で埋める */
+  function fillHoles(bin,w,h){
+    var bg=new Uint8Array(w*h), st=[], i,x,y;
+    function push(x,y){ if(x<0||y<0||x>=w||y>=h) return; var j=y*w+x; if(!bin[j]&&!bg[j]){ bg[j]=1; st.push(j); } }
+    for(x=0;x<w;x++){ push(x,0); push(x,h-1); }
+    for(y=0;y<h;y++){ push(0,y); push(w-1,y); }
+    while(st.length){ i=st.pop(); x=i%w; y=(i/w)|0; push(x-1,y); push(x+1,y); push(x,y-1); push(x,y+1); }
+    var out=new Uint8Array(w*h);
+    for(i=0;i<w*h;i++) out[i]= bin[i] ? 1 : (bg[i]?0:1);
+    return out;
+  }
+  /* Moore近傍トレース（時計回り）で最大前景ブロブの外輪郭を順序付き点列に */
+  function traceContour(bin,w,h){
+    function fg(x,y){ return x>=0&&y>=0&&x<w&&y<h&&bin[y*w+x]===1; }
+    var start=null,x,y;
+    for(y=0;y<h&&!start;y++) for(x=0;x<w;x++){ if(bin[y*w+x]){ start=[x,y]; break; } }
+    if(!start) return [];
+    var nb=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];   /* N,NE,E,SE,S,SW,W,NW */
+    function idxOf(fx,fy,tx,ty){ var dx=tx-fx,dy=ty-fy; for(var i=0;i<8;i++) if(nb[i][0]===dx&&nb[i][1]===dy) return i; return 0; }
+    var contour=[start], p=start.slice(), b=[start[0]-1,start[1]];
+    var count=0, max=w*h*4;
+    do{
+      var s=(idxOf(p[0],p[1],b[0],b[1])+1)%8, prev=b.slice(), found=null, nb2=null;
+      for(var k=0;k<8;k++){
+        var i2=(s+k)%8, cx=p[0]+nb[i2][0], cy=p[1]+nb[i2][1];
+        if(fg(cx,cy)){ found=[cx,cy]; nb2=prev; break; }
+        prev=[cx,cy];
+      }
+      if(!found) break;
+      b=nb2; p=found; contour.push(p); count++;
+    } while(!(p[0]===start[0]&&p[1]===start[1]) && count<max);
+    return contour;
+  }
+  function perp(pt,a,b){
+    var dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1e-9;
+    return Math.abs((pt[0]-a[0])*dy-(pt[1]-a[1])*dx)/L;
+  }
+  function rdp(pts,eps){
+    if(pts.length<3) return pts.slice();
+    var keep=new Uint8Array(pts.length); keep[0]=1; keep[pts.length-1]=1;
+    var stack=[[0,pts.length-1]];
+    while(stack.length){ var seg=stack.pop(), a=seg[0], b=seg[1], maxd=-1, idx=-1;
+      for(var i=a+1;i<b;i++){ var d=perp(pts[i],pts[a],pts[b]); if(d>maxd){ maxd=d; idx=i; } }
+      if(maxd>eps && idx>0){ keep[idx]=1; stack.push([a,idx]); stack.push([idx,b]); }
+    }
+    var out=[]; for(var j=0;j<pts.length;j++) if(keep[j]) out.push(pts[j]); return out;
+  }
+  /* 閉曲線のRDP：始点=終点だと基準線分が退化してRDPが全点を潰すため、
+     始点から最遠の点でループを2本の開曲線に割ってから各々RDPして縫い直す。 */
+  function rdpClosed(pts,eps){
+    if(pts.length<4) return pts.slice();
+    var p=pts.slice();
+    if(p[0][0]===p[p.length-1][0] && p[0][1]===p[p.length-1][1]) p.pop();
+    if(p.length<4) return p;
+    var far=0, fd=-1;
+    for(var i=1;i<p.length;i++){ var dx=p[i][0]-p[0][0], dy=p[i][1]-p[0][1], d=dx*dx+dy*dy; if(d>fd){ fd=d; far=i; } }
+    var a=rdp(p.slice(0,far+1), eps);
+    var b=rdp(p.slice(far).concat([p[0]]), eps);
+    return a.concat(b.slice(1,-1));
+  }
+  function chaikin(pts,it){
+    var p=pts;
+    for(var n=0;n<it;n++){
+      if(p.length<3) break;
+      var q=[];
+      for(var i=0;i<p.length;i++){
+        var a=p[i], b=p[(i+1)%p.length];
+        q.push([a[0]*0.75+b[0]*0.25, a[1]*0.75+b[1]*0.25]);
+        q.push([a[0]*0.25+b[0]*0.75, a[1]*0.25+b[1]*0.75]);
+      }
+      p=q;
+    }
+    return p;
+  }
+
+  /* ---- 状態 ---- */
+  var S=null;   /* { tpl, imgW,imgH, Wp,Hp, rgba(Uint8ClampedArray), origA(Uint8), base(Uint8), edits(Int8),
+                     bgMode, thr(colorkey tol), keyCol, offsetMM, round, smooth, longEdgeMM, cut(points px) } */
+  var mount=document.getElementById('stageDie');
+  var wrap=document.getElementById('dieWrap');
+  var cvs=document.getElementById('dieCanvas');
+  var drop=document.getElementById('dieDrop');
+  var fileInput=document.getElementById('dieFile');
+  var brush={ mode:'off', size:26 };
+  var holeMode='off';           /* 'place' の間はキャンバスのタップで丸穴を追加 */
+  var tplOverride=null;         /* 2D編集画面の「◯◯用データ作成」から開いた時のテンプレ指定 */
+
+  function curTplId(){ if(tplOverride) return tplOverride; var p=curProduct(); return (p&&p.kind==='diecut') ? p.diecut : null; }
+  function tplOf(){ var id=curTplId(); return id?DIECUT_TEMPLATES[id]:DIECUT_TEMPLATES.sticker; }
+
+  /* 効いているアルファ（背景削除ベース＋手動ブラシ上書き） */
+  function effAlpha(i){
+    if(!S) return 0;
+    var e=S.edits[i];
+    if(e<0) return 0;              /* 消しゴム */
+    if(e>0) return S.origA[i];     /* 復元（元アルファ） */
+    return S.base[i];              /* ベース（bgMode由来） */
+  }
+  /* colorkey：四隅から地色を推定し、その色に近い画素を抜く（既存 removeColorBg と同思想） */
+  function detectKey(){
+    var w=S.Wp, rgba=S.rgba, pts=[[PAD+1,PAD+1],[S.Wp-PAD-2,PAD+1],[PAD+1,S.Hp-PAD-2],[S.Wp-PAD-2,S.Hp-PAD-2]];
+    var r=0,g=0,b=0,n=0;
+    pts.forEach(function(q){ var i=(q[1]*w+q[0])*4; if(S.origA[q[1]*w+q[0]]>8){ r+=rgba[i]; g+=rgba[i+1]; b+=rgba[i+2]; n++; } });
+    if(!n){ return {r:255,g:255,b:255}; }
+    return {r:r/n|0, g:g/n|0, b:b/n|0};
+  }
+  function computeBase(){
+    var N=S.Wp*S.Hp, base=S.base, origA=S.origA, rgba=S.rgba;
+    if(S.bgMode==='skip'){ for(var i=0;i<N;i++) base[i]=origA[i]; return; }
+    var c=S.keyCol, tol=S.thr, i4=0;
+    for(var i=0;i<N;i++,i4+=4){
+      if(origA[i]<8){ base[i]=0; continue; }                 /* 既に透過 */
+      var dr=rgba[i4]-c.r, dg=rgba[i4+1]-c.g, db=rgba[i4+2]-c.b;
+      var dist=Math.sqrt((dr*dr+dg*dg+db*db)/3);
+      base[i]= dist<=tol ? 0 : origA[i];
+    }
+  }
+  /* mm ⇄ ワーキングpx（アートワーク長辺の実寸指定から導出） */
+  function mmPerPx(){ return S.longEdgeMM/Math.max(S.imgW,S.imgH); }
+  function pxPerMM(){ return 1/mmPerPx(); }
+
+  /* アルファ→前景マスクと距離場。距離場はオフセット量に依存しないので、
+     アルファが変わった時だけ作り直し、スライダー操作では閾値を変えるだけにする
+     （＝フチ/角丸/白版インセットのドラッグが軽い）。 */
+  function computeMask(){
+    var w=S.Wp, h=S.Hp, N=w*h, thrA=tplOf().params.alphaThr||128;
+    var fg=new Uint8Array(N), i;
+    for(i=0;i<N;i++) fg[i]= effAlpha(i)>=thrA ? 1:0;
+    S.fg=fillHoles(fg,w,h);
+    var any=false; for(i=0;i<N;i++){ if(S.fg[i]){ any=true; break; } }
+    S.dist = any ? distTransform(S.fg,w,h) : null;
+  }
+  /* 前景を offPx だけ外側へ太らせた閉輪郭（＝カットライン／白版の共通処理） */
+  function contourAt(offPx){
+    if(!S.dist) return [];
+    var w=S.Wp, h=S.Hp, N=w*h, src=S.fg, i;
+    if(offPx>0.5){
+      var dil=new Uint8Array(N);
+      for(i=0;i<N;i++) dil[i]= S.dist[i]<=offPx ? 1:0;
+      src=fillHoles(dil,w,h);
+    }
+    var pts=traceContour(src,w,h);
+    if(pts.length>3){
+      pts=rdpClosed(pts, S.smooth);
+      if(S.round>0) pts=chaikin(pts, S.round);
+    }
+    return pts;
+  }
+  function computeCut(){
+    if(!S.fg) computeMask();
+    var offPx=Math.min(PAD-2, S.offsetMM*pxPerMM());
+    S.cut=contourAt(offPx);
+    var t=tplOf();
+    /* 白版はカットラインより whiteInsetMM だけ内側（フチから白がはみ出さないように） */
+    S.white = (t.whitePlate && S.whiteOn && S.cut.length>2)
+      ? contourAt(Math.max(0,(S.offsetMM-S.whiteInsetMM))*pxPerMM()) : null;
+    checkHoles();
+  }
+
+  /* ---- 丸穴（アクリル） ---- */
+  function holeRadPx(){ return (S.holeDiaMM/2)*pxPerMM(); }
+  /* 点と閉多角形の関係：内外判定＋最近接辺までの距離(px) */
+  function polyInfo(pt,poly){
+    var inside=false, best=1e18, n=poly.length;
+    for(var i=0,j=n-1;i<n;j=i++){
+      var a=poly[j], b=poly[i];
+      if(((b[1]>pt[1])!==(a[1]>pt[1])) && (pt[0] < (a[0]-b[0])*(pt[1]-b[1])/((a[1]-b[1])||1e-9)+b[0])) inside=!inside;
+      var vx=a[0]-b[0], vy=a[1]-b[1], L2=vx*vx+vy*vy||1e-9;
+      var t=Math.max(0,Math.min(1,((pt[0]-b[0])*vx+(pt[1]-b[1])*vy)/L2));
+      var dx=pt[0]-(b[0]+vx*t), dy=pt[1]-(b[1]+vy*t), d=Math.hypot(dx,dy);
+      if(d<best) best=d;
+    }
+    return {inside:inside, dist:best};
+  }
+  /* 穴ごとに「カット線から holeEdgeMM 以上離れているか」を判定して印を付ける */
+  function checkHoles(){
+    if(!S.holes) return;
+    var edgePx=(tplOf().holeEdgeMM||3)*pxPerMM(), r=holeRadPx();
+    S.holes.forEach(function(hl){
+      if(!S.cut||S.cut.length<3){ hl.ok=false; return; }
+      var pi=polyInfo([hl.x,hl.y],S.cut);
+      hl.ok = pi.inside && (pi.dist-r)>=edgePx;
+      hl.clearMM = (pi.inside? (pi.dist-r) : -(pi.dist+r))*mmPerPx();
+    });
+  }
+  /* 初回は「上端の中央あたり」でクリアランスを満たす位置に自動で置く（キーホルダーの定番位置） */
+  function autoPlaceHole(){
+    if(!S.cut||S.cut.length<3) return;
+    var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    S.cut.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[1]<minY)minY=p[1]; if(p[0]>maxX)maxX=p[0]; if(p[1]>maxY)maxY=p[1]; });
+    var cx=(minX+maxX)/2, need=holeRadPx()+(tplOf().holeEdgeMM||3)*pxPerMM();
+    for(var y=minY; y<maxY; y+=Math.max(2,(maxY-minY)/120)){
+      var pi=polyInfo([cx,y],S.cut);
+      if(pi.inside && pi.dist>=need){ S.holes=[{x:cx,y:y}]; checkHoles(); return; }
+    }
+    S.holes=[{x:cx,y:(minY+maxY)/2}]; checkHoles();
+  }
+
+  /* ---- 描画 ---- */
+  var cutoutCanvas=document.createElement('canvas');
+  function buildCutout(){
+    cutoutCanvas.width=S.Wp; cutoutCanvas.height=S.Hp;
+    var ctx=cutoutCanvas.getContext('2d');
+    var out=ctx.createImageData(S.Wp,S.Hp), o=out.data, rgba=S.rgba, N=S.Wp*S.Hp, i4=0;
+    for(var i=0;i<N;i++,i4+=4){ o[i4]=rgba[i4]; o[i4+1]=rgba[i4+1]; o[i4+2]=rgba[i4+2]; o[i4+3]=effAlpha(i); }
+    ctx.putImageData(out,0,0);
+  }
+  function pathOf(x,pts){
+    x.beginPath(); x.moveTo(pts[0][0],pts[0][1]);
+    for(var i=1;i<pts.length;i++) x.lineTo(pts[i][0],pts[i][1]);
+    x.closePath();
+  }
+  function render(){
+    if(!S) return;
+    cvs.width=S.Wp; cvs.height=S.Hp;
+    var x=cvs.getContext('2d'), i;
+    x.clearRect(0,0,S.Wp,S.Hp);
+    /* 白版は製品の下地なのでアートワークの下に敷いて見せる */
+    if(S.white && S.white.length>2){
+      x.save(); pathOf(x,S.white);
+      S.holes && S.holes.forEach(function(hl){ x.moveTo(hl.x+holeRadPx(),hl.y); x.arc(hl.x,hl.y,holeRadPx(),0,Math.PI*2,true); });
+      x.fillStyle='rgba(255,255,255,0.92)'; x.fill('evenodd');
+      x.restore();
+    }
+    x.drawImage(cutoutCanvas,0,0);
+    var halo=Math.max(3,S.Wp/300), thin=Math.max(1.6,S.Wp/560);
+    if(S.white && S.white.length>2){
+      x.save(); pathOf(x,S.white);
+      x.strokeStyle='rgba(0,0,0,.28)'; x.lineWidth=thin; x.setLineDash([S.Wp/220,S.Wp/220]); x.stroke();
+      x.restore();
+    }
+    var pts=S.cut;
+    if(pts && pts.length>2){
+      x.lineJoin='round'; x.lineCap='round';
+      pathOf(x,pts);
+      x.strokeStyle='rgba(255,255,255,0.9)'; x.lineWidth=halo; x.stroke();
+      x.strokeStyle=CUT_COLOR; x.lineWidth=thin;
+      x.setLineDash([S.Wp/90, S.Wp/150]); x.stroke(); x.setLineDash([]);
+    }
+    /* 丸穴は実際に穴が空くので、プレビューでも中身を抜いて見せる */
+    if(S.holes && S.holes.length && tplOf().hole){
+      x.save(); x.globalCompositeOperation='destination-out';
+      S.holes.forEach(function(hl){ x.beginPath(); x.arc(hl.x,hl.y,holeRadPx(),0,Math.PI*2); x.fill(); });
+      x.restore();
+    }
+    /* 丸穴のガイド：クリアランス不足は赤で警告表示 */
+    if(S.holes) S.holes.forEach(function(hl){
+      var r=holeRadPx();
+      x.beginPath(); x.arc(hl.x,hl.y,r,0,Math.PI*2);
+      x.strokeStyle='rgba(255,255,255,0.9)'; x.lineWidth=halo; x.stroke();
+      x.strokeStyle= hl.ok===false ? '#c0392b' : CUT_COLOR; x.lineWidth=thin;
+      x.setLineDash([S.Wp/120,S.Wp/200]); x.stroke(); x.setLineDash([]);
+      x.beginPath(); x.arc(hl.x,hl.y,Math.max(2,thin*1.2),0,Math.PI*2);
+      x.fillStyle= hl.ok===false ? '#c0392b' : CUT_COLOR; x.fill();
+    });
+  }
+  function recompute(){ computeBase(); buildCutout(); computeMask(); computeCut(); render(); syncInfo(); }
+
+  /* ---- 画像読み込み ---- */
+  function loadImageSrc(src){
+    return new Promise(function(res,rej){
+      var im=new Image();
+      im.onload=function(){
+        var iw=im.naturalWidth, ih=im.naturalHeight;
+        var sc=Math.min(1, WORK_MAX/Math.max(iw,ih));
+        var w=Math.max(1,Math.round(iw*sc)), h=Math.max(1,Math.round(ih*sc));
+        var Wp=w+PAD*2, Hp=h+PAD*2;
+        var tc=document.createElement('canvas'); tc.width=Wp; tc.height=Hp;
+        var tx=tc.getContext('2d'); tx.drawImage(im, PAD, PAD, w, h);
+        var data;
+        try{ data=tx.getImageData(0,0,Wp,Hp).data; }catch(e){ rej(e); return; }
+        var N=Wp*Hp, origA=new Uint8Array(N), transCount=0;
+        for(var i=0;i<N;i++){ origA[i]=data[i*4+3]; if(data[i*4+3]<250) transCount++; }
+        /* 画像本体領域の透過率で「既に透過PNG」を判定 */
+        var innerTrans=0, inner=0;
+        for(var yy=PAD;yy<PAD+h;yy++) for(var xx=PAD;xx<PAD+w;xx++){ inner++; if(origA[yy*Wp+xx]<250) innerTrans++; }
+        var alreadyTransparent = inner>0 && (innerTrans/inner)>0.06;
+        var t=tplOf();
+        S={ tpl:t, imgW:w, imgH:h, Wp:Wp, Hp:Hp,
+            srcImg:im, srcW:iw, srcH:ih,            /* 書き出し時に原寸から300dpiで焼き直すため保持 */
+            rgba:new Uint8ClampedArray(data), origA:origA, base:new Uint8Array(N), edits:new Int8Array(N),
+            bgMode: alreadyTransparent ? 'skip' : 'colorkey',
+            thr: t.params.keyTol||60, keyCol:{r:255,g:255,b:255},
+            offsetMM:t.params.offsetMM, round:t.params.round, smooth:t.params.smooth,
+            longEdgeMM:t.defaultLongEdgeMM,
+            whiteOn:!!t.whitePlate, whiteInsetMM:(t.whiteInsetMM!=null?t.whiteInsetMM:0.5),
+            holeDiaMM:(t.holeDiaMM||5), holes:[] };
+        S.keyCol=detectKey();
+        drop.classList.add('hide');
+        recompute();
+        if(t.hole && !S.holes.length){ autoPlaceHole(); render(); }
+        syncControls();
+        syncInfo();
+        fitDisplay();
+        res(S);
+      };
+      im.onerror=function(){ rej(new Error('image load failed')); };
+      im.src=src;
+    });
+  }
+  function fitDisplay(){ /* CSSで最大化。内部解像度=Wp。表示スケールは pointer 変換で使う */ }
+  function dispScale(){ var r=cvs.getBoundingClientRect(); return { sx:S.Wp/r.width, sy:S.Hp/r.height, rect:r }; }
+
+  /* ---- 手動ブラシ ---- */
+  var painting=false, rafPending=false;
+  function paintAt(clientX,clientY){
+    if(!S || brush.mode==='off') return;
+    var d=dispScale(), x=(clientX-d.rect.left)*d.sx, y=(clientY-d.rect.top)*d.sy;
+    var rad=brush.size*d.sx, r2=rad*rad, val=brush.mode==='erase'?-1:1;
+    var x0=Math.max(0,(x-rad)|0), x1=Math.min(S.Wp-1,(x+rad)|0), y0=Math.max(0,(y-rad)|0), y1=Math.min(S.Hp-1,(y+rad)|0);
+    for(var yy=y0;yy<=y1;yy++) for(var xx=x0;xx<=x1;xx++){
+      var dx=xx-x, dy=yy-y; if(dx*dx+dy*dy<=r2) S.edits[yy*S.Wp+xx]=val;
+    }
+    buildCutout();
+    if(!rafPending){ rafPending=true; requestAnimationFrame(function(){ rafPending=false; render(); }); }
+  }
+  /* 穴：タップで配置／既存の穴はドラッグで移動（PC・スマホ・タブレット共通の pointer 相当処理） */
+  var dragHole=-1;
+  function toWork(clientX,clientY){ var d=dispScale(); return [ (clientX-d.rect.left)*d.sx, (clientY-d.rect.top)*d.sy ]; }
+  function hitHole(px,py){
+    if(!S||!S.holes) return -1;
+    var r=holeRadPx()*1.25;
+    for(var i=S.holes.length-1;i>=0;i--){ var h=S.holes[i]; if(Math.hypot(px-h.x,py-h.y)<=r) return i; }
+    return -1;
+  }
+  function moveHoleTo(i,px,py){ S.holes[i].x=px; S.holes[i].y=py; checkHoles(); render(); syncInfo(); }
+  function bindBrush(){
+    function down(e){
+      if(!S) return;
+      var t=e.touches?e.touches[0]:e, p=toWork(t.clientX,t.clientY);
+      if(tplOf().hole){
+        var hit=hitHole(p[0],p[1]);
+        if(hit>=0){ dragHole=hit; e.preventDefault(); return; }
+        if(holeMode==='place'){ S.holes.push({x:p[0],y:p[1]}); dragHole=S.holes.length-1; checkHoles(); render(); syncInfo(); syncControls(); e.preventDefault(); return; }
+      }
+      if(brush.mode==='off') return;
+      painting=true; paintAt(t.clientX,t.clientY); e.preventDefault();
+    }
+    function move(e){
+      var t=e.touches?e.touches[0]:e;
+      if(dragHole>=0){ var p=toWork(t.clientX,t.clientY); moveHoleTo(dragHole,p[0],p[1]); e.preventDefault(); return; }
+      if(!painting) return;
+      paintAt(t.clientX,t.clientY); e.preventDefault();
+    }
+    function up(){
+      if(dragHole>=0){ dragHole=-1; return; }
+      if(!painting) return;
+      painting=false; computeMask(); computeCut(); render(); syncInfo();
+    }
+    cvs.addEventListener('mousedown',down); cvs.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    cvs.addEventListener('touchstart',down,{passive:false}); cvs.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+  }
+
+  /* ---- SVG 書き出し（Illustrator互換：mm実寸・named group・カットラインはベクター） ---- */
+  /* 書き出し用アートワーク：ワーキング解像度(最大1200px)ではなく、原画から
+     PRINT.dpi(300dpi)相当で焼き直す。原画より上へは引き伸ばさない（水増ししない）。 */
+  function artWidthMM(){ return S.imgW*mmPerPx(); }
+  function exportTargetW(){
+    var want=Math.round(artWidthMM()/25.4*(window.PRINT?PRINT.dpi:300));
+    return Math.max(S.imgW, Math.min(want, S.srcW, 3000));
+  }
+  function exportArtwork(){
+    var artWmm=artWidthMM();
+    var targetW=exportTargetW();
+    var targetH=Math.max(1, Math.round(targetW*S.imgH/S.imgW));
+    var cv=document.createElement('canvas'); cv.width=targetW; cv.height=targetH;
+    var cx=cv.getContext('2d');
+    cx.imageSmoothingEnabled=true; if('imageSmoothingQuality' in cx) cx.imageSmoothingQuality='high';
+    cx.drawImage(S.srcImg,0,0,targetW,targetH);
+    /* 効いているアルファ（背景削除＋手直し）をマスクとして重ねる */
+    var mk=document.createElement('canvas'); mk.width=S.imgW; mk.height=S.imgH;
+    var mx=mk.getContext('2d'), id=mx.createImageData(S.imgW,S.imgH), d=id.data;
+    for(var y=0;y<S.imgH;y++) for(var x=0;x<S.imgW;x++){
+      var o=(y*S.imgW+x)*4; d[o]=255; d[o+1]=255; d[o+2]=255; d[o+3]=effAlpha((y+PAD)*S.Wp+(x+PAD));
+    }
+    mx.putImageData(id,0,0);
+    cx.globalCompositeOperation='destination-in';
+    cx.drawImage(mk,0,0,targetW,targetH);
+    cx.globalCompositeOperation='source-over';
+    return { url:cv.toDataURL('image/png'), px:targetW, dpi:Math.round(targetW/(artWmm/25.4)) };
+  }
+  /* 実際に埋め込むラスタの解像度（＝入稿として効いている解像度）を返す */
+  function effDpi(){
+    if(!S) return 0;
+    return Math.round(exportTargetW()/(artWidthMM()/25.4));
+  }
+  /* 分離レイヤーSVG（Illustrator互換：mm実寸・named group・カットラインはベクター）
+       WhitePlate … 白インク版（黒ベタ・穴は evenodd で抜く）
+       Artwork    … 背景削除後のラスタ（300dpi相当を埋め込み）
+       CutContour … 外形カットライン（ベクター閉パス）
+       Holes      … 丸穴のカットライン（アクリル金具用） */
+  function exportSVGString(){
+    if(!S || !S.cut || S.cut.length<3) return null;
+    var mmpp=mmPerPx();
+    var pts=S.cut, minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    pts.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[1]<minY)minY=p[1]; if(p[0]>maxX)maxX=p[0]; if(p[1]>maxY)maxY=p[1]; });
+    var M=(window.PRINT?PRINT.bleedMM:3);      /* 既存入稿パイプラインと同じ 3mm の余白（塗り足し相当） */
+    var offX=minX*mmpp-M, offY=minY*mmpp-M;
+    var Wmm=+((maxX-minX)*mmpp+2*M).toFixed(3), Hmm=+((maxY-minY)*mmpp+2*M).toFixed(3);
+    function mmx(px){ return +(px*mmpp-offX).toFixed(3); }
+    function mmy(px){ return +(px*mmpp-offY).toFixed(3); }
+    function pathD(poly){
+      var s='M'+mmx(poly[0][0])+' '+mmy(poly[0][1]);
+      for(var i=1;i<poly.length;i++) s+=' L'+mmx(poly[i][0])+' '+mmy(poly[i][1]);
+      return s+' Z';
+    }
+    /* 丸穴を「円弧2本」の閉サブパスで書く（evenodd で白版から抜ける） */
+    function holeD(hl){
+      var r=+(holeRadPx()*mmpp).toFixed(3), cx=mmx(hl.x), cy=mmy(hl.y);
+      return 'M'+(+(cx-r).toFixed(3))+' '+cy+' a'+r+' '+r+' 0 1 0 '+(+(r*2).toFixed(3))+' 0 a'+r+' '+r+' 0 1 0 '+(+(-r*2).toFixed(3))+' 0 Z';
+    }
+    var holes=(tplOf().hole && S.holes)?S.holes:[];
+    var art=exportArtwork();
+    var ax=mmx(PAD), ay=mmy(PAD), aw=+(S.imgW*mmpp).toFixed(3), ah=+(S.imgH*mmpp).toFixed(3);
+    var NS='http://www.w3.org/2000/svg', XL='http://www.w3.org/1999/xlink', IN='http://www.inkscape.org/namespaces/inkscape';
+    var L=[];
+    L.push('<?xml version="1.0" encoding="UTF-8"?>');
+    L.push('<svg xmlns="'+NS+'" xmlns:xlink="'+XL+'" xmlns:inkscape="'+IN+'" '
+      +'width="'+Wmm+'mm" height="'+Hmm+'mm" viewBox="0 0 '+Wmm+' '+Hmm+'" version="1.1">');
+    /* コメントは ASCII のみ（印刷所のRIP/古い環境での文字化け対策） */
+    L.push('  <!-- SeeQ print data. Units: mm (1 user unit = 1 mm). Margin around the cut line: '+M+' mm. -->');
+    L.push('  <!-- Layers: WhitePlate (white-ink plate, drawn as 100% K fill, holes knocked out) / Artwork (embedded raster, '+art.dpi+' dpi) / CutContour (vector cut path) / Holes (round holes, cut). -->');
+    L.push('  <!-- At the print shop: set the stroke of CutContour and Holes to a SPOT color named "CutContour" (overprint), and the WhitePlate fill to the white-ink spot. -->');
+    if(S.white && S.white.length>2){
+      var wd=pathD(S.white);
+      holes.forEach(function(hl){ wd+=' '+holeD(hl); });
+      L.push('  <g inkscape:groupmode="layer" inkscape:label="WhitePlate" id="WhitePlate">');
+      L.push('    <path d="'+wd+'" fill="#000000" fill-rule="evenodd" stroke="none" data-plate="white"/>');
+      L.push('  </g>');
+    }
+    L.push('  <g inkscape:groupmode="layer" inkscape:label="Artwork" id="Artwork">');
+    L.push('    <image x="'+ax+'" y="'+ay+'" width="'+aw+'" height="'+ah+'" xlink:href="'+art.url+'" style="image-rendering:optimizeQuality"/>');
+    L.push('  </g>');
+    L.push('  <g inkscape:groupmode="layer" inkscape:label="CutContour" id="CutContour">');
+    L.push('    <path d="'+pathD(pts)+'" fill="none" stroke="'+CUT_COLOR+'" stroke-width="0.25" stroke-linejoin="round" data-spot="CutContour"/>');
+    L.push('  </g>');
+    if(holes.length){
+      L.push('  <g inkscape:groupmode="layer" inkscape:label="Holes" id="Holes">');
+      holes.forEach(function(hl){
+        L.push('    <circle cx="'+mmx(hl.x)+'" cy="'+mmy(hl.y)+'" r="'+(+(holeRadPx()*mmpp).toFixed(3))+'" '
+          +'fill="none" stroke="'+CUT_COLOR+'" stroke-width="0.25" data-spot="CutContour"/>');
+      });
+      L.push('  </g>');
+    }
+    L.push('</svg>');
+    return L.join('\n')+'\n';
+  }
+  function exportSVG(){
+    var svg=exportSVGString();
+    if(!svg){ toast&&toast('先に画像を読み込んでください'); return; }
+    var bad=(S.holes||[]).some(function(h){ return h.ok===false; });
+    var blob=new Blob([svg],{type:'image/svg+xml'});
+    var url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download='seeq-'+(tplOf().type||'diecut')+'-cutdata.svg'; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); },1500);
+    toast&&toast(bad ? '書き出しました（穴の位置に注意：フチに近すぎます）'
+                     : '入稿SVGを書き出しました（'+effDpi()+'dpi・mm実寸）');
+  }
+
+  /* ---- UIバインド ---- */
+  function $(id){ return document.getElementById(id); }
+  function seg(container,attr,val){ var w=$(container); if(!w) return; w.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset[attr]===val); }); }
+  function cutSizeMM(){
+    if(!S||!S.cut||S.cut.length<3) return {w:0,h:0};
+    var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    S.cut.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[1]<minY)minY=p[1]; if(p[0]>maxX)maxX=p[0]; if(p[1]>maxY)maxY=p[1]; });
+    return {w:(maxX-minX)*mmPerPx(), h:(maxY-minY)*mmPerPx()};
+  }
+  /* 入稿として成立しているか（仕上がり寸法・実効解像度・穴のクリアランス）を1行で見せる */
+  function syncInfo(){
+    var el=$('dieInfo'); if(!el) return;
+    if(!S){ el.innerHTML=''; return; }
+    var dpi=effDpi(), sz=cutSizeMM(), parts=[];
+    parts.push('仕上がり <b>'+sz.w.toFixed(1)+'×'+sz.h.toFixed(1)+'mm</b>');
+    parts.push('実効 <span class="'+(dpi>=250?'ok':'ng')+'">'+dpi+'dpi</span>');
+    if(tplOf().hole){
+      if(!S.holes.length) parts.push('<span class="ng">穴が未配置</span>');
+      else {
+        var bad=S.holes.filter(function(h){ return h.ok===false; }).length;
+        parts.push(bad ? '<span class="ng">穴がフチに近すぎます</span>' : '<span class="ok">穴OK</span>');
+      }
+    }
+    el.innerHTML=parts.join(' ／ ');
+  }
+  function syncControls(){
+    if(!S) return;
+    var t=tplOf();
+    seg('dieBgSeg','bg',S.bgMode); $('dieKeyGrp').style.display = S.bgMode==='colorkey'?'':'none';
+    $('dieThr').value=S.thr; $('dieThrV').textContent=S.thr;
+    $('dieOff').value=S.offsetMM; $('dieOffV').textContent=S.offsetMM.toFixed(1)+'mm';
+    $('dieRound').value=S.round; $('dieRoundV').textContent=S.round;
+    $('dieSmooth').value=S.smooth; $('dieSmoothV').textContent=S.smooth.toFixed(1);
+    $('dieSize').value=S.longEdgeMM; $('dieSizeV').textContent=S.longEdgeMM+'mm';
+    seg('dieBrushSeg','brush',brush.mode); $('dieBrush').value=brush.size; $('dieBrushV').textContent=brush.size;
+    /* 白版・穴はアクリルなど対応テンプレでのみ出す */
+    $('dieWhiteGrp').classList.toggle('hidden', !t.whitePlate);
+    $('dieHoleGrp').classList.toggle('hidden', !t.hole);
+    seg('dieWhiteSeg','white', S.whiteOn?'on':'off');
+    $('dieWhiteInset').value=S.whiteInsetMM; $('dieWhiteInsetV').textContent=S.whiteInsetMM.toFixed(1)+'mm';
+    seg('dieHoleSeg','hole', holeMode);
+    $('dieHoleDia').value=S.holeDiaMM; $('dieHoleDiaV').textContent=S.holeDiaMM.toFixed(1)+'mm';
+    wrap.classList.toggle('hole', holeMode==='place');
+  }
+  /* 商品（テンプレ）が変わった時に既存の読み込み画像へ新テンプレの既定値を当て直す */
+  function applyTplDefaults(){
+    if(!S) return;
+    var t=tplOf(); S.tpl=t;
+    S.offsetMM=t.params.offsetMM; S.round=t.params.round; S.smooth=t.params.smooth;
+    S.longEdgeMM=t.defaultLongEdgeMM;
+    S.whiteOn=!!t.whitePlate; S.whiteInsetMM=(t.whiteInsetMM!=null?t.whiteInsetMM:0.5);
+    S.holeDiaMM=(t.holeDiaMM||5); S.holes=[];
+    computeCut();
+    if(t.hole && !S.holes.length) autoPlaceHole();
+    render(); syncControls(); syncInfo();
+  }
+  function bindControls(){
+    $('dieBgSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||!S) return;
+      S.bgMode=b.dataset.bg; if(S.bgMode==='colorkey') S.keyCol=detectKey(); syncControls(); recompute(); });
+    $('dieThr').addEventListener('input',function(){ if(!S) return; S.thr=+this.value; $('dieThrV').textContent=this.value; recompute(); });
+    $('dieOff').addEventListener('input',function(){ if(!S) return; S.offsetMM=+this.value; $('dieOffV').textContent=(+this.value).toFixed(1)+'mm'; computeCut(); render(); syncInfo(); });
+    $('dieRound').addEventListener('input',function(){ if(!S) return; S.round=+this.value; $('dieRoundV').textContent=this.value; computeCut(); render(); syncInfo(); });
+    $('dieSmooth').addEventListener('input',function(){ if(!S) return; S.smooth=+this.value; $('dieSmoothV').textContent=(+this.value).toFixed(1); computeCut(); render(); syncInfo(); });
+    $('dieSize').addEventListener('input',function(){ if(!S) return; S.longEdgeMM=+this.value; $('dieSizeV').textContent=this.value+'mm'; computeCut(); render(); syncInfo(); });
+    /* ---- 白版 ---- */
+    $('dieWhiteSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||!S) return;
+      S.whiteOn=(b.dataset.white==='on'); computeCut(); render(); syncControls(); });
+    $('dieWhiteInset').addEventListener('input',function(){ if(!S) return; S.whiteInsetMM=+this.value;
+      $('dieWhiteInsetV').textContent=(+this.value).toFixed(1)+'mm'; computeCut(); render(); });
+    /* ---- 丸穴 ---- */
+    $('dieHoleSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return;
+      holeMode=b.dataset.hole; syncControls();
+      if(holeMode==='place') toast&&toast('穴を置きたい場所をタップしてください（ドラッグで移動できます）'); });
+    $('dieHoleDia').addEventListener('input',function(){ if(!S) return; S.holeDiaMM=+this.value;
+      $('dieHoleDiaV').textContent=(+this.value).toFixed(1)+'mm'; checkHoles(); render(); syncInfo(); });
+    $('dieHoleDel').onclick=function(){ if(!S||!S.holes.length) return; S.holes.pop(); checkHoles(); render(); syncInfo(); };
+    $('dieBrushSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return;
+      brush.mode=b.dataset.brush; seg('dieBrushSeg','brush',brush.mode); wrap.classList.toggle('brush', brush.mode!=='off'); });
+    $('dieBrush').addEventListener('input',function(){ brush.size=+this.value; $('dieBrushV').textContent=this.value; });
+    $('dieBack').onclick=exit;
+    $('dieExport').onclick=exportSVG;
+    var pick=function(){ fileInput.click(); };
+    $('diePick').onclick=pick; $('dieReplace').onclick=pick;
+    fileInput.addEventListener('change',function(){ var f=this.files&&this.files[0]; if(f) readFile(f); this.value=''; });
+    /* ドラッグ&ドロップ */
+    mount.addEventListener('dragover',function(e){ e.preventDefault(); });
+    mount.addEventListener('drop',function(e){ e.preventDefault(); var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) readFile(f); });
+    bindBrush();
+  }
+  function readFile(file){
+    if(!/^image\/(png|jpeg|webp)/.test(file.type||'')){ toast&&toast('PNG / JPG 画像を選んでください'); return; }
+    var r=new FileReader(); r.onload=function(ev){ loadImageSrc(ev.target.result).catch(function(){ toast&&toast('画像を読み込めませんでした'); }); }; r.readAsDataURL(file);
+  }
+
+  /* ---- 入退場 & トグル横取り ---- */
+  var viewToggle=document.getElementById('viewToggle');
+  var open=false;
+  function isDiecut(){ var p=curProduct(); return !!(p && p.kind==='diecut'); }
+  function setViewBtn(v){ viewToggle && viewToggle.querySelectorAll('.vt').forEach(function(b){ b.classList.toggle('on', b.dataset.view===v); }); }
+  function enter(){ open=true; setViewBtn('3d'); mount.classList.add('show'); mount.setAttribute('aria-hidden','false');
+    try{ window.SeeQ && window.SeeQ.snapTo && window.SeeQ.snapTo('peek'); }catch(_){}
+    if(!S) drop.classList.remove('hide');
+    else if(S.tpl!==tplOf()) applyTplDefaults();
+    else { syncControls(); syncInfo(); }
+  }
+  function exit(){ open=false; setViewBtn('2d'); mount.classList.remove('show'); mount.setAttribute('aria-hidden','true');
+    tplOverride=null; holeMode='off'; }
+
+  /* 2D編集画面の「ステッカー用／アクキー用データ作成」から、選択中の画像を渡して直接開く。
+     商品は切り替えない（作りかけのデザインをそのまま残す）＝テンプレだけ上書きする。 */
+  function openWith(tplId, src){
+    if(!DIECUT_TEMPLATES[tplId]) return Promise.reject(new Error('unknown template'));
+    tplOverride=tplId;
+    S=null;
+    enter();
+    drop.classList.add('hide');      /* enter() の後に隠す（読み込み中にドロップ枠を出さない） */
+    return loadImageSrc(src).then(function(st){ syncControls(); syncInfo(); return st; })
+      .catch(function(e){ drop.classList.remove('hide'); throw e; });
+  }
+
+  if(viewToggle) viewToggle.addEventListener('click', function(e){
+    var b=e.target.closest('.vt'); if(!b) return;
+    if(b.dataset.view==='3d'){ if(!isDiecut() && !tplOverride) return; e.stopPropagation(); enter(); }
+    else if(open){ e.stopPropagation(); exit(); }
+  }, true);
+
+  function syncLabel(){ if(!isDiecut()) return; var l=viewToggle && viewToggle.querySelector('.vt[data-view="3d"] .vt-label'); if(l) l.textContent='変換'; }
+  window.addEventListener('seeq:productchange', function(){ if(open&&!isDiecut()&&!tplOverride) exit(); syncLabel(); });
+  window.addEventListener('seeq:brandchange', function(){ if(open) exit(); syncLabel(); });
+
+  if(mount){ bindControls(); syncLabel(); }
+  window.SEEQ_DIECUT={ enter:enter, exit:exit, isDiecut:isDiecut, openWith:openWith,
+    loadImageSrc:loadImageSrc, exportSVGString:exportSVGString, exportSVG:exportSVG,
+    setParam:function(k,v){ if(!S) return; S[k]=v; syncControls(); recompute(); },
+    addHole:function(x,y){ if(!S) return; S.holes.push({x:x,y:y}); checkHoles(); render(); syncInfo(); },
+    _state:function(){ return S; } };
+  return window.SEEQ_DIECUT;
 })();
 
 /* =====================================================================
