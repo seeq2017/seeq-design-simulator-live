@@ -195,6 +195,24 @@
   .sheet-body{display:flex;flex-direction:column;gap:12px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px;}
   .card.hidden{display:none;}
+  /* ===== パネルの開閉（アコーディオン）=====
+     見出しをそのまま開閉ボタンにする。閉じている時は見出し以外を隠すだけなので、
+     中の入力状態やイベントはそのまま生きる。 */
+  .card>h3{cursor:pointer;user-select:none;-webkit-user-select:none;position:relative;padding-right:20px;
+    -webkit-tap-highlight-color:transparent;min-height:22px;}
+  .card>h3::after{content:'';position:absolute;right:3px;top:50%;width:7px;height:7px;
+    border-right:2px solid var(--sub);border-bottom:2px solid var(--sub);
+    transform:translateY(-70%) rotate(45deg);transition:transform .18s ease;}
+  .card.collapsed>h3::after{transform:translateY(-25%) rotate(-135deg);}
+  .card.collapsed>h3{margin-bottom:0;}
+  .card.collapsed>*:not(h3){display:none !important;}
+  .card>h3:hover{color:var(--ink);}
+  .card>h3:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px;}
+  .btn.hidden{display:none !important;}
+  .panel-tools{display:flex;justify-content:flex-end;}
+  .pt-btn{border:0;background:transparent;color:var(--sub);font-family:inherit;font-size:11.5px;
+    font-weight:700;cursor:pointer;padding:4px 2px;}
+  .pt-btn:hover{color:var(--accent-d,#B3000E);}
   .card h3{margin:0 0 10px;font-size:12.5px;font-weight:700;color:var(--sub);letter-spacing:.03em;display:flex;align-items:center;gap:7px;}
   .card h3 .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);}
 
@@ -534,6 +552,8 @@
     .sheet-body{flex:0 0 auto;height:var(--sheet-bodyh,300px);overflow-y:auto;padding:8px 12px 18px;gap:10px;-webkit-overflow-scrolling:touch;}
     .tools .card{display:none;border:0;border-radius:0;padding:4px 0;}
     .tools .card.m-active{display:block;}
+    .panel-tools{display:none;}   /* スマホはタブで切り替わるので一括開閉は出さない */
+    .card>h3{padding:6px 20px 6px 0;}
     .tools .card.hidden{display:none !important;}
 
     /* Floating context toolbar (案C): JS positions it just above (or below, when
@@ -818,14 +838,18 @@
     </div>
     <div class="sheet-body" id="sheetBody">
 
-    <div class="card" data-tab="product" id="tplCard">
+    <div class="panel-tools" id="panelTools">
+      <button type="button" class="pt-btn" id="panelToggleAll" aria-label="すべてのメニューを開閉">すべて閉じる</button>
+    </div>
+
+    <div class="card" data-tab="product" data-panel="tpl" id="tplCard">
       <h3><span class="dot"></span>テンプレート</h3>
       <div class="tpl-cats" id="tplCats"></div>
       <div class="tpl-grid" id="tplGrid"></div>
       <p class="tpl-empty" id="tplEmpty" hidden>テンプレートはまだ登録されていません。</p>
     </div>
 
-    <div class="card" data-tab="product">
+    <div class="card" data-tab="product" data-panel="product">
       <h3><span class="dot"></span>商品・プリント面</h3>
       <label class="fld" id="lblProduct">商品を選ぶ</label>
       <div class="prodsel" id="prodSel"></div>
@@ -833,10 +857,13 @@
       <div class="facetabs" id="faceTabs"></div>
       <label class="fld" id="lblColor">商品カラー</label>
       <div class="swatches" id="swatches"></div>
+      <!-- ステッカー／アクリルキーホルダーは編集ではなく「画像から作る」商品なので、
+           ヘッダーのトグル頼みにせず、商品カードから直接入口を出す -->
+      <button class="btn btn-primary btn-block mt-s hidden" id="diecutEntry" type="button">画像からデータを作る</button>
     </div>
 
     <!-- 森工業：サイズ・厚みコンフィギュレータ（kind=plate のときのみ表示） -->
-    <div class="card hidden" data-tab="product" id="moriConfig">
+    <div class="card hidden" data-tab="product" data-panel="mori" id="moriConfig">
       <h3><span class="dot"></span>サイズ・厚み</h3>
       <label class="fld">サイズ (mm)</label>
       <div class="chiprow" id="moriSizes"></div>
@@ -844,7 +871,7 @@
       <p class="mini note">コーナーR・自由サイズ（W/H入力）も対応。詳細はお見積りで承ります。</p>
     </div>
 
-    <div class="card" data-tab="text">
+    <div class="card" data-tab="text" data-panel="textAdd">
       <h3><span class="dot"></span>テキストを追加</h3>
       <textarea id="txtInput" rows="2" placeholder="ここに文字を入力"></textarea>
       <button class="btn btn-primary btn-block" id="btnAddText">＋ テキストを追加</button>
@@ -852,7 +879,7 @@
     </div>
 
     <!-- Text editing panel (appears when a text object is selected) -->
-    <div class="card hidden" data-tab="text" id="textPanel">
+    <div class="card hidden" data-tab="text" data-panel="textEdit" id="textPanel">
       <h3><span class="dot"></span>テキストの編集</h3>
       <div class="field">
         <label class="fld">フォント</label>
@@ -1007,7 +1034,7 @@
       </div>
     </div>
 
-    <div class="card" data-tab="image" id="aiCard">
+    <div class="card" data-tab="image" data-panel="ai" id="aiCard">
       <h3><span class="dot"></span>AIで図案を生成</h3>
       <textarea id="aiPrompt" rows="2" placeholder="作りたい図案を入力（例：ヴィンテージなロゴ）"></textarea>
       <div class="chiprow mt-s" id="aiSuggest"></div>
@@ -1020,7 +1047,7 @@
       <p class="ai-note mini hidden" id="aiNote">※生成した図案の商用利用可否は内容により異なります。仕上がりデータは印刷前にご確認ください。</p>
     </div>
 
-    <div class="card" data-tab="image">
+    <div class="card" data-tab="image" data-panel="upload">
       <h3><span class="dot"></span>画像をアップロード</h3>
       <div class="upload" id="uploadBox">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
@@ -1031,7 +1058,7 @@
     </div>
 
     <!-- Image editing panel -->
-    <div class="card hidden" data-tab="image" id="imgPanel">
+    <div class="card hidden" data-tab="image" data-panel="imgEdit" id="imgPanel">
       <h3><span class="dot"></span>画像の調整</h3>
       <div class="field">
         <div class="chiprow">
@@ -1178,7 +1205,7 @@
       </div>
     </div>
 
-    <div class="card" data-tab="shape">
+    <div class="card" data-tab="shape" data-panel="shape">
       <h3><span class="dot"></span>図形・クリップアート</h3>
       <div class="shapes" id="shapes">
         <button class="shape-btn" data-shape="circle"   title="丸"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></button>
@@ -1192,13 +1219,13 @@
       </div>
     </div>
 
-    <div class="card" data-tab="arrange">
+    <div class="card" data-tab="arrange" data-panel="arrange">
       <h3><span class="dot"></span>配置プリセット</h3>
       <div class="presets" id="presetWrap"></div>
       <div class="mini note">選択中の要素を定番の位置・サイズに合わせます</div>
     </div>
 
-    <div class="card" data-tab="layer">
+    <div class="card" data-tab="layer" data-panel="layer">
       <h3><span class="dot"></span>レイヤー</h3>
       <div class="layerlist" id="layerList"></div>
     </div>
@@ -4139,7 +4166,13 @@ var btnExport=document.getElementById('btnExport'), expMenu=document.getElementB
 btnExport.onclick=function(e){ e.stopPropagation(); var open=expMenu.classList.toggle('show'); btnExport.setAttribute('aria-expanded', open?'true':'false'); };
 expMenu.addEventListener('click', function(e){ var b=e.target.closest('button[data-fmt]'); if(!b) return;
   expMenu.classList.remove('show'); btnExport.setAttribute('aria-expanded','false');
-  var fn=EXPORTERS[b.dataset.fmt]; if(fn){ track('export',{format:b.dataset.fmt}); fn(); }
+  var fn=EXPORTERS[b.dataset.fmt];
+  if(fn){
+    track('export',{format:b.dataset.fmt});
+    fn();
+    /* ダウンロードは無音で終わることが多いので、押した手応えを必ず返す */
+    if(b.dataset.fmt!=='proof') toast('保存しました（ダウンロードフォルダをご確認ください）', {ms:2600});
+  }
 });
 document.addEventListener('click', function(e){ if(!e.target.closest('.exp-wrap')){ expMenu.classList.remove('show'); btnExport.setAttribute('aria-expanded','false'); } });
 
@@ -4469,6 +4502,14 @@ function setMobileTab(name){
   currentMTab=name;
   document.querySelectorAll('.mtab').forEach(function(b){ b.classList.toggle('active', b.dataset.mtab===name); });
   document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.toggle('m-active', c.dataset.tab===name); });
+  /* タブを切り替えたら中身の先頭から見せる（前のタブのスクロール位置が残ると迷子になる） */
+  var sb=document.getElementById('sheetBody'); if(sb) sb.scrollTop=0;
+  /* タブを選んだのに中身が畳まれたままだと二度手間なので、先頭のパネルは開いておく */
+  if(typeof setPanel==='function'){
+    var first=[].filter.call(document.querySelectorAll('#tools .card.m-active'), function(c){ return !c.classList.contains('hidden'); })[0];
+    if(first && first.classList.contains('collapsed')) setPanel(first, true);
+    if(typeof syncToggleAllLabel==='function') syncToggleAllLabel();
+  }
 }
 function computeSnaps(){
   /* use the TRUE visible height (visualViewport) so iOS Safari's dynamic toolbar
@@ -4697,6 +4738,139 @@ upEl.addEventListener('touchend', endPinch, {passive:true});
 upEl.addEventListener('touchcancel', endPinch, {passive:true});
 
 /* =====================================================================
+   パネルの開閉（アコーディオン）
+   --------------------------------------------------------------------
+   「全部のメニューが開きっぱなしで圧迫される」の解消。見出しをボタンにして
+   中身を畳めるようにし、初期状態は“よく使うもの”だけ開けておく。開閉状態は
+   メモリ上の panelState に持つ（localStorage不使用の制約は維持＝編集中は
+   保たれ、リロードで既定に戻る）。
+   選択したオブジェクト用のパネル（テキスト編集／画像編集／サイズ）は、
+   出てきた瞬間に自動で開く＝畳んだせいで編集できない、を防ぐ。
+   ===================================================================== */
+var panelState={};
+var PANEL_OPEN_DEFAULT={ product:1, textAdd:1, upload:1, textEdit:1, imgEdit:1, mori:1 };
+function panelKey(card){ return card.getAttribute('data-panel')||card.id||''; }
+function setPanel(card, open){
+  if(!card) return;
+  card.classList.toggle('collapsed', !open);
+  var h=card.querySelector('h3'); if(h) h.setAttribute('aria-expanded', open?'true':'false');
+  panelState[panelKey(card)]=!!open;
+}
+function togglePanel(card){ setPanel(card, card.classList.contains('collapsed')); }
+function visibleCards(){
+  return [].filter.call(document.querySelectorAll('#tools .card'), function(c){
+    if(c.classList.contains('hidden')) return false;
+    if(isMobile() && !c.classList.contains('m-active')) return false;
+    return true;
+  });
+}
+function syncToggleAllLabel(){
+  var b=document.getElementById('panelToggleAll'); if(!b) return;
+  var cards=visibleCards();
+  var anyOpen=cards.some(function(c){ return !c.classList.contains('collapsed'); });
+  b.textContent=anyOpen?'すべて閉じる':'すべて開く';
+  b.dataset.next=anyOpen?'close':'open';
+}
+function initPanels(){
+  document.querySelectorAll('#tools .card').forEach(function(c){
+    var h=c.querySelector('h3'); if(!h || h.dataset.bound) return;
+    h.dataset.bound='1';
+    h.setAttribute('role','button'); h.setAttribute('tabindex','0');
+    var k=panelKey(c);
+    setPanel(c, (panelState[k]!==undefined) ? panelState[k] : !!PANEL_OPEN_DEFAULT[k]);
+    h.addEventListener('click', function(){ togglePanel(c); syncToggleAllLabel(); });
+    h.addEventListener('keydown', function(e){
+      if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){ e.preventDefault(); togglePanel(c); syncToggleAllLabel(); }
+    });
+  });
+  /* 選択時にだけ現れるパネルは、表示された瞬間に開く */
+  if(window.MutationObserver){
+    ['textPanel','imgPanel','moriConfig'].forEach(function(id){
+      var el=document.getElementById(id); if(!el) return;
+      new MutationObserver(function(){
+        if(el.classList.contains('hidden')) return;
+        if(el.classList.contains('collapsed')) setPanel(el,true);
+        /* PCはカードが縦に並ぶので、出てきた編集パネルまで自動で送る */
+        if(!isMobile() && el.scrollIntoView){
+          clearTimeout(el._scrollT);
+          el._scrollT=setTimeout(function(){ try{ el.scrollIntoView({block:'nearest', behavior:'smooth'}); }catch(_){ } },60);
+        }
+      }).observe(el,{attributes:true, attributeFilter:['class']});
+    });
+  }
+  /* あとから描画される chip（配置プリセット・テンプレ分類・四隅色など）も拾う */
+  if(window.MutationObserver){
+    var tools=document.getElementById('tools');
+    if(tools){
+      var chipTimer=null;
+      new MutationObserver(function(){
+        clearTimeout(chipTimer);
+        chipTimer=setTimeout(function(){ makeChipsAccessible(tools); }, 80);
+      }).observe(tools,{childList:true, subtree:true});
+    }
+  }
+  var all=document.getElementById('panelToggleAll');
+  if(all) all.onclick=function(){
+    var open=(this.dataset.next==='open');
+    visibleCards().forEach(function(c){ setPanel(c, open); });
+    syncToggleAllLabel();
+  };
+  syncToggleAllLabel();
+}
+
+/* ステッカー／アクリルキーホルダーの入口を商品カードに出す（ヘッダーのトグルが
+   「変換」に変わるだけでは気づけない、というロードマップP1-7の指摘への最小対応） */
+function updateDiecutEntry(){
+  var b=document.getElementById('diecutEntry'); if(!b) return;
+  var p=(typeof curProduct==='function')?curProduct():null;
+  var is=!!(p && p.kind==='diecut');
+  b.classList.toggle('hidden', !is);
+  if(is) b.textContent='画像から'+p.label+'のデータを作る';
+}
+(function(){
+  var b=document.getElementById('diecutEntry');
+  if(b) b.onclick=function(){ if(window.SEEQ_DIECUT) SEEQ_DIECUT.enter(); };
+  window.addEventListener('seeq:productchange', updateDiecutEntry);
+  window.addEventListener('seeq:brandchange', updateDiecutEntry);
+})();
+
+/* =====================================================================
+   細かい使い勝手の修正
+   ・Esc でモーダル／フォント選択／書き出しメニュー／変換画面を閉じる
+   ・クリックできる chip をキーボードでも押せるようにする（Tab→Enter/Space）
+   ===================================================================== */
+document.addEventListener('keydown', function(e){
+  if(e.key!=='Escape'&&e.key!=='Esc') return;
+  var closed=false;
+  function hide(el){ if(el && el.classList.contains('show')){ el.classList.remove('show'); closed=true; } }
+  var fp=document.getElementById('fpOverlay');
+  if(fp && fp.classList.contains('show')){ if(typeof closeFontPicker==='function') closeFontPicker(); else fp.classList.remove('show'); closed=true; }
+  hide(document.getElementById('saveModal'));
+  hide(document.getElementById('proofModal'));
+  hide(document.getElementById('modal'));
+  var em=document.getElementById('expMenu');
+  if(em && em.classList.contains('show')){ em.classList.remove('show');
+    var eb=document.getElementById('btnExport'); if(eb) eb.setAttribute('aria-expanded','false'); closed=true; }
+  var die=document.getElementById('stageDie');
+  if(!closed && die && die.classList.contains('show') && window.SEEQ_DIECUT){ SEEQ_DIECUT.exit(); closed=true; }
+  if(closed) e.preventDefault();
+}, true);
+
+/* chip はデザイン上 span のままにしたいので、役割と操作性だけ後付けする */
+function makeChipsAccessible(root){
+  (root||document).querySelectorAll('span.chip:not([data-a11y])').forEach(function(c){
+    c.dataset.a11y='1';
+    c.setAttribute('role','button');
+    if(!c.hasAttribute('tabindex')) c.setAttribute('tabindex','0');
+  });
+}
+document.addEventListener('keydown', function(e){
+  if(e.key!=='Enter' && e.key!==' ' && e.key!=='Spacebar') return;
+  var el=document.activeElement;
+  if(el && el.tagName==='SPAN' && el.classList.contains('chip')){ e.preventDefault(); el.click(); }
+});
+
+/* =====================================================================
    P0-1 離脱ガード ＋「消える前に保存」の案内
    --------------------------------------------------------------------
    localStorage不使用の方針はそのままに、うっかりリロード／戻るでデザインが
@@ -4758,6 +4932,9 @@ fitCanvas();
 renderLayers();
 seedHistory();
 initMobile();
+initPanels();
+makeChipsAccessible();
+updateDiecutEntry();
 track('app:open',{product:currentProduct});
 window.addEventListener('resize', function(){ clearTimeout(window._rz); window._rz=setTimeout(function(){ fitCanvas(); initMobile(); }, 180); });
 window.addEventListener('orientationchange', function(){ setTimeout(function(){ fitCanvas(); initMobile(); }, 250); });
