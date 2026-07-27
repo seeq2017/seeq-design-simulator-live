@@ -881,6 +881,10 @@
   .die-sep-v{width:1px;align-self:stretch;background:var(--line);margin:0 2px;}
   .die-panel .spacer{flex:1 1 auto;}
   .die-grp.hidden{display:none;}
+  /* 詳細行（既定は畳む）。パネル幅いっぱいの1行として折り返す */
+  .die-adv{flex:1 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+    padding-top:9px;margin-top:2px;border-top:1px dashed var(--line);}
+  .die-adv.hidden{display:none;}
   .die-canvas-wrap.hole canvas{cursor:copy;}
   /* 実効解像度・穴の可否などの入稿チェック表示 */
   .die-info{font-size:11px;font-weight:700;color:var(--sub);line-height:1.5;max-width:340px;}
@@ -1435,29 +1439,17 @@
       <button class="btn btn-primary btn-xs" id="dieExport" type="button">印刷用データを保存</button>
     </div>
     <div class="die-panel" id="diePanel">
-      <div class="die-grp"><span class="lbl">背景削除</span>
-        <span class="die-seg" id="dieBgSeg">
-          <button data-bg="colorkey" class="on" type="button">色で自動</button>
-          <button data-bg="skip" type="button">透過PNG</button>
+      <!-- 形（かたち）＝アクキー等の形状プリセット。既定は「デザインなり」（自動）。 -->
+      <div class="die-grp hidden" id="dieShapeGrp"><span class="lbl">形</span>
+        <span class="die-seg" id="dieShapeSeg">
+          <button data-shape="auto" class="on" type="button">デザインなり</button>
+          <button data-shape="circle" type="button">丸</button>
+          <button data-shape="rrect" type="button">角丸四角</button>
+          <button data-shape="ellipse" type="button">楕円</button>
         </span>
       </div>
-      <div class="die-grp" id="dieKeyGrp">
-        <span class="die-sld">しきい値<input type="range" id="dieThr" min="20" max="140" step="2" value="60"><span class="val" id="dieThrV">60</span></span>
-      </div>
-      <div class="die-sep-v"></div>
-      <div class="die-grp"><span class="lbl">手直し</span>
-        <span class="die-seg" id="dieBrushSeg">
-          <button data-brush="off" class="on" type="button">なし</button>
-          <button data-brush="erase" type="button">消しゴム</button>
-          <button data-brush="restore" type="button">復元</button>
-        </span>
-        <span class="die-sld">太さ<input type="range" id="dieBrush" min="6" max="80" step="2" value="26"><span class="val" id="dieBrushV">26</span></span>
-      </div>
-      <div class="die-sep-v"></div>
       <div class="die-grp"><span class="lbl">カットライン</span>
-        <span class="die-sld">フチ<input type="range" id="dieOff" min="0" max="8" step="0.5" value="3"><span class="val" id="dieOffV">3.0mm</span></span>
-        <span class="die-sld">角丸<input type="range" id="dieRound" min="0" max="4" step="1" value="2"><span class="val" id="dieRoundV">2</span></span>
-        <span class="die-sld">平滑<input type="range" id="dieSmooth" min="0.4" max="3" step="0.2" value="1.2"><span class="val" id="dieSmoothV">1.2</span></span>
+        <span class="die-sld" title="デザインの外側にとる余白。角の丸みは自動で確保されます">フチ<input type="range" id="dieOff" min="0" max="8" step="0.5" value="3"><span class="val" id="dieOffV">3.0mm</span></span>
       </div>
       <div class="die-sep-v"></div>
       <div class="die-grp hidden" id="dieWhiteGrp"><span class="lbl">白版</span>
@@ -1492,7 +1484,32 @@
       </div>
       <span class="spacer"></span>
       <span class="die-info" id="dieInfo"></span>
+      <button class="btn btn-ghost btn-xs" id="dieAdvToggle" type="button" aria-expanded="false">詳細 ▾</button>
       <button class="btn btn-ghost btn-xs" id="dieReplace" type="button">画像を差し替え</button>
+      <!-- 詳細（既定は畳む）：背景の抜き方・手直し・なめらかさ。
+           ふだんは「フチ」と「形」だけで完結させ、必要な人だけ開く。 -->
+      <div class="die-adv hidden" id="dieAdv">
+        <div class="die-grp"><span class="lbl">背景の抜き方</span>
+          <span class="die-seg" id="dieBgSeg">
+            <button data-bg="colorkey" class="on" type="button">色で自動</button>
+            <button data-bg="skip" type="button">透過PNG</button>
+          </span>
+          <span class="die-sld" id="dieKeyGrp">しきい値<input type="range" id="dieThr" min="20" max="140" step="2" value="60"><span class="val" id="dieThrV">60</span></span>
+        </div>
+        <div class="die-sep-v"></div>
+        <div class="die-grp"><span class="lbl">手直し</span>
+          <span class="die-seg" id="dieBrushSeg">
+            <button data-brush="off" class="on" type="button">なし</button>
+            <button data-brush="erase" type="button">消しゴム</button>
+            <button data-brush="restore" type="button">復元</button>
+          </span>
+          <span class="die-sld">太さ<input type="range" id="dieBrush" min="6" max="80" step="2" value="26"><span class="val" id="dieBrushV">26</span></span>
+        </div>
+        <div class="die-sep-v"></div>
+        <div class="die-grp"><span class="lbl">仕上げ</span>
+          <span class="die-sld" title="輪郭のなめらかさ。角の最小Rは設定に関わらず自動で確保されます">なめらかさ<input type="range" id="dieSmoothLv" min="0" max="3" step="1" value="2"><span class="val" id="dieSmoothLvV">ふつう</span></span>
+        </div>
+      </div>
     </div>
   </div>
 </main>
@@ -1631,7 +1648,7 @@
      ./build.ps1（deploy-live.ps1 が自動実行）でこの位置へ結合される。
      公開形は従来どおり index.html 1枚のまま。 -->
 <!-- BUILD:MANIFEST -->
-<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"cap-baseball","category":"apparel","brand":"seeq","order":15,"kind":"mockup","label":"ベースボールキャップ","short":"キャップ","en":"BASEBALL CAP","sub":"6方パネル・前面刺繍","provisional":"刺繍範囲110×55mmとつばの形は一般的な仕様の暫定値。採用ボディ確定後に差し替える","cap":{"style":"baseball","printWMM":110,"printHMM":55,"visor":"curved","mesh":false,"crownH":1.0}},{"id":"cap-low","category":"apparel","brand":"seeq","order":16,"kind":"mockup","label":"ローキャップ","short":"ローキャップ","en":"LOW CAP","sub":"浅め・前面刺繍","provisional":"刺繍範囲100×48mmは暫定値","cap":{"style":"low","printWMM":100,"printHMM":48,"visor":"curved","mesh":false,"crownH":0.86}},{"id":"cap-mesh","category":"apparel","brand":"seeq","order":17,"kind":"mockup","label":"メッシュキャップ","short":"メッシュ","en":"MESH CAP","sub":"後方メッシュ・前面刺繍","provisional":"刺繍範囲110×55mmは暫定値","cap":{"style":"mesh","printWMM":110,"printHMM":55,"visor":"flat","mesh":true,"crownH":1.0}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"acryl-stand","category":"goods","brand":"seeq","order":27,"kind":"diecut","label":"アクリルスタンド","short":"アクスタ","en":"ACRYLIC STAND","sub":"台座つき・白版あり","provisional":"台座の寸法（幅60×高22mm・スリット34×3.2mm・差込代6mm）は一般的な仕様の暫定値。実測が出たら差し替える","diecut":{"type":"stand","defaultLongEdgeMM":100,"whitePlate":true,"hole":false,"whiteInsetMM":0.2,"minCutRMM":1.5,"base":{"wMM":60,"hMM":22,"rMM":3,"slitWMM":34,"slitTMM":3.2,"tabMM":6,"provisional":true},"params":{"offsetMM":2.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"cutting-sheet","category":"goods","brand":"seeq","order":28,"kind":"diecut","label":"カッティングシート","short":"カッティング","en":"CUTTING SHEET","sub":"単色カット・転写シート","provisional":"シート色は代表色の暫定リスト。実際の在庫色が確定したら差し替える","diecut":{"type":"cutting","defaultLongEdgeMM":150,"whitePlate":false,"hole":false,"singleColor":true,"minCutRMM":0.6,"minStrokeMM":1.2,"vinyl":[{"name":"ブラック","hex":"#1d1f21"},{"name":"ホワイト","hex":"#ffffff"},{"name":"レッド","hex":"#c0303a"},{"name":"ブルー","hex":"#274690"},{"name":"イエロー","hex":"#f2cf3d"},{"name":"グリーン","hex":"#2f6b4f"},{"name":"シルバー","hex":"#c8ccd0"},{"name":"ゴールド","hex":"#c8a349"}],"params":{"offsetMM":0,"round":1,"smooth":1.6,"alphaThr":128,"keyTol":60}}},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
+<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"cap-baseball","category":"apparel","brand":"seeq","order":15,"kind":"mockup","label":"ベースボールキャップ","short":"キャップ","en":"BASEBALL CAP","sub":"6方パネル・前面刺繍","provisional":"刺繍範囲110×55mmとつばの形は一般的な仕様の暫定値。採用ボディ確定後に差し替える","cap":{"style":"baseball","printWMM":110,"printHMM":55,"visor":"curved","mesh":false,"crownH":1.0}},{"id":"cap-low","category":"apparel","brand":"seeq","order":16,"kind":"mockup","label":"ローキャップ","short":"ローキャップ","en":"LOW CAP","sub":"浅め・前面刺繍","provisional":"刺繍範囲100×48mmは暫定値","cap":{"style":"low","printWMM":100,"printHMM":48,"visor":"curved","mesh":false,"crownH":0.86}},{"id":"cap-mesh","category":"apparel","brand":"seeq","order":17,"kind":"mockup","label":"メッシュキャップ","short":"メッシュ","en":"MESH CAP","sub":"後方メッシュ・前面刺繍","provisional":"刺繍範囲110×55mmは暫定値","cap":{"style":"mesh","printWMM":110,"printHMM":55,"visor":"flat","mesh":true,"crownH":1.0}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"acryl-stand","category":"goods","brand":"seeq","order":27,"kind":"diecut","label":"アクリルスタンド","short":"アクスタ","en":"ACRYLIC STAND","sub":"台座つき・白版あり","provisional":"台座の寸法（幅60×高22mm・スリット34×3.2mm・差込代6mm）は一般的な仕様の暫定値。実測が出たら差し替える","diecut":{"type":"stand","defaultLongEdgeMM":100,"shapes":true,"whitePlate":true,"hole":false,"whiteInsetMM":0.2,"minCutRMM":1.5,"base":{"wMM":60,"hMM":22,"rMM":3,"slitWMM":34,"slitTMM":3.2,"tabMM":6,"provisional":true},"params":{"offsetMM":2.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"cutting-sheet","category":"goods","brand":"seeq","order":28,"kind":"diecut","label":"カッティングシート","short":"カッティング","en":"CUTTING SHEET","sub":"単色カット・転写シート","provisional":"シート色は代表色の暫定リスト。実際の在庫色が確定したら差し替える","diecut":{"type":"cutting","defaultLongEdgeMM":150,"whitePlate":false,"hole":false,"singleColor":true,"minCutRMM":0.6,"minStrokeMM":1.2,"vinyl":[{"name":"ブラック","hex":"#1d1f21"},{"name":"ホワイト","hex":"#ffffff"},{"name":"レッド","hex":"#c0303a"},{"name":"ブルー","hex":"#274690"},{"name":"イエロー","hex":"#f2cf3d"},{"name":"グリーン","hex":"#2f6b4f"},{"name":"シルバー","hex":"#c8ccd0"},{"name":"ゴールド","hex":"#c8a349"}],"params":{"offsetMM":0,"round":1,"smooth":1.6,"alphaThr":128,"keyTol":60}}},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
 <!-- /BUILD:MANIFEST -->
 
 <script>
@@ -2239,7 +2256,7 @@ var DIECUT_TEMPLATES = {
   sticker: {
     label:'ダイカットステッカー', en:'DIE-CUT STICKER', type:'sticker',
     defaultLongEdgeMM:80,       /* アートワーク長辺の既定実寸 */
-    whitePlate:false, hole:false,
+    whitePlate:false, hole:false, shapes:true,
     /* minCutRMM: フチを細くしても角が立たないよう常に確保する最小R。
        カッターは鋭角で刃が止まるため、フチ設定とは独立の下限として効かせる。 */
     minCutRMM:1.0,
@@ -2251,7 +2268,7 @@ var DIECUT_TEMPLATES = {
     /* whitePlate: 白インク版。基準は「デザインの輪郭」で、whiteInsetMM だけ内側へ
                    小さくする（チョク）。カットライン基準にすると透明フチに白が乗る。
        hole      : タップで配置する丸穴。holeEdgeMM = 穴のフチからカット線までの最低クリアランス */
-    whitePlate:true, hole:true, holeDiaMM:5, holeEdgeMM:4, whiteInsetMM:0.2,
+    whitePlate:true, hole:true, holeDiaMM:5, holeEdgeMM:4, whiteInsetMM:0.2, shapes:true,
     minCutRMM:1.5,
     params:{ offsetMM:2.5, round:2, smooth:1.2, alphaThr:128, keyTol:60 }
   }
@@ -6900,7 +6917,9 @@ var SeeQMockup=(function(){
    ・Fabric コア・既存3D・モックアップには一切触れない独立モジュール。
    ===================================================================== */
 var SeeQDieCut=(function(){
-  var PAD=80;                 /* オフセットが収まるようワーキング画像の周囲に取る余白(px) */
+  /* オフセット・差し込み代・形状プリセット（丸/楕円）が収まるようワーキング画像の
+     周囲に取る余白(px)。形状プリセット導入で 80→140 に拡張。 */
+  var PAD=140;
   var WORK_MAX=1200;          /* ワーキング解像度の長辺上限 */
   var CUT_COLOR='#EC008C';    /* CutContour相当のマゼンタ（印刷所でスポットに設定） */
 
@@ -7084,7 +7103,7 @@ var SeeQDieCut=(function(){
 
   /* アルファ→前景マスクと距離場。距離場はオフセット量に依存しないので、
      アルファが変わった時だけ作り直し、スライダー操作では閾値を変えるだけにする
-     （＝フチ/角丸/白版インセットのドラッグが軽い）。 */
+     （＝フチ/なめらかさ/白版チョクのドラッグが軽い）。 */
   /* アクリルスタンドの差し込み代：図案の下端中央へ台座スリット幅ぶんの
      長方形をマスクに足す。輪郭トレースの前に足すので、カットラインも白版も
      自動的に「差し込み代つきの1枚」として出る。 */
@@ -7187,15 +7206,51 @@ var SeeQDieCut=(function(){
     }
     return out.length>3?out:pts;
   }
+  /* なめらかさ 0〜3 →（RDPのしきい値・Chaikinの回数）。UIは1本、内部は従来どおり2値。 */
+  var SMOOTH_LABELS=['角ばる','ひかえめ','ふつう','なめらか'];
+  function applySmoothLv(v){
+    v=Math.max(0,Math.min(3,v|0));
+    S.smoothLv=v;
+    S.round=v;
+    S.smooth=[0.6,1.0,1.2,1.8][v];
+    var el=document.getElementById('dieSmoothLvV'); if(el) el.textContent=SMOOTH_LABELS[v];
+  }
   function minCutRPx(){
     var t=tplOf();
     var mm=(t.minCutRMM!=null)?t.minCutRMM:1.0;   /* カッター実用の最小R（mm） */
     return mm*pxPerMM();
   }
+  /* 形状プリセット（丸／角丸四角／楕円）。デザインの外接矩形＋フチから直接
+     形を起こすので、輪郭トレースは通さない（角のRも形状自体が持っている）。 */
+  function shapeContour(kind, offPx){
+    var w=S.Wp, h=S.Hp, x0=1e9,y0=1e9,x1=-1,y1=-1, x,y;
+    for(y=0;y<h;y++) for(x=0;x<w;x++){ if(S.fg[y*w+x]){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+    if(x1<0) return [];
+    var cx=(x0+x1)/2, cy=(y0+y1)/2;
+    var hw=(x1-x0)/2+offPx, hh=(y1-y0)/2+offPx;
+    /* 作業バッファからはみ出さない範囲に収める（はみ出すと画面外で切れて見える） */
+    var maxW=Math.min(cx, w-cx)-2, maxH=Math.min(cy, h-cy)-2;
+    var pts=[], i, N=192, t;
+    if(kind==='circle'){
+      var r=Math.min(Math.max(hw,hh), maxW, maxH);
+      for(i=0;i<N;i++){ t=i/N*Math.PI*2; pts.push([cx+Math.cos(t)*r, cy+Math.sin(t)*r]); }
+    } else if(kind==='ellipse'){
+      hw=Math.min(hw,maxW); hh=Math.min(hh,maxH);
+      for(i=0;i<N;i++){ t=i/N*Math.PI*2; pts.push([cx+Math.cos(t)*hw, cy+Math.sin(t)*hh]); }
+    } else {  /* rrect */
+      hw=Math.min(hw,maxW); hh=Math.min(hh,maxH);
+      var r2=Math.max(minCutRPx(), Math.min(hw,hh)*0.22), q=24;
+      var corners=[[cx+hw-r2,cy+hh-r2,0],[cx-hw+r2,cy+hh-r2,Math.PI/2],[cx-hw+r2,cy-hh+r2,Math.PI],[cx+hw-r2,cy-hh+r2,-Math.PI/2]];
+      corners.forEach(function(c){
+        for(i=0;i<=q;i++){ var a=c[2]+i/q*(Math.PI/2); pts.push([c[0]+Math.cos(a)*r2, c[1]+Math.sin(a)*r2]); }
+      });
+    }
+    return pts;
+  }
   function computeCut(){
     if(!S.fg) computeMask();
     var offPx=Math.min(PAD-2, S.offsetMM*pxPerMM());
-    S.cut=contourAt(offPx, minCutRPx());
+    S.cut=(S.shape && S.shape!=='auto') ? shapeContour(S.shape, offPx) : contourAt(offPx, minCutRPx());
     var t=tplOf();
     /* 白版は「デザイン（アートワーク）の輪郭」が基準。カットラインを基準にすると
        透明フチにも白が乗ってしまうため。whiteInsetMM は内側へのチョク（0〜0.6mm）。 */
@@ -7368,6 +7423,7 @@ var SeeQDieCut=(function(){
             bgMode: alreadyTransparent ? 'skip' : 'colorkey',
             thr: t.params.keyTol||60, keyCol:{r:255,g:255,b:255},
             offsetMM:t.params.offsetMM, round:t.params.round, smooth:t.params.smooth,
+            smoothLv:2, shape:'auto',
             longEdgeMM:t.defaultLongEdgeMM,
             whiteOn:!!t.whitePlate, whiteInsetMM:(t.whiteInsetMM!=null?t.whiteInsetMM:0.2),
             holeDiaMM:(t.holeDiaMM||5), holes:[],
@@ -7633,8 +7689,11 @@ var SeeQDieCut=(function(){
     seg('dieBgSeg','bg',S.bgMode); $('dieKeyGrp').style.display = S.bgMode==='colorkey'?'':'none';
     $('dieThr').value=S.thr; $('dieThrV').textContent=S.thr;
     $('dieOff').value=S.offsetMM; $('dieOffV').textContent=S.offsetMM.toFixed(1)+'mm';
-    $('dieRound').value=S.round; $('dieRoundV').textContent=S.round;
-    $('dieSmooth').value=S.smooth; $('dieSmoothV').textContent=S.smooth.toFixed(1);
+    /* 形状プリセット（対応テンプレのみ） */
+    $('dieShapeGrp').classList.toggle('hidden', !t.shapes);
+    seg('dieShapeSeg','shape', S.shape||'auto');
+    /* 「フチ」は形が自動のときだけ意味が変わる（プリセット時は外接寸法の余白） */
+    $('dieSmoothLv').value=S.smoothLv; $('dieSmoothLvV').textContent=SMOOTH_LABELS[S.smoothLv]||'ふつう';
     $('dieSize').value=S.longEdgeMM; $('dieSizeV').textContent=S.longEdgeMM+'mm';
     seg('dieBrushSeg','brush',brush.mode); $('dieBrush').value=brush.size; $('dieBrushV').textContent=brush.size;
     /* 白版・穴はアクリルなど対応テンプレでのみ出す */
@@ -7669,7 +7728,7 @@ var SeeQDieCut=(function(){
   function applyTplDefaults(){
     if(!S) return;
     var t=tplOf(); S.tpl=t;
-    S.offsetMM=t.params.offsetMM; S.round=t.params.round; S.smooth=t.params.smooth;
+    S.offsetMM=t.params.offsetMM; S.round=t.params.round; S.smooth=t.params.smooth; S.smoothLv=2; S.shape='auto';
     S.longEdgeMM=t.defaultLongEdgeMM;
     S.whiteOn=!!t.whitePlate; S.whiteInsetMM=(t.whiteInsetMM!=null?t.whiteInsetMM:0.2);
     S.holeDiaMM=(t.holeDiaMM||5); S.holes=[];
@@ -7688,8 +7747,18 @@ var SeeQDieCut=(function(){
       S.bgMode=b.dataset.bg; if(S.bgMode==='colorkey') S.keyCol=detectKey(); syncControls(); recompute(); });
     $('dieThr').addEventListener('input',function(){ if(!S) return; S.thr=+this.value; $('dieThrV').textContent=this.value; recompute(); });
     $('dieOff').addEventListener('input',function(){ if(!S) return; S.offsetMM=+this.value; $('dieOffV').textContent=(+this.value).toFixed(1)+'mm'; computeCut(); render(); syncInfo(); });
-    $('dieRound').addEventListener('input',function(){ if(!S) return; S.round=+this.value; $('dieRoundV').textContent=this.value; computeCut(); render(); syncInfo(); });
-    $('dieSmooth').addEventListener('input',function(){ if(!S) return; S.smooth=+this.value; $('dieSmoothV').textContent=(+this.value).toFixed(1); computeCut(); render(); syncInfo(); });
+    /* 「角丸」「平滑」の2本を1本の“なめらかさ”に統合（どちらも輪郭の滑らかさの話で
+       使い分けが伝わらなかったため）。角の最小Rは別途つねに確保される。 */
+    $('dieSmoothLv').addEventListener('input',function(){ if(!S) return; applySmoothLv(+this.value); computeCut(); render(); syncInfo(); });
+    /* 形状プリセット */
+    $('dieShapeSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||!S) return;
+      S.shape=b.dataset.shape; computeCut(); render(); syncControls(); syncInfo(); });
+    /* 詳細の開閉 */
+    $('dieAdvToggle').onclick=function(){
+      var adv=$('dieAdv'), open=adv.classList.toggle('hidden')===false;
+      this.textContent=open?'詳細 ▴':'詳細 ▾';
+      this.setAttribute('aria-expanded', open?'true':'false');
+    };
     $('dieSize').addEventListener('input',function(){ if(!S) return; S.longEdgeMM=+this.value; $('dieSizeV').textContent=this.value+'mm'; computeCut(); render(); syncInfo(); });
     /* ---- 白版 ---- */
     $('dieWhiteSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||!S) return;
