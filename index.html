@@ -7162,7 +7162,13 @@ var SeeQDieCut=(function(){
       if(S.round>0) pts=chaikin(pts, S.round);
       /* 最後に「角の最小R」を必ず入れる。フチ(offset)を細くしても、また凹んだ角
          （切り欠き）でも、カッターが止まる鋭角が残らないようにするための保険。 */
-      if(minR>0.5) pts=filletMin(pts, minR);
+      if(minR>0.5){
+        /* 隣り合う辺が短すぎると円弧を差し込む余地が無く、鋭角が残ってしまう
+           （フチ0.5mmで実際に取りこぼした）。先に短い辺を間引いて場所を作る。 */
+        pts=dedupe(pts, Math.max(1, minR*0.45));
+        pts=filletMin(pts, minR);
+        pts=filletMin(pts, minR);   /* 2周目：1周目で処理しきれなかった角を均す */
+      }
       pts=dedupe(pts, 0.6);      /* 画素トレース由来の極短辺を掃除（曲率のギザつき対策） */
     }
     return pts;
