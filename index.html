@@ -4757,10 +4757,13 @@ function setPanel(card, open){
   panelState[panelKey(card)]=!!open;
 }
 function togglePanel(card){ setPanel(card, card.classList.contains('collapsed')); }
+/* レイヤーカードはPCだとサイドバー外のドックへ移動するので、#tools 限定にしない */
+function allPanelCards(){ return [].slice.call(document.querySelectorAll('.card[data-panel]')); }
+function inDock(c){ return !!(c.parentElement && c.parentElement.id==='layerDock'); }
 function visibleCards(){
-  return [].filter.call(document.querySelectorAll('#tools .card'), function(c){
+  return allPanelCards().filter(function(c){
     if(c.classList.contains('hidden')) return false;
-    if(isMobile() && !c.classList.contains('m-active')) return false;
+    if(isMobile() && !inDock(c) && !c.classList.contains('m-active')) return false;
     return true;
   });
 }
@@ -4772,12 +4775,13 @@ function syncToggleAllLabel(){
   b.dataset.next=anyOpen?'close':'open';
 }
 function initPanels(){
-  document.querySelectorAll('#tools .card').forEach(function(c){
+  allPanelCards().forEach(function(c){
     var h=c.querySelector('h3'); if(!h || h.dataset.bound) return;
     h.dataset.bound='1';
     h.setAttribute('role','button'); h.setAttribute('tabindex','0');
     var k=panelKey(c);
-    setPanel(c, (panelState[k]!==undefined) ? panelState[k] : !!PANEL_OPEN_DEFAULT[k]);
+    /* ドックに出ているレイヤー一覧は、見えていること自体が役目なので既定で開く */
+    setPanel(c, (panelState[k]!==undefined) ? panelState[k] : (!!PANEL_OPEN_DEFAULT[k] || inDock(c)));
     h.addEventListener('click', function(){ togglePanel(c); syncToggleAllLabel(); });
     h.addEventListener('keydown', function(e){
       if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){ e.preventDefault(); togglePanel(c); syncToggleAllLabel(); }
