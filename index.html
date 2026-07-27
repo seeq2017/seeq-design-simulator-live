@@ -354,6 +354,57 @@
   .prod-btn:hover{border-color:var(--accent);background:var(--brand-soft);color:var(--accent-d);}
   .prod-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 
+  /* ===== 商品・プリント面：最重要パネルの強化 =====
+     「いまなにに刷ろうとしているのか」を絵で見せる。商品も面も文字だけの
+     チップだと初見のお客様には判断材料がないので、実際の商品SVGをそのまま
+     サムネイルに使う（別途画像を用意しなくてよい＝単一HTMLのまま）。 */
+  .card-primary{border-color:var(--accent);box-shadow:0 2px 16px rgba(224,56,44,.10);}
+  .card-primary>h3{color:var(--accent-d,#B3000E);}
+  .nowmaking{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;
+    background:var(--brand-soft,#FDECEA);margin-bottom:12px;}
+  .nm-thumb{flex:0 0 auto;width:38px;height:44px;border-radius:8px;background:#fff;
+    border:1px solid var(--line);overflow:hidden;display:block;}
+  .nm-thumb svg{width:100%;height:100%;display:block;}
+  .nm-txt{display:flex;flex-direction:column;line-height:1.35;min-width:0;}
+  .nm-txt b{font-size:13.5px;color:var(--ink);}
+  .nm-txt small{font-size:11.5px;color:var(--sub);font-weight:700;}
+  .fld-sub{font-weight:400;color:var(--sub);}
+
+  .prodsel{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:13px;}
+  .prod-btn{display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid var(--line);
+    background:#fff;border-radius:12px;padding:8px 4px 7px;cursor:pointer;font-family:inherit;
+    font-weight:700;font-size:11.5px;color:var(--sub);transition:.14s;-webkit-tap-highlight-color:transparent;}
+  /* サムネは高さ固定（縦横比は SVG 側の preserveAspectRatio に任せる）。
+     可変にすると幅の広い画面で巨大化し、逆に選びにくくなるため。 */
+  .prod-btn .pb-thumb{width:100%;height:56px;overflow:hidden;border-radius:7px;background:#f7f9fa;display:block;}
+  .prod-btn .pb-thumb svg{width:100%;height:100%;display:block;}
+  /* 商品名は2行まで。行数が違ってもボタンの高さが揃うように下限を持たせる */
+  .prod-btn .pb-label{display:block;text-align:center;line-height:1.25;min-height:2.5em;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .prod-btn:hover{border-color:var(--accent);background:var(--brand-soft);color:var(--accent-d);}
+  .prod-btn.active{border-color:var(--accent);background:var(--brand-soft);color:var(--accent-d);
+    box-shadow:inset 0 0 0 2px var(--accent);}
+  .prod-btn.active .pb-thumb{background:#fff;}
+
+  .facetabs{display:flex;gap:7px;margin-bottom:12px;}
+  .facetab{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid var(--line);
+    background:#fff;border-radius:11px;padding:7px 9px;cursor:pointer;font-weight:700;font-size:12.5px;
+    color:var(--sub);transition:.14s;}
+  .facetab .ft-thumb{flex:0 0 auto;width:22px;height:26px;border-radius:5px;overflow:hidden;background:#f7f9fa;}
+  .facetab .ft-thumb svg{width:100%;height:100%;display:block;}
+  .facetab.active{background:var(--brand-soft);color:var(--accent-d);border-color:var(--accent);
+    box-shadow:inset 0 0 0 2px var(--accent);}
+  .facetab.active .ft-thumb{background:#fff;}
+
+  .swatches{display:flex;flex-wrap:wrap;gap:9px;}
+  .swatch{position:relative;width:34px;height:34px;border-radius:50%;cursor:pointer;padding:0;
+    border:2px solid #fff;box-shadow:0 0 0 1px var(--line);transition:.12s;}
+  .swatch.active{box-shadow:0 0 0 2px var(--accent);transform:scale(1.06);}
+  .swatch.active::after{content:'';position:absolute;left:50%;top:46%;width:7px;height:12px;
+    border-right:2.5px solid #fff;border-bottom:2.5px solid #fff;
+    transform:translate(-50%,-55%) rotate(45deg);filter:drop-shadow(0 0 1.6px rgba(0,0,0,.6));}
+  .swatch.light.active::after{border-color:#20303a;filter:none;}
+
   /* chips: selected (single-select) state */
   .chip.on{background:var(--accent);color:#fff;border-color:var(--accent);}
   .chip.on:hover{background:var(--accent-d);color:#fff;}
@@ -587,6 +638,7 @@
 
     /* finger-friendly tap targets */
     .swatch{width:38px;height:38px;}
+    .prod-btn .pb-thumb{height:64px;}
     .shape-btn svg{width:28px;height:28px;}
     .chip{padding:10px 14px;font-size:13px;}
     .facetab{padding:12px;font-size:14px;}
@@ -832,7 +884,7 @@
         <button class="mtab active" data-mtab="product" role="tab"><svg viewBox="0 0 24 24"><path d="M8 4L3.5 6.5 5.5 10 8 8.8V20h8V8.8l2.5 1.2 2-3.5L16 4l-1.7.9a3.3 3.3 0 01-4.6 0z"/></svg><span class="mlab">商品</span></button>
         <button class="mtab" data-mtab="text" role="tab"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v12M9.5 18h5"/></svg><span class="mlab">文字</span></button>
         <button class="mtab" data-mtab="image" role="tab"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5L5 19.5"/></svg><span class="mlab">画像</span></button>
-        <button class="mtab" data-mtab="shape" role="tab"><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="9" height="9" rx="1.5"/><circle cx="16" cy="16" r="5"/></svg><span class="mlab">図形</span></button>
+        <button class="mtab" data-mtab="shape" role="tab"><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="9" height="9" rx="1.5"/><circle cx="16" cy="16" r="5"/></svg><span class="mlab">素材</span></button>
         <button class="mtab" data-mtab="arrange" role="tab"><svg viewBox="0 0 24 24"><path d="M4 4v16"/><rect x="7.5" y="7" width="11" height="4" rx="1"/><rect x="7.5" y="14" width="7" height="4" rx="1"/></svg><span class="mlab">配置</span></button>
         <button class="mtab" data-mtab="layer" role="tab"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span class="mlab">レイヤー</span></button>
       </div>
@@ -843,20 +895,22 @@
       <button type="button" class="pt-btn" id="panelToggleAll" aria-label="すべてのメニューを開閉">すべて閉じる</button>
     </div>
 
-    <div class="card" data-tab="product" data-panel="tpl" id="tplCard">
-      <h3><span class="dot"></span>テンプレート</h3>
-      <div class="tpl-cats" id="tplCats"></div>
-      <div class="tpl-grid" id="tplGrid"></div>
-      <p class="tpl-empty" id="tplEmpty" hidden>テンプレートはまだ登録されていません。</p>
-    </div>
-
-    <div class="card" data-tab="product" data-panel="product">
+    <!-- いちばん大事な「なにに刷るか」。サイドバーの先頭に置き、見た目でも主役にする -->
+    <div class="card card-primary" data-tab="product" data-panel="product">
       <h3><span class="dot"></span>商品・プリント面</h3>
+      <!-- いま作っているもの（商品 / 色 / 面）を常に1行で見せる -->
+      <div class="nowmaking" id="nowMaking">
+        <span class="nm-thumb" id="nmThumb"></span>
+        <span class="nm-txt">
+          <b id="nmProduct">Tシャツ</b>
+          <small id="nmMeta">ホワイト ／ おもて</small>
+        </span>
+      </div>
       <label class="fld" id="lblProduct">商品を選ぶ</label>
       <div class="prodsel" id="prodSel"></div>
-      <label class="fld" id="lblFace">プリント面</label>
+      <label class="fld" id="lblFace">プリント面（デザインする面）</label>
       <div class="facetabs" id="faceTabs"></div>
-      <label class="fld" id="lblColor">商品カラー</label>
+      <label class="fld" id="lblColor">商品カラー <span class="fld-sub" id="colorName"></span></label>
       <div class="swatches" id="swatches"></div>
       <!-- ステッカー／アクリルキーホルダーは編集ではなく「画像から作る」商品なので、
            ヘッダーのトグル頼みにせず、商品カードから直接入口を出す -->
@@ -1206,8 +1260,14 @@
       </div>
     </div>
 
-    <div class="card" data-tab="shape" data-panel="shape">
-      <h3><span class="dot"></span>図形・クリップアート</h3>
+    <!-- テンプレートと図形は「置くだけで形になる素材」という同じ役割なので1枚にまとめる -->
+    <div class="card" data-tab="shape" data-panel="material">
+      <h3><span class="dot"></span>テンプレート・図形</h3>
+      <label class="fld">テンプレートから選ぶ</label>
+      <div class="tpl-cats" id="tplCats"></div>
+      <div class="tpl-grid" id="tplGrid"></div>
+      <p class="tpl-empty" id="tplEmpty" hidden>テンプレートはまだ登録されていません。</p>
+      <label class="fld mt-m">図形・アイコン</label>
       <div class="shapes" id="shapes">
         <button class="shape-btn" data-shape="circle"   title="丸"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></button>
         <button class="shape-btn" data-shape="rect"     title="四角"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
@@ -1941,6 +2001,7 @@ function rgba(hex,a){ var c=hexToRgb(hex); return 'rgba('+c.r+','+c.g+','+c.b+',
    Shirt background + guide placement
    ===================================================================== */
 function applyShirt(){
+  if(typeof syncProductPanel==='function') syncProductPanel();   /* 「いま作っているもの」を常に最新に */
   var svg = curFaceDef().svg(currentColor.hex, currentColor.dark);
   /* Ensure the SVG carries an explicit pixel width/height. Without it, an
      SVG-as-image rasterises at a tiny browser-default intrinsic size, and a
@@ -2198,18 +2259,63 @@ canvas.on('text:editing:exited', function(e){
 /* =====================================================================
    Products
    ===================================================================== */
+/* 商品／面のサムネイルは、実際に使っている商品SVGをそのまま縮小して使う。
+   画像アセットを増やさずに「どれがどれか」が見た目で分かるようにするため。 */
+function faceThumbSVG(prodKey, faceId, color){
+  try{
+    var p=PRODUCTS[prodKey]; if(!p) return '';
+    var f=faceId? faceDef(prodKey,faceId) : p.faces[0];
+    var col=color || (p.colors&&p.colors[0]) || COLORS[0];
+    var svg=f.svg(col.hex, col.dark, false);
+    return (typeof svg==='string') ? svg : '';
+  }catch(e){ return ''; }
+}
 function renderProductSelector(){
   var wrap=document.getElementById('prodSel'); wrap.innerHTML='';
   PRODUCT_ORDER.forEach(function(pk){
+    var p=PRODUCTS[pk];
     var b=document.createElement('button');
+    b.type='button';
     b.className='prod-btn'+(pk===currentProduct?' active':'');
-    b.textContent=PRODUCTS[pk].label; b.dataset.prod=pk;
+    b.dataset.prod=pk;
+    b.setAttribute('aria-pressed', pk===currentProduct?'true':'false');
+    b.title=p.label;
+    b.innerHTML='<span class="pb-thumb">'+faceThumbSVG(pk)+'</span><span class="pb-label"></span>';
+    b.querySelector('.pb-label').textContent=p.label;
     b.onclick=function(){ switchProduct(pk); };
     wrap.appendChild(b);
   });
 }
+/* 「いま作っているもの」の要約（商品／色／面）を1行で見せる */
+function syncProductPanel(){
+  var nmT=document.getElementById('nmThumb'), nmP=document.getElementById('nmProduct'), nmM=document.getElementById('nmMeta');
+  if(!nmT) return;
+  var p=curProduct(), f=curFaceDef();
+  nmT.innerHTML=faceThumbSVG(currentProduct, currentFace, currentColor);
+  nmP.textContent=p.label;
+  var parts=[];
+  if(curColors().length>1 || (currentColor&&currentColor.name)) parts.push(currentColor.name||'');
+  if(p.faces.length>1) parts.push(f.label+'に印刷');
+  nmM.textContent=parts.filter(Boolean).join(' ／ ');
+  /* 色名は商品カラーの見出しに添える。updateMoriUI が見出しを書き換えると
+     消えてしまうので、無ければ作り直す（自己修復）。 */
+  var cn=document.getElementById('colorName');
+  if(!cn){
+    var lc=document.getElementById('lblColor');
+    if(lc){ cn=document.createElement('span'); cn.className='fld-sub'; cn.id='colorName'; lc.appendChild(document.createTextNode(' ')); lc.appendChild(cn); }
+  }
+  if(cn) cn.textContent=(currentColor&&currentColor.name)?('（'+currentColor.name+'）'):'';
+  /* 面タブのサムネは選んだ色に追従させる */
+  document.querySelectorAll('#faceTabs .facetab').forEach(function(t){
+    var th=t.querySelector('.ft-thumb'); if(th) th.innerHTML=faceThumbSVG(currentProduct, t.dataset.face, currentColor);
+  });
+}
 function updateProductUI(){
-  document.querySelectorAll('.prod-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.prod===currentProduct); });
+  document.querySelectorAll('.prod-btn').forEach(function(b){
+    var on=(b.dataset.prod===currentProduct);
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on?'true':'false');
+  });
 }
 function switchProduct(prod){
   if(prod===currentProduct || !PRODUCTS[prod]) return;
@@ -2218,13 +2324,17 @@ function switchProduct(prod){
   currentProduct = prod;
   /* reset face to first face of new product */
   currentFace = curProduct().faces[0].id;
-  /* colour: keep if valid for this product, else first */
+  /* colour: keep if valid for this product, else first.
+     同じ色コードでも商品ごとに呼び名が違う（例：#ffffff＝Tシャツは「ホワイト」／
+     アクリルは「クリア」）ので、必ず新しい商品側の色定義に置き換える。 */
   var cols=curColors();
-  if(!cols.filter(function(c){return c.hex===currentColor.hex;}).length){ currentColor=cols[0]; }
+  currentColor = cols.filter(function(c){return c.hex===currentColor.hex;})[0] || cols[0];
   renderSwatches(cols);
   renderFaceTabs();
   updateProductUI();
   updateFaceUI();
+  /* 商品ごとの見出し（形状/素材/仕上がり）と、面が1つの商品での面タブ非表示を反映 */
+  if(typeof updateMoriUI==='function') updateMoriUI();
   positionGuide();
   applyShirt();
   loadFace(faceState[stateKey()], function(){ renderLayers(); refreshBars(); });
@@ -2238,10 +2348,16 @@ function switchProduct(prod){
    ===================================================================== */
 function renderFaceTabs(){
   var wrap=document.getElementById('faceTabs'); wrap.innerHTML='';
-  curProduct().faces.forEach(function(f){
-    var t=document.createElement('div');
+  var faces=curProduct().faces;
+  faces.forEach(function(f){
+    var t=document.createElement('button');
+    t.type='button';
     t.className='facetab'+(f.id===currentFace?' active':'');
-    t.dataset.face=f.id; t.textContent=f.label;
+    t.dataset.face=f.id;
+    t.setAttribute('aria-pressed', f.id===currentFace?'true':'false');
+    /* 面が1つしかない商品ではサムネを出さない（情報量を増やさない） */
+    t.innerHTML=(faces.length>1?'<span class="ft-thumb">'+faceThumbSVG(currentProduct,f.id,currentColor)+'</span>':'')+'<span></span>';
+    t.lastChild.textContent=f.label;
     t.onclick=function(){ switchFace(f.id); };
     wrap.appendChild(t);
   });
@@ -2258,7 +2374,11 @@ function switchFace(face){
   commitHistory();
 }
 function updateFaceUI(){
-  document.querySelectorAll('.facetab').forEach(function(t){ t.classList.toggle('active', t.dataset.face===currentFace); });
+  document.querySelectorAll('.facetab').forEach(function(t){
+    var on=(t.dataset.face===currentFace);
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-pressed', on?'true':'false');
+  });
   document.getElementById('stageHint').textContent = 'プリント面：'+curFaceDef().label+'　／　破線の枠内がプリント可能エリアの目安です　·　Ctrl／Alt＋ホイールで拡大縮小';
   buildPresets();
 }
@@ -2269,13 +2389,16 @@ function updateFaceUI(){
 function renderSwatches(colors){
   var swWrap=document.getElementById('swatches'); swWrap.innerHTML='';
   colors.forEach(function(c){
-    var s=document.createElement('div');
-    s.className='swatch'+(c.hex===currentColor.hex?' active':'');
+    var s=document.createElement('button');
+    s.type='button';
+    s.className='swatch'+(c.dark?'':' light')+(c.hex===currentColor.hex?' active':'');
     s.style.background=c.hex; s.title=c.name;
+    s.setAttribute('aria-label', c.name+'を選ぶ');
+    s.setAttribute('aria-pressed', c.hex===currentColor.hex?'true':'false');
     s.onclick=function(){
       currentColor=c;
-      document.querySelectorAll('.swatch').forEach(function(e){e.classList.remove('active');});
-      s.classList.add('active');
+      document.querySelectorAll('.swatch').forEach(function(e){ e.classList.remove('active'); e.setAttribute('aria-pressed','false'); });
+      s.classList.add('active'); s.setAttribute('aria-pressed','true');
       applyShirt();
       commitHistory();
     };
@@ -5049,8 +5172,10 @@ function updateMoriUI(){
   var single=prod.faces.length<2;      /* 面が1つだけの商品（プレート/缶バッジ）は面タブを出さない */
   if(lp) lp.textContent=isPlate?'形状を選ぶ':'商品を選ぶ';
   if(lc) lc.textContent=isPlate?'素材を選ぶ':(prod.kind==='diecut'?'仕上がり':'商品カラー');
+  if(lf) lf.firstChild && (lf.firstChild.nodeValue=single?'プリント面':'プリント面（デザインする面）');
   if(lf) lf.style.display=single?'none':'';
   if(ft) ft.style.display=single?'none':'';
+  if(typeof syncProductPanel==='function') syncProductPanel();   /* ラベル書き換えで消えた色名を戻す */
   if(!isPlate) return;
   var sizes=document.getElementById('moriSizes');
   if(sizes){ sizes.innerHTML='';
