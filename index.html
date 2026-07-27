@@ -374,6 +374,42 @@
      カテゴリごとの .prodgrid がグリッドアイテム扱いになり、3列に潰れる。 */
   .prodsel{display:block;margin-bottom:13px;}
   .prodgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+  /* ===== スタート画面「なにを作りますか？」（Wave2）===== */
+  .startscreen{position:fixed;inset:0;z-index:200;background:var(--bg,#f6f8f9);
+    display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;
+    padding:clamp(14px,4vh,40px) 14px calc(20px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling:touch;}
+  .startscreen[hidden]{display:none !important;}
+  body.ss-open{overflow:hidden;}
+  .ss-inner{width:min(920px,100%);margin:auto;}
+  .ss-head{text-align:center;margin-bottom:clamp(12px,2.5vh,22px);}
+  .ss-head h1{margin:0 0 6px;font-size:clamp(20px,4.4vw,28px);font-weight:800;color:var(--ink);letter-spacing:.01em;}
+  .ss-lead{margin:0;font-size:clamp(12px,2.6vw,13.5px);color:var(--sub);line-height:1.7;}
+  .ss-cats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px;}
+  .ss-cat{border:1.5px solid var(--line);background:#fff;border-radius:999px;cursor:pointer;
+    font-family:inherit;font-size:13.5px;font-weight:800;color:var(--sub);
+    padding:11px 18px;min-height:44px;transition:.14s;-webkit-tap-highlight-color:transparent;}
+  .ss-cat:hover{border-color:var(--accent);color:var(--accent-d,#B3000E);}
+  .ss-cat.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .ss-cat[disabled]{opacity:.5;cursor:default;}
+  .ss-cat small{display:block;font-size:10px;font-weight:700;opacity:.8;}
+  .ss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .ss-card{border:1.5px solid var(--line);background:#fff;border-radius:14px;cursor:pointer;
+    padding:12px 10px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;
+    font-family:inherit;transition:.14s;-webkit-tap-highlight-color:transparent;}
+  .ss-card:hover{border-color:var(--accent);box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,.10));transform:translateY(-2px);}
+  .ss-thumb{width:100%;height:96px;overflow:hidden;border-radius:9px;background:#f7f9fa;}
+  .ss-thumb svg{width:100%;height:100%;display:block;}
+  .ss-name{font-size:13px;font-weight:800;color:var(--ink);line-height:1.3;text-align:center;}
+  .ss-sub{font-size:10.5px;color:var(--sub);font-weight:700;line-height:1.3;text-align:center;}
+  .ss-note{margin:14px 0 0;font-size:11.5px;color:var(--sub);text-align:center;line-height:1.7;}
+  .ss-foot{margin-top:clamp(14px,3vh,24px);text-align:center;}
+  @media (max-width:820px){
+    .ss-grid{grid-template-columns:repeat(2,1fr);gap:9px;}
+    .ss-thumb{height:84px;}
+    .ss-cat{font-size:12.5px;padding:11px 14px;}
+  }
+
   /* カテゴリのタブ（アパレル／グッズ・小物／タオル…） */
   .prodcats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}
   .prodcat-tab{border:1px solid var(--line);background:#fbfdfd;border-radius:999px;
@@ -1419,6 +1455,14 @@
         <span class="die-sld">径<input type="range" id="dieHoleDia" min="2" max="10" step="0.5" value="5"><span class="val" id="dieHoleDiaV">5.0mm</span></span>
         <button class="btn btn-ghost btn-xs" id="dieHoleDel" type="button">穴を削除</button>
       </div>
+      <div class="die-grp hidden" id="dieBaseGrp"><span class="lbl">台座</span>
+        <span class="die-seg" id="dieBaseSeg">
+          <button data-base="on" class="on" type="button">つける</button>
+          <button data-base="off" type="button">なし</button>
+        </span>
+        <span class="die-sld">幅<input type="range" id="dieBaseW" min="40" max="100" step="1" value="60"><span class="val" id="dieBaseWV">60mm</span></span>
+        <span class="die-sld">差込<input type="range" id="dieTab" min="3" max="10" step="0.5" value="6"><span class="val" id="dieTabV">6.0mm</span></span>
+      </div>
       <div class="die-sep-v"></div>
       <div class="die-grp"><span class="lbl">仕上がり</span>
         <span class="die-sld">長辺<input type="range" id="dieSize" min="30" max="200" step="5" value="80"><span class="val" id="dieSizeV">80mm</span></span>
@@ -1541,11 +1585,30 @@
   </div>
 </div>
 
+<!-- スタート画面「なにを作りますか？」（Wave2）：初回だけ全面に出して
+     カテゴリ→商品の順で選ばせる。スキップすれば従来どおりの編集画面。 -->
+<div class="startscreen" id="startScreen" hidden>
+  <div class="ss-inner" role="dialog" aria-labelledby="ssTitle" aria-modal="true">
+    <div class="ss-head">
+      <h1 id="ssTitle">なにを作りますか？</h1>
+      <p class="ss-lead">作りたいものを選ぶと、そのままデザインを始められます。あとから変更もできます。</p>
+    </div>
+    <div class="ss-cats" id="ssCats"></div>
+    <div class="ss-body">
+      <div class="ss-grid" id="ssGrid"></div>
+      <p class="ss-note" id="ssNote"></p>
+    </div>
+    <div class="ss-foot">
+      <button type="button" class="btn btn-ghost" id="ssSkip">白紙のまま編集画面へ</button>
+    </div>
+  </div>
+</div>
+
 <!-- 商品定義マニフェスト。編集するのは src/products.manifest.json のほうで、
      ./build.ps1（deploy-live.ps1 が自動実行）でこの位置へ結合される。
      公開形は従来どおり index.html 1枚のまま。 -->
 <!-- BUILD:MANIFEST -->
-<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
+<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"cap-baseball","category":"apparel","brand":"seeq","order":15,"kind":"mockup","label":"ベースボールキャップ","short":"キャップ","en":"BASEBALL CAP","sub":"6方パネル・前面刺繍","provisional":"刺繍範囲110×55mmとつばの形は一般的な仕様の暫定値。採用ボディ確定後に差し替える","cap":{"style":"baseball","printWMM":110,"printHMM":55,"visor":"curved","mesh":false,"crownH":1.0}},{"id":"cap-low","category":"apparel","brand":"seeq","order":16,"kind":"mockup","label":"ローキャップ","short":"ローキャップ","en":"LOW CAP","sub":"浅め・前面刺繍","provisional":"刺繍範囲100×48mmは暫定値","cap":{"style":"low","printWMM":100,"printHMM":48,"visor":"curved","mesh":false,"crownH":0.86}},{"id":"cap-mesh","category":"apparel","brand":"seeq","order":17,"kind":"mockup","label":"メッシュキャップ","short":"メッシュ","en":"MESH CAP","sub":"後方メッシュ・前面刺繍","provisional":"刺繍範囲110×55mmは暫定値","cap":{"style":"mesh","printWMM":110,"printHMM":55,"visor":"flat","mesh":true,"crownH":1.0}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"acryl-stand","category":"goods","brand":"seeq","order":27,"kind":"diecut","label":"アクリルスタンド","short":"アクスタ","en":"ACRYLIC STAND","sub":"台座つき・白版あり","provisional":"台座の寸法（幅60×高22mm・スリット34×3.2mm・差込代6mm）は一般的な仕様の暫定値。実測が出たら差し替える","diecut":{"type":"stand","defaultLongEdgeMM":100,"whitePlate":true,"hole":false,"whiteInsetMM":0.5,"base":{"wMM":60,"hMM":22,"rMM":3,"slitWMM":34,"slitTMM":3.2,"tabMM":6,"provisional":true},"params":{"offsetMM":2.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"cutting-sheet","category":"goods","brand":"seeq","order":28,"kind":"diecut","label":"カッティングシート","short":"カッティング","en":"CUTTING SHEET","sub":"単色カット・転写シート","provisional":"シート色は代表色の暫定リスト。実際の在庫色が確定したら差し替える","diecut":{"type":"cutting","defaultLongEdgeMM":150,"whitePlate":false,"hole":false,"singleColor":true,"minStrokeMM":1.2,"vinyl":[{"name":"ブラック","hex":"#1d1f21"},{"name":"ホワイト","hex":"#ffffff"},{"name":"レッド","hex":"#c0303a"},{"name":"ブルー","hex":"#274690"},{"name":"イエロー","hex":"#f2cf3d"},{"name":"グリーン","hex":"#2f6b4f"},{"name":"シルバー","hex":"#c8ccd0"},{"name":"ゴールド","hex":"#c8a349"}],"params":{"offsetMM":0,"round":1,"smooth":1.6,"alphaThr":128,"keyTol":60}}},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
 <!-- /BUILD:MANIFEST -->
 
 <script>
@@ -2032,6 +2095,87 @@ function makeTowelProduct(def){
   return prod;
 }
 
+/* ---- キャップ（前面パネルのスマートモックアップ）----
+   実物写真が入るまでは手続き生成。写真が用意でき次第 layers.base を
+   { src:'assets/cap-xxx.jpg' } に差し替え、rect/print の比率を撮影に合わせるだけで
+   実写ベースへ移行できる（docs/smart-mockup-template-guide.md の3手順）。 */
+var CAP_COLORS = [
+  {name:'ブラック',hex:'#23262a',dark:true},
+  {name:'ネイビー',hex:'#1f3047',dark:true},
+  {name:'ホワイト',hex:'#ffffff',dark:false},
+  {name:'ベージュ',hex:'#d8c7a6',dark:false},
+  {name:'レッド',hex:'#c0303a',dark:true},
+  {name:'グレー',hex:'#9aa3a8',dark:false}
+];
+/* BASE(480×560)でのキャップ配置。front=前面パネル（刺繍範囲の基準） */
+function capPlacement(c){
+  var cx=240, cy=252, w=(c.style==='low')?300:320, h=w*0.60*(c.crownH||1);
+  return { cx:cx, cy:cy, w:w, h:h,
+    guide:{ x:Math.round(cx-w*0.30), y:Math.round(cy-h*0.10), w:Math.round(w*0.60), h:Math.round(h*0.46) } };
+}
+function capSVG(c, pl, hex, dark){
+  var stroke = dark ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.12)';
+  var shade  = dark ? 'rgba(0,0,0,.26)' : 'rgba(0,0,0,.07)';
+  var x=pl.cx, y=pl.cy, w=pl.w, h=pl.h;
+  var left=x-w/2, right=x+w/2, top=y-h*0.72, bottom=y+h*0.28;
+  var crown='<path d="M'+left+','+bottom+' C'+left+','+(top+h*0.12)+' '+(x-w*0.30)+','+top+' '+x+','+top
+    +' C'+(x+w*0.30)+','+top+' '+right+','+(top+h*0.12)+' '+right+','+bottom+' Z" fill="'+hex+'" stroke="'+stroke+'" stroke-width="2"/>';
+  /* つば：curved は下に反った楕円、flat は角丸の板 */
+  var visor = (c.visor==='flat')
+    ? '<path d="M'+(left-w*0.06)+','+bottom+' L'+(right+w*0.06)+','+bottom+' L'+(right+w*0.02)+','+(bottom+h*0.30)
+      +' L'+(left-w*0.02)+','+(bottom+h*0.30)+' Z" fill="'+hex+'" stroke="'+stroke+'" stroke-width="2"/>'
+    : '<path d="M'+(left-w*0.04)+','+bottom+' C'+(x-w*0.30)+','+(bottom+h*0.42)+' '+(x+w*0.30)+','+(bottom+h*0.42)+' '+(right+w*0.04)+','+bottom
+      +' C'+(x+w*0.28)+','+(bottom+h*0.14)+' '+(x-w*0.28)+','+(bottom+h*0.14)+' '+(left-w*0.04)+','+bottom+' Z" fill="'+hex+'" stroke="'+stroke+'" stroke-width="2"/>';
+  var seams='<path d="M'+x+','+top+' L'+x+','+bottom+'" stroke="'+stroke+'" stroke-width="1.6" fill="none"/>'
+    +'<path d="M'+(x-w*0.19)+','+(top+h*0.06)+' C'+(x-w*0.22)+','+(y)+' '+(x-w*0.22)+','+(bottom-h*0.06)+' '+(x-w*0.20)+','+bottom+'" stroke="'+stroke+'" stroke-width="1.4" fill="none"/>'
+    +'<path d="M'+(x+w*0.19)+','+(top+h*0.06)+' C'+(x+w*0.22)+','+(y)+' '+(x+w*0.22)+','+(bottom-h*0.06)+' '+(x+w*0.20)+','+bottom+'" stroke="'+stroke+'" stroke-width="1.4" fill="none"/>';
+  var mesh = c.mesh
+    ? '<defs><pattern id="capMesh" width="8" height="8" patternUnits="userSpaceOnUse">'
+      +'<path d="M0,4 H8 M4,0 V8" stroke="'+(dark?'rgba(255,255,255,.10)':'rgba(0,0,0,.10)')+'" stroke-width="1"/></pattern></defs>'
+      +'<path d="M'+(x+w*0.20)+','+(top+h*0.10)+' C'+(x+w*0.42)+','+(top+h*0.30)+' '+right+','+(bottom-h*0.10)+' '+right+','+bottom
+      +' L'+(x+w*0.20)+','+bottom+' Z" fill="url(#capMesh)"/>' : '';
+  var button='<circle cx="'+x+'" cy="'+(top+2)+'" r="'+(w*0.022)+'" fill="'+shade+'" stroke="'+stroke+'" stroke-width="1"/>';
+  var g=pl.guide;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+    +mesh
+    +'<defs><filter id="s" x="-12%" y="-12%" width="124%" height="124%">'
+    +'<feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="rgba(0,0,0,.14)"/></filter></defs>'
+    +'<g filter="url(#s)">'+visor+crown+seams+mesh+button+'</g>'
+    +'<rect x="'+g.x+'" y="'+g.y+'" width="'+g.w+'" height="'+g.h+'" fill="none" stroke="rgba(20,28,38,0.30)" stroke-width="1.2" stroke-dasharray="6 5"/>'
+    +'<text x="240" y="'+(g.y-8)+'" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="10.5" fill="#7b8792">'
+    +'刺繍・プリント範囲の目安 '+c.printWMM+'×'+c.printHMM+'mm（暫定）</text>'
+    +'</svg>';
+}
+function makeCapTemplate(def){
+  var c=def.cap, pad=0.14;
+  return {
+    label:def.label, en:def.en, renderer:'flat', shape:'cap', cap:c,
+    size:{ w:c.printWMM, h:c.printHMM }, designMM:c.printWMM,
+    out:{ w:1200, h:Math.round(1200*0.78) }, ss:1.35,
+    rect:{ x:pad, y:pad*0.7, w:1-pad*2, h:1-pad*1.6 },
+    /* 前面パネル内でのプリント位置（rect に対する比率）と曲面の強さ */
+    print:{ x:0.22, y:0.30, w:0.56, h:0.34, curve:0.34 },
+    layers:{ base:{procedural:'cap-twill'}, mask:{procedural:'cap'},
+             disp:{procedural:'crown'}, light:{procedural:'studio-soft'} },
+    params:{ shadow:{ dy:0.028, blur:0.035, spread:1.0, alpha:0.28 },
+             grain:0.020, pile:0.30, fold:0.04, ambient:0.98, key:0.22 }
+  };
+}
+function makeCapProduct(def){
+  var c=def.cap, pl=capPlacement(c);
+  var prod={ id:def.id, label:def.label, en:def.en, brand:def.brand||'seeq',
+    kind:'mockup', mockup:def.id, sizeMM:{w:c.printWMM,h:c.printHMM}, colors:CAP_COLORS };
+  prod.faces=[{ id:'front', label:'おもて', guide:pl.guide,
+    printMM:{ w:c.printWMM, h:c.printHMM },
+    presets:[
+      {label:'中央', x:pl.cx, y:Math.round(pl.guide.y+pl.guide.h/2), w:Math.round(pl.guide.w*0.8)},
+      {label:'範囲いっぱい', x:pl.cx, y:Math.round(pl.guide.y+pl.guide.h/2), w:pl.guide.w},
+      {label:'小さめ中央', x:pl.cx, y:Math.round(pl.guide.y+pl.guide.h/2), w:Math.round(pl.guide.w*0.5)}
+    ],
+    svg:function(hex,dark){ return capSVG(c, pl, hex, dark); } }];
+  return prod;
+}
+
 function makeMockupProduct(id,label,en,tplId){
   var tpl=MOCKUP_TEMPLATES[tplId], pl=badgePlacement(tpl);
   var prod={ id:id, label:label, en:en, brand:'seeq', kind:'mockup', mockup:tplId,
@@ -2168,9 +2312,17 @@ function makeApparelProduct(def){
     ]
   };
 }
+function diecutColors(tpl){
+  if(tpl.type==='cutting' && tpl.vinyl && tpl.vinyl.length){
+    /* カッティングシートは「シートの色」を選ぶ＝そのまま商品カラーにする */
+    return tpl.vinyl.map(function(c){ return {name:c.name, hex:c.hex, dark:(c.hex.toLowerCase()!=='#ffffff' && c.hex!=='#f2cf3d' && c.hex!=='#c8ccd0')}; });
+  }
+  var name = (tpl.type==='acryl'||tpl.type==='stand') ? 'クリア' : '透明フチ';
+  return [{name:name, hex:'#ffffff', dark:false}];
+}
 function makeDiecutProduct(id,label,en,tplId){
   var prod={ id:id, label:label, en:en, brand:'seeq', kind:'diecut', diecut:tplId,
-    colors:[{name:(DIECUT_TEMPLATES[tplId].type==='acryl'?'クリア':'透明フチ'),hex:'#ffffff',dark:false}] };
+    colors:diecutColors(DIECUT_TEMPLATES[tplId]) };
   prod.faces=[{ id:'front', label:'おもて', guide:{x:90,y:130,w:300,h:300}, presets:[],
     svg:function(){ return diecutHintSVG(label); } }];
   return prod;
@@ -2268,6 +2420,13 @@ var SEEQ_MANIFEST=(function(){
 var PRODUCT_ORDER=[];
 function manifestBuild(def){
   if(def.kind==='apparel') return makeApparelProduct(def);
+  if(def.kind==='diecut' && def.diecut){
+    /* 入稿変換テンプレもマニフェストから生成できるようにする（アクスタ／カッティング） */
+    var t={}; for(var k in def.diecut) t[k]=def.diecut[k];
+    t.label=def.label; t.en=def.en;
+    DIECUT_TEMPLATES[def.id]=t;
+    return makeDiecutProduct(def.id, def.label, def.en, def.id);
+  }
   if(def.kind==='mockup' && def.badge){
     MOCKUP_TEMPLATES[def.id]=makeBadgeTemplate(def);
     return makeMockupProduct(def.id, def.label, def.en, def.id);
@@ -2275,6 +2434,10 @@ function manifestBuild(def){
   if(def.kind==='mockup' && def.towel){
     MOCKUP_TEMPLATES[def.id]=makeTowelTemplate(def);
     return makeTowelProduct(def);
+  }
+  if(def.kind==='mockup' && def.cap){
+    MOCKUP_TEMPLATES[def.id]=makeCapTemplate(def);
+    return makeCapProduct(def);
   }
   return null;
 }
@@ -4751,6 +4914,8 @@ function importDesign(json, opts){
   updateProductUI(); updateFaceUI(); positionGuide(); applyShirt();
   loadFace(faceState[stateKey()], function(){ renderLayers(); refreshBars(); histGuard=false; commitHistory(); });
   saveModal.classList.remove('show');
+  /* 親ページから復元された場合など、スタート画面が出ていたら引っ込める */
+  if(typeof ssHide==='function') ssHide();
 }
 document.getElementById('copyKey').onclick=function(){ var t=document.getElementById('designKey'); t.select(); try{document.execCommand('copy');toast('コピーしました');}catch(e){} };
 document.getElementById('applyKey').onclick=function(){ importDesign(document.getElementById('designKey').value.trim(), {confirm:true}); };
@@ -5279,6 +5444,90 @@ upEl.addEventListener('touchend', endPinch, {passive:true});
 upEl.addEventListener('touchcancel', endPinch, {passive:true});
 
 /* =====================================================================
+   スタート画面「なにを作りますか？」（Wave2 / UXロードマップ P1-1）
+   --------------------------------------------------------------------
+   初見のお客様が「白紙のTシャツ」にいきなり放り込まれるのを避け、
+   カテゴリ→商品の2タップで作りはじめられるようにする。
+   ・localStorage は使えないので表示制御はメモリ内フラグのみ（1セッション1回）
+   ・?start=0 で出さない／?start=1 で必ず出す（運用者の確認用）
+   ・テンプレートは20件未満なら出さない（ロードマップ R5：空振り防止）
+   ・スキップすれば従来どおりの編集画面
+   ===================================================================== */
+var SS_MIN_TEMPLATES=20;
+var startScreen={ el:null, cat:null, shown:false };
+function ssCategories(){
+  var cats=(typeof manifestCategories==='function')?manifestCategories():[];
+  var counts={};
+  (SEEQ_MANIFEST.products||[]).forEach(function(d){
+    if(!PRODUCTS[d.id]) return;
+    if((d.brand||'seeq')!=='seeq') return;                 /* 森工業ブランドは顧客導線に出さない */
+    counts[d.category]=(counts[d.category]||0)+1;
+  });
+  return cats.map(function(c){ return {id:c.id, label:c.label, n:counts[c.id]||0}; });
+}
+function ssRender(){
+  var catsWrap=document.getElementById('ssCats'), grid=document.getElementById('ssGrid'), note=document.getElementById('ssNote');
+  if(!catsWrap||!grid) return;
+  var cats=ssCategories();
+  if(!startScreen.cat) startScreen.cat=(cats.filter(function(c){return c.n;})[0]||{}).id;
+  catsWrap.innerHTML='';
+  cats.forEach(function(c){
+    var b=document.createElement('button');
+    b.type='button';
+    b.className='ss-cat'+(c.id===startScreen.cat?' on':'');
+    if(!c.n){ b.disabled=true; b.innerHTML='<span></span><small>準備中</small>'; b.firstChild.textContent=c.label; }
+    else { b.textContent=c.label; }
+    b.setAttribute('aria-pressed', c.id===startScreen.cat?'true':'false');
+    b.onclick=function(){ startScreen.cat=c.id; ssRender(); };
+    catsWrap.appendChild(b);
+  });
+  grid.innerHTML='';
+  (SEEQ_MANIFEST.products||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);}).forEach(function(d){
+    if(d.category!==startScreen.cat || (d.brand||'seeq')!=='seeq') return;
+    var p=PRODUCTS[d.id]; if(!p) return;
+    var card=document.createElement('button');
+    card.type='button'; card.className='ss-card'; card.dataset.prod=d.id;
+    card.innerHTML='<span class="ss-thumb">'+faceThumbSVG(d.id)+'</span>'
+      +'<span class="ss-name"></span><span class="ss-sub"></span>';
+    card.querySelector('.ss-name').textContent=p.label;
+    card.querySelector('.ss-sub').textContent=p.sub||'';
+    card.onclick=function(){ ssPick(d.id); };
+    grid.appendChild(card);
+  });
+  if(note){
+    note.textContent = (TEMPLATES.length>=SS_MIN_TEMPLATES)
+      ? 'デザインのひな型から始めることもできます（商品を選んだあとの「テンプレート・図形」から）。'
+      : '選んだあとで、文字・画像・図形を自由に足せます。';
+  }
+}
+function ssPick(id){
+  try{ if(id && id!==currentProduct) switchProduct(id); }catch(e){}
+  ssHide();
+  track('start:pick',{product:id});
+  /* スマホはシートをすぐ開いて次の一手（文字・画像）へ導く */
+  try{ if(isMobile()) snapTo('mid'); }catch(e){}
+}
+function ssShow(){
+  var el=document.getElementById('startScreen'); if(!el) return;
+  startScreen.el=el; startScreen.shown=true;
+  ssRender();
+  el.hidden=false;
+  document.body.classList.add('ss-open');
+  track('start:open');
+}
+function ssHide(){
+  var el=document.getElementById('startScreen'); if(!el) return;
+  el.hidden=true; startScreen.shown=false;
+  document.body.classList.remove('ss-open');
+}
+(function(){
+  var skip=document.getElementById('ssSkip');
+  if(skip) skip.onclick=function(){ ssHide(); track('start:skip'); };
+  var el=document.getElementById('startScreen');
+  if(el) el.addEventListener('keydown', function(e){ if(e.key==='Escape'){ ssHide(); } });
+})();
+
+/* =====================================================================
    パネルの開閉（アコーディオン）
    --------------------------------------------------------------------
    「全部のメニューが開きっぱなしで圧迫される」の解消。見出しをボタンにして
@@ -5578,6 +5827,16 @@ var BRAND_CATALOG=manifestBrandCatalog();
   if(order.length && order.indexOf(currentProduct)<0) currentProduct=order[0];
   renderProductSelector(); updateProductUI();
   if(typeof syncProductPanel==='function') syncProductPanel();
+})();
+
+/* スタート画面はマニフェスト適用後（＝商品が出そろってから）に出す。
+   ?start=0 で抑止、?start=1 で強制。既にデザインがある時は出さない。 */
+(function(){
+  var q=null; try{ q=new URLSearchParams(location.search); }catch(e){}
+  var mode=q?q.get('start'):null;
+  if(mode==='0') return;
+  if(mode!=='1' && typeof hasAnyDesign==='function' && hasAnyDesign()) return;
+  if(typeof ssShow==='function') ssShow();
 })();
 
 function setPlateSize(sizeId){
@@ -6228,6 +6487,92 @@ var SeeQMockup=(function(){
     }
     x.putImageData(img,0,0); return c;
   }
+  /* 曲面に貼ったように見せる縦スリット合成。中央ほど手前＝両端が下がって縮む。
+     キャップ前面のような「ゆるい樽型」はこれで十分それらしく見える。 */
+  function drawCurved(x, img, dx, dy, dw, dh, curve){
+    var N=56, sw=dw/N, iw=img.width/N;
+    for(var i=0;i<N;i++){
+      var t=(i+0.5)/N, k=Math.cos((t-0.5)*Math.PI);      /* 中央1・両端0 */
+      var drop=(1-k)*dh*curve*0.55;
+      var sh=dh*(1-(1-k)*curve*0.42);
+      x.drawImage(img, i*iw,0, iw,img.height, dx+i*sw, dy+drop, sw+0.7, sh);
+    }
+  }
+  /* キャップの前面パネル（クラウン＋つば）を手続き生成で描く */
+  function capPath(x, r, style){
+    var left=r.x, right=r.x+r.w, top=r.y, bottom=r.y+r.h*0.74;
+    x.beginPath();
+    x.moveTo(left,bottom);
+    x.bezierCurveTo(left, top+r.h*0.10, r.x+r.w*0.20, top, r.x+r.w*0.5, top);
+    x.bezierCurveTo(r.x+r.w*0.80, top, right, top+r.h*0.10, right, bottom);
+    x.closePath();
+    return {left:left,right:right,top:top,bottom:bottom};
+  }
+  function renderCap(tpl, env, bgMode){
+    var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
+    var frame=get3DFrame(1400), P=tpl.params, C=tpl.cap||{};
+    var r={ x:tpl.rect.x*W, y:tpl.rect.y*H, w:tpl.rect.w*W, h:tpl.rect.h*H };
+    var c=document.createElement('canvas'); c.width=W; c.height=H;
+    var x=c.getContext('2d');
+    var geo={left:r.x,right:r.x+r.w,top:r.y,bottom:r.y+r.h*0.74};
+    /* つば（クラウンより先に描いて奥に置く） */
+    x.save();
+    x.beginPath();
+    if(C.visor==='flat'){
+      x.moveTo(geo.left-r.w*0.05, geo.bottom);
+      x.lineTo(geo.right+r.w*0.05, geo.bottom);
+      x.lineTo(geo.right+r.w*0.01, geo.bottom+r.h*0.24);
+      x.lineTo(geo.left-r.w*0.01, geo.bottom+r.h*0.24);
+    } else {
+      x.moveTo(geo.left-r.w*0.03, geo.bottom);
+      x.bezierCurveTo(r.x+r.w*0.20, geo.bottom+r.h*0.34, r.x+r.w*0.80, geo.bottom+r.h*0.34, geo.right+r.w*0.03, geo.bottom);
+      x.bezierCurveTo(r.x+r.w*0.78, geo.bottom+r.h*0.10, r.x+r.w*0.22, geo.bottom+r.h*0.10, geo.left-r.w*0.03, geo.bottom);
+    }
+    x.closePath();
+    x.fillStyle=frame.color; x.fill();
+    var vg=x.createLinearGradient(0,geo.bottom,0,geo.bottom+r.h*0.34);
+    vg.addColorStop(0,'rgba(0,0,0,0.10)'); vg.addColorStop(1,'rgba(0,0,0,0.30)');
+    x.fillStyle=vg; x.fill();
+    x.restore();
+    /* クラウン */
+    x.save();
+    capPath(x, r, C.style); x.clip();
+    x.fillStyle=frame.color; x.fillRect(r.x,r.y,r.w,r.h);
+    /* 生地の粒 */
+    var n=noiseCanvas(Math.max(2,Math.round(r.w/3)), Math.max(2,Math.round(r.h/3)), P.grain*2.2, 11);
+    x.globalAlpha=P.pile*0.5; x.globalCompositeOperation='multiply';
+    x.drawImage(n, r.x,r.y,r.w,r.h);
+    x.globalAlpha=1; x.globalCompositeOperation='source-over';
+    /* メッシュ（後方パネル） */
+    if(C.mesh){
+      var step=Math.max(4, Math.round(r.w/90));
+      x.strokeStyle='rgba(0,0,0,0.10)'; x.lineWidth=1;
+      for(var gx=r.x+r.w*0.62; gx<r.x+r.w; gx+=step){ x.beginPath(); x.moveTo(gx,r.y); x.lineTo(gx,r.y+r.h); x.stroke(); }
+      for(var gy=r.y; gy<r.y+r.h; gy+=step){ x.beginPath(); x.moveTo(r.x+r.w*0.62,gy); x.lineTo(r.x+r.w,gy); x.stroke(); }
+    }
+    /* デザイン（前面パネルへ曲面合成） */
+    var pr=tpl.print;
+    drawCurved(x, frame.canvas, r.x+r.w*pr.x, r.y+r.h*pr.y, r.w*pr.w, r.h*pr.h, pr.curve);
+    /* パネルの縫い目 */
+    x.strokeStyle='rgba(0,0,0,0.16)'; x.lineWidth=Math.max(1,r.w/380);
+    [0.5,0.28,0.72].forEach(function(t,i){
+      x.beginPath();
+      x.moveTo(r.x+r.w*t, r.y+(i?r.h*0.06:0));
+      x.bezierCurveTo(r.x+r.w*(t+(t-0.5)*0.06), r.y+r.h*0.35, r.x+r.w*(t+(t-0.5)*0.08), r.y+r.h*0.6, r.x+r.w*t, geo.bottom);
+      x.stroke();
+    });
+    /* 立体感：上からの光と裾の陰 */
+    var lg=x.createLinearGradient(r.x, r.y, r.x+r.w*0.9, geo.bottom);
+    lg.addColorStop(0,'rgba(255,255,255,'+(0.20*P.ambient).toFixed(3)+')');
+    lg.addColorStop(0.5,'rgba(255,255,255,0)');
+    lg.addColorStop(1,'rgba(0,0,0,0.16)');
+    x.fillStyle=lg; x.fillRect(r.x,r.y,r.w,r.h);
+    x.restore();
+    /* クラウンのフチ */
+    x.save(); capPath(x, r, C.style);
+    x.strokeStyle='rgba(0,0,0,0.14)'; x.lineWidth=Math.max(1,r.w/500); x.stroke(); x.restore();
+    return compositeFlat(tpl, env, bgMode, c);
+  }
   function renderFlat(tpl, env, bgMode){
     var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
     var frame=get3DFrame(1400);
@@ -6327,9 +6672,9 @@ var SeeQMockup=(function(){
     if(!tpl) return Promise.reject(new Error('unknown mockup template: '+tplId));
     var envKey=opts.env||'studio', env=MK_ENV[envKey]||MK_ENV.studio;
     var bgMode=opts.bg||'soft';
-    /* 平置き品目（タオル等）はWebGL不要なので即返す */
+    /* 平置き・前面合成の品目（タオル／キャップ）はWebGL不要なので即返す */
     if(tpl.renderer==='flat'){
-      try{ return Promise.resolve(renderFlat(tpl, env, bgMode)); }
+      try{ return Promise.resolve(tpl.shape==='cap' ? renderCap(tpl, env, bgMode) : renderFlat(tpl, env, bgMode)); }
       catch(e){ return Promise.reject(e); }
     }
     if(tpl.layers.base.src){
@@ -6650,13 +6995,42 @@ var SeeQDieCut=(function(){
   /* アルファ→前景マスクと距離場。距離場はオフセット量に依存しないので、
      アルファが変わった時だけ作り直し、スライダー操作では閾値を変えるだけにする
      （＝フチ/角丸/白版インセットのドラッグが軽い）。 */
+  /* アクリルスタンドの差し込み代：図案の下端中央へ台座スリット幅ぶんの
+     長方形をマスクに足す。輪郭トレースの前に足すので、カットラインも白版も
+     自動的に「差し込み代つきの1枚」として出る。 */
+  function addStandTab(fg,w,h){
+    if(!S || !S.standOn || !S.tabMM) return fg;
+    var minX=1e9,maxX=-1,maxY=-1,i,x,y;
+    for(y=0;y<h;y++) for(x=0;x<w;x++){ if(fg[y*w+x]){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y>maxY)maxY=y; } }
+    if(maxY<0) return fg;
+    var ppm=pxPerMM();
+    var tabW=Math.max(4, Math.round(S.slitWMM*0.9*ppm));
+    var tabH=Math.max(4, Math.min(PAD-8, Math.round(S.tabMM*ppm)));   /* 余白PADを超えないよう制限 */
+    var cx=Math.round((minX+maxX)/2);
+    var x0=Math.max(0,cx-(tabW>>1)), x1=Math.min(w-1,cx+(tabW>>1));
+    var y0=Math.max(0,maxY-2), y1=Math.min(h-1,maxY+tabH);
+    for(y=y0;y<=y1;y++) for(x=x0;x<=x1;x++) fg[y*w+x]=1;
+    S.tabPx={x0:x0,x1:x1,y0:y0,y1:y1};
+    return fg;
+  }
   function computeMask(){
     var w=S.Wp, h=S.Hp, N=w*h, thrA=tplOf().params.alphaThr||128;
     var fg=new Uint8Array(N), i;
     for(i=0;i<N;i++) fg[i]= effAlpha(i)>=thrA ? 1:0;
+    fg=addStandTab(fg,w,h);
     S.fg=fillHoles(fg,w,h);
     var any=false; for(i=0;i<N;i++){ if(S.fg[i]){ any=true; break; } }
     S.dist = any ? distTransform(S.fg,w,h) : null;
+    /* カッティングシートは「細すぎる部分」がカット不良の主因なので、
+       前景の内側距離（＝線の太さの半分）を測って割合を出す（パス化警告UI）。 */
+    if(any && tplOf().singleColor){
+      var inv=new Uint8Array(N);
+      for(i=0;i<N;i++) inv[i]=S.fg[i]?0:1;
+      var din=distTransform(inv,w,h);
+      var need=((tplOf().minStrokeMM||1.2)/2)*pxPerMM(), tot=0, thin=0;
+      for(i=0;i<N;i++){ if(S.fg[i]){ tot++; if(din[i]<need) thin++; } }
+      S.thinRatio = tot ? thin/tot : 0;
+    } else S.thinRatio=0;
   }
   /* 前景を offPx だけ外側へ太らせた閉輪郭（＝カットライン／白版の共通処理） */
   function contourAt(offPx){
@@ -6726,6 +7100,28 @@ var SeeQDieCut=(function(){
 
   /* ---- 描画 ---- */
   var cutoutCanvas=document.createElement('canvas');
+  var silCanvas=document.createElement('canvas');
+  /* 切り抜き形状を1色で塗ったシルエット（カッティングシートのプレビュー用） */
+  function buildSilhouette(hex){
+    silCanvas.width=S.Wp; silCanvas.height=S.Hp;
+    var cx=silCanvas.getContext('2d');
+    cx.clearRect(0,0,S.Wp,S.Hp);
+    cx.drawImage(cutoutCanvas,0,0);
+    cx.globalCompositeOperation='source-in';
+    cx.fillStyle=hex||'#1d1f21'; cx.fillRect(0,0,S.Wp,S.Hp);
+    cx.globalCompositeOperation='source-over';
+  }
+  /* アクリルスタンドの台座（差し込みスリット入り）。図案の下に離して置く。 */
+  function baseGeom(){
+    if(!S||!S.standOn||!S.cut||S.cut.length<3) return null;
+    var ppm=pxPerMM();
+    var minX=1e9,maxX=-1e9,maxY=-1e9;
+    S.cut.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[0]>maxX)maxX=p[0]; if(p[1]>maxY)maxY=p[1]; });
+    var w=S.baseWMM*ppm, h=S.baseHMM*ppm, r=((tplOf().base&&tplOf().base.rMM)||3)*ppm;
+    var cx=(minX+maxX)/2, y=maxY+6*ppm;                       /* 図案の6mm下に配置 */
+    return { x:cx-w/2, y:y, w:w, h:h, r:r,
+      slit:{ x:cx-(S.slitWMM*ppm)/2, y:y+h*0.30, w:S.slitWMM*ppm, h:S.slitTMM*ppm } };
+  }
   function buildCutout(){
     cutoutCanvas.width=S.Wp; cutoutCanvas.height=S.Hp;
     var ctx=cutoutCanvas.getContext('2d');
@@ -6750,7 +7146,9 @@ var SeeQDieCut=(function(){
       x.fillStyle='rgba(255,255,255,0.92)'; x.fill('evenodd');
       x.restore();
     }
-    x.drawImage(cutoutCanvas,0,0);
+    /* カッティングシートは単色カットなので、絵柄ではなく「シート色のシルエット」を見せる */
+    if(tplOf().singleColor){ buildSilhouette(currentColor?currentColor.hex:'#1d1f21'); x.drawImage(silCanvas,0,0); }
+    else x.drawImage(cutoutCanvas,0,0);
     var halo=Math.max(3,S.Wp/300), thin=Math.max(1.6,S.Wp/560);
     if(S.white && S.white.length>2){
       x.save(); pathOf(x,S.white);
@@ -6769,6 +7167,21 @@ var SeeQDieCut=(function(){
     if(S.holes && S.holes.length && tplOf().hole){
       x.save(); x.globalCompositeOperation='destination-out';
       S.holes.forEach(function(hl){ x.beginPath(); x.arc(hl.x,hl.y,holeRadPx(),0,Math.PI*2); x.fill(); });
+      x.restore();
+    }
+    /* アクリルスタンドの台座（別パーツ）。同じマゼンタ＝カットライン扱い。 */
+    var bg=baseGeom();
+    if(bg){
+      x.save();
+      x.beginPath();
+      if(x.roundRect) x.roundRect(bg.x,bg.y,bg.w,bg.h,bg.r);
+      else { x.rect(bg.x,bg.y,bg.w,bg.h); }
+      x.fillStyle='rgba(255,255,255,0.72)'; x.fill();
+      x.strokeStyle='rgba(255,255,255,0.9)'; x.lineWidth=halo; x.stroke();
+      x.strokeStyle=CUT_COLOR; x.lineWidth=thin; x.setLineDash([S.Wp/90,S.Wp/150]); x.stroke();
+      x.beginPath(); x.rect(bg.slit.x,bg.slit.y,bg.slit.w,bg.slit.h);
+      x.fillStyle='rgba(20,28,38,0.10)'; x.fill();
+      x.strokeStyle=CUT_COLOR; x.stroke(); x.setLineDash([]);
       x.restore();
     }
     /* 丸穴のガイド：クリアランス不足は赤で警告表示 */
@@ -6812,7 +7225,12 @@ var SeeQDieCut=(function(){
             offsetMM:t.params.offsetMM, round:t.params.round, smooth:t.params.smooth,
             longEdgeMM:t.defaultLongEdgeMM,
             whiteOn:!!t.whitePlate, whiteInsetMM:(t.whiteInsetMM!=null?t.whiteInsetMM:0.5),
-            holeDiaMM:(t.holeDiaMM||5), holes:[] };
+            holeDiaMM:(t.holeDiaMM||5), holes:[],
+            /* アクリルスタンド：台座と差し込み代（寸法は暫定値・マニフェスト参照） */
+            standOn:!!(t.base&&t.base.enabled!==false&&t.type==='stand'),
+            baseWMM:(t.base&&t.base.wMM)||60, baseHMM:(t.base&&t.base.hMM)||22,
+            slitWMM:(t.base&&t.base.slitWMM)||34, slitTMM:(t.base&&t.base.slitTMM)||3.2,
+            tabMM:(t.base&&t.base.tabMM)||6 };
         S.keyCol=detectKey();
         drop.classList.add('hide');
         recompute();
@@ -6922,6 +7340,11 @@ var SeeQDieCut=(function(){
     var mmpp=mmPerPx();
     var pts=S.cut, minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
     pts.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[1]<minY)minY=p[1]; if(p[0]>maxX)maxX=p[0]; if(p[1]>maxY)maxY=p[1]; });
+    var bg=baseGeom();          /* アクリルスタンドの台座も1枚に収める */
+    if(bg){
+      minX=Math.min(minX,bg.x); maxX=Math.max(maxX,bg.x+bg.w);
+      minY=Math.min(minY,bg.y); maxY=Math.max(maxY,bg.y+bg.h);
+    }
     var M=(window.PRINT?PRINT.bleedMM:3);      /* 既存入稿パイプラインと同じ 3mm の余白（塗り足し相当） */
     var offX=minX*mmpp-M, offY=minY*mmpp-M;
     var Wmm=+((maxX-minX)*mmpp+2*M).toFixed(3), Hmm=+((maxY-minY)*mmpp+2*M).toFixed(3);
@@ -6938,7 +7361,10 @@ var SeeQDieCut=(function(){
       return 'M'+(+(cx-r).toFixed(3))+' '+cy+' a'+r+' '+r+' 0 1 0 '+(+(r*2).toFixed(3))+' 0 a'+r+' '+r+' 0 1 0 '+(+(-r*2).toFixed(3))+' 0 Z';
     }
     var holes=(tplOf().hole && S.holes)?S.holes:[];
-    var art=exportArtwork();
+    var single=!!tplOf().singleColor;
+    /* 単色カット（カッティングシート）は印刷が無いので、ラスタは埋め込まず
+       ベクターだけ出す＝カット機にそのまま渡せる軽いデータになる */
+    var art=single?null:exportArtwork();
     var ax=mmx(PAD), ay=mmy(PAD), aw=+(S.imgW*mmpp).toFixed(3), ah=+(S.imgH*mmpp).toFixed(3);
     var NS='http://www.w3.org/2000/svg', XL='http://www.w3.org/1999/xlink', IN='http://www.inkscape.org/namespaces/inkscape';
     var L=[];
@@ -6947,21 +7373,39 @@ var SeeQDieCut=(function(){
       +'width="'+Wmm+'mm" height="'+Hmm+'mm" viewBox="0 0 '+Wmm+' '+Hmm+'" version="1.1">');
     /* コメントは ASCII のみ（印刷所のRIP/古い環境での文字化け対策） */
     L.push('  <!-- SeeQ print data. Units: mm (1 user unit = 1 mm). Margin around the cut line: '+M+' mm. -->');
-    L.push('  <!-- Layers: WhitePlate (white-ink plate, drawn as 100% K fill, holes knocked out) / Artwork (embedded raster, '+art.dpi+' dpi) / CutContour (vector cut path) / Holes (round holes, cut). -->');
-    L.push('  <!-- At the print shop: set the stroke of CutContour and Holes to a SPOT color named "CutContour" (overprint), and the WhitePlate fill to the white-ink spot. -->');
-    if(S.white && S.white.length>2){
+    L.push('  <!-- Layers: '+(single
+      ? 'VinylPreview (fill = sheet colour, reference only) / CutContour (vector cut path). Single-colour cutting: no raster is embedded.'
+      : 'WhitePlate (white-ink plate, drawn as 100% K fill, holes knocked out) / Artwork (embedded raster, '+art.dpi+' dpi) / CutContour (vector cut path) / Holes (round holes, cut).')+' -->');
+    L.push('  <!-- At the print shop: set the stroke of CutContour, Holes and Base to a SPOT color named "CutContour" (overprint), and the WhitePlate fill to the white-ink spot. -->');
+    if(bg) L.push('  <!-- Base = separate stand foot part. Slit '+S.slitWMM+' x '+S.slitTMM+' mm (PROVISIONAL - confirm against the real part). -->');
+    if(S.white && S.white.length>2 && !single){
       var wd=pathD(S.white);
       holes.forEach(function(hl){ wd+=' '+holeD(hl); });
       L.push('  <g inkscape:groupmode="layer" inkscape:label="WhitePlate" id="WhitePlate">');
       L.push('    <path d="'+wd+'" fill="#000000" fill-rule="evenodd" stroke="none" data-plate="white"/>');
       L.push('  </g>');
     }
-    L.push('  <g inkscape:groupmode="layer" inkscape:label="Artwork" id="Artwork">');
-    L.push('    <image x="'+ax+'" y="'+ay+'" width="'+aw+'" height="'+ah+'" xlink:href="'+art.url+'" style="image-rendering:optimizeQuality"/>');
-    L.push('  </g>');
+    if(single){
+      L.push('  <g inkscape:groupmode="layer" inkscape:label="VinylPreview" id="VinylPreview">');
+      L.push('    <path d="'+pathD(pts)+'" fill="'+((currentColor&&currentColor.hex)||'#1d1f21')+'" stroke="none" data-preview="vinyl"/>');
+      L.push('  </g>');
+    } else {
+      L.push('  <g inkscape:groupmode="layer" inkscape:label="Artwork" id="Artwork">');
+      L.push('    <image x="'+ax+'" y="'+ay+'" width="'+aw+'" height="'+ah+'" xlink:href="'+art.url+'" style="image-rendering:optimizeQuality"/>');
+      L.push('  </g>');
+    }
     L.push('  <g inkscape:groupmode="layer" inkscape:label="CutContour" id="CutContour">');
     L.push('    <path d="'+pathD(pts)+'" fill="none" stroke="'+CUT_COLOR+'" stroke-width="0.25" stroke-linejoin="round" data-spot="CutContour"/>');
     L.push('  </g>');
+    if(bg){
+      var bx=mmx(bg.x), by=mmy(bg.y), bw=+(bg.w*mmpp).toFixed(3), bh=+(bg.h*mmpp).toFixed(3), br=+(bg.r*mmpp).toFixed(3);
+      L.push('  <g inkscape:groupmode="layer" inkscape:label="Base" id="Base">');
+      L.push('    <rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" rx="'+br+'" '
+        +'fill="none" stroke="'+CUT_COLOR+'" stroke-width="0.25" data-spot="CutContour" data-part="stand-base"/>');
+      L.push('    <rect x="'+mmx(bg.slit.x)+'" y="'+mmy(bg.slit.y)+'" width="'+(+(bg.slit.w*mmpp).toFixed(3))+'" height="'+(+(bg.slit.h*mmpp).toFixed(3))+'" '
+        +'fill="none" stroke="'+CUT_COLOR+'" stroke-width="0.25" data-spot="CutContour" data-part="stand-slit"/>');
+      L.push('  </g>');
+    }
     if(holes.length){
       L.push('  <g inkscape:groupmode="layer" inkscape:label="Holes" id="Holes">');
       holes.forEach(function(hl){
@@ -7000,13 +7444,26 @@ var SeeQDieCut=(function(){
     if(!S){ el.innerHTML=''; return; }
     var dpi=effDpi(), sz=cutSizeMM(), parts=[];
     parts.push('仕上がり <b>'+sz.w.toFixed(1)+'×'+sz.h.toFixed(1)+'mm</b>');
-    parts.push('実効 <span class="'+(dpi>=250?'ok':'ng')+'">'+dpi+'dpi</span>');
+    /* 単色カットは印刷しない＝解像度の概念が無いので出さない */
+    if(!tplOf().singleColor) parts.push('実効 <span class="'+(dpi>=250?'ok':'ng')+'">'+dpi+'dpi</span>');
     if(tplOf().hole){
       if(!S.holes.length) parts.push('<span class="ng">穴が未配置</span>');
       else {
         var bad=S.holes.filter(function(h){ return h.ok===false; }).length;
         parts.push(bad ? '<span class="ng">穴がフチに近すぎます</span>' : '<span class="ok">穴OK</span>');
       }
+    }
+    if(S.standOn){
+      parts.push('台座 '+S.baseWMM+'×'+S.baseHMM+'mm・差込'+S.tabMM.toFixed(1)+'mm <span class="ng">（寸法は暫定）</span>');
+    }
+    if(tplOf().singleColor){
+      var pctThin=Math.round((S.thinRatio||0)*100);
+      var minMM=(tplOf().minStrokeMM||1.2);
+      parts.push('カット点数 '+((S.cut&&S.cut.length)||0));
+      parts.push(pctThin>50
+        ? '<span class="ng">細い部分が多め（'+minMM+'mm未満が'+pctThin+'%）＝カット不可の恐れ</span>'
+        : '<span class="ok">線の太さOK</span>');
+      parts.push('文字の内側の抜きは自動生成されません');
     }
     el.innerHTML=parts.join(' ／ ');
   }
@@ -7028,6 +7485,11 @@ var SeeQDieCut=(function(){
     seg('dieHoleSeg','hole', holeMode);
     $('dieHoleDia').value=S.holeDiaMM; $('dieHoleDiaV').textContent=S.holeDiaMM.toFixed(1)+'mm';
     wrap.classList.toggle('hole', holeMode==='place');
+    /* アクリルスタンドの台座（寸法は暫定値） */
+    $('dieBaseGrp').classList.toggle('hidden', t.type!=='stand');
+    seg('dieBaseSeg','base', S.standOn?'on':'off');
+    $('dieBaseW').value=S.baseWMM; $('dieBaseWV').textContent=S.baseWMM+'mm';
+    $('dieTab').value=S.tabMM; $('dieTabV').textContent=S.tabMM.toFixed(1)+'mm';
   }
   /* 商品（テンプレ）が変わった時に既存の読み込み画像へ新テンプレの既定値を当て直す */
   function applyTplDefaults(){
@@ -7037,6 +7499,11 @@ var SeeQDieCut=(function(){
     S.longEdgeMM=t.defaultLongEdgeMM;
     S.whiteOn=!!t.whitePlate; S.whiteInsetMM=(t.whiteInsetMM!=null?t.whiteInsetMM:0.5);
     S.holeDiaMM=(t.holeDiaMM||5); S.holes=[];
+    S.standOn=!!(t.base && t.base.enabled!==false && t.type==='stand');
+    S.baseWMM=(t.base&&t.base.wMM)||60; S.baseHMM=(t.base&&t.base.hMM)||22;
+    S.slitWMM=(t.base&&t.base.slitWMM)||34; S.slitTMM=(t.base&&t.base.slitTMM)||3.2;
+    S.tabMM=(t.base&&t.base.tabMM)||6;
+    computeMask();
     computeCut();
     if(t.hole && !S.holes.length) autoPlaceHole();
     render(); syncControls(); syncInfo();
@@ -7061,6 +7528,13 @@ var SeeQDieCut=(function(){
     $('dieHoleDia').addEventListener('input',function(){ if(!S) return; S.holeDiaMM=+this.value;
       $('dieHoleDiaV').textContent=(+this.value).toFixed(1)+'mm'; checkHoles(); render(); syncInfo(); });
     $('dieHoleDel').onclick=function(){ if(!S||!S.holes.length) return; S.holes.pop(); checkHoles(); render(); syncInfo(); };
+    /* ---- 台座（アクリルスタンド） ---- */
+    $('dieBaseSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b||!S) return;
+      S.standOn=(b.dataset.base==='on'); computeMask(); computeCut(); render(); syncControls(); syncInfo(); });
+    $('dieBaseW').addEventListener('input',function(){ if(!S) return; S.baseWMM=+this.value;
+      $('dieBaseWV').textContent=this.value+'mm'; render(); syncInfo(); });
+    $('dieTab').addEventListener('input',function(){ if(!S) return; S.tabMM=+this.value;
+      $('dieTabV').textContent=(+this.value).toFixed(1)+'mm'; computeMask(); computeCut(); render(); syncInfo(); });
     $('dieBrushSeg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return;
       brush.mode=b.dataset.brush; seg('dieBrushSeg','brush',brush.mode); wrap.classList.toggle('brush', brush.mode!=='off'); });
     $('dieBrush').addEventListener('input',function(){ brush.size=+this.value; $('dieBrushV').textContent=this.value; });
