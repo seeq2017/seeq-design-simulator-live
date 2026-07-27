@@ -374,10 +374,13 @@
      カテゴリごとの .prodgrid がグリッドアイテム扱いになり、3列に潰れる。 */
   .prodsel{display:block;margin-bottom:13px;}
   .prodgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
-  .prodcat{font-size:10.5px;font-weight:800;color:var(--sub);letter-spacing:.05em;
-    margin:10px 0 5px;display:flex;align-items:center;gap:7px;}
-  .prodcat:first-child{margin-top:0;}
-  .prodcat::after{content:'';flex:1 1 auto;height:1px;background:var(--line);}
+  /* カテゴリのタブ（アパレル／グッズ・小物／タオル…） */
+  .prodcats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}
+  .prodcat-tab{border:1px solid var(--line);background:#fbfdfd;border-radius:999px;
+    padding:6px 11px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;
+    color:var(--sub);transition:.12s;-webkit-tap-highlight-color:transparent;}
+  .prodcat-tab:hover{border-color:var(--accent);color:var(--accent-d,#B3000E);}
+  .prodcat-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
   .prod-btn{display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid var(--line);
     background:#fff;border-radius:12px;padding:8px 4px 7px;cursor:pointer;font-family:inherit;
     font-weight:700;font-size:11.5px;color:var(--sub);transition:.14s;-webkit-tap-highlight-color:transparent;}
@@ -2640,6 +2643,7 @@ function faceThumbSVG(prodKey, faceId, color){
     return (typeof svg==='string') ? svg : '';
   }catch(e){ return ''; }
 }
+var _prodCat=null, _prodCatFor=null;   /* 開いているカテゴリと、その時の選択商品（メモリ保持） */
 function renderProductSelector(){
   var wrap=document.getElementById('prodSel'); wrap.innerHTML='';
   /* カテゴリ（アパレル／グッズ／タオル／看板）ごとに小見出しを挟んで並べる。
@@ -2655,11 +2659,26 @@ function renderProductSelector(){
   if(other.items.length) groups.push(other);
   groups=groups.filter(function(g){ return g.items.length; });
   var multi=groups.length>1;
-  groups.forEach(function(g){
-    if(multi){
-      var h=document.createElement('div'); h.className='prodcat'; h.textContent=g.label;
-      wrap.appendChild(h);
-    }
+  /* 品目が増えたので、カテゴリはタブで切り替えて1カテゴリずつ見せる。
+     全部を縦に並べると商品パネルだけで1000px超になり、選ぶ前に疲れてしまう。 */
+  var curCat=(PRODUCTS[currentProduct]||{}).category;
+  if(multi){
+    /* 商品が変わった時だけ、その商品のカテゴリへ自動で合わせる。
+       （毎回合わせるとカテゴリタブを手で切り替えられなくなる） */
+    if(_prodCatFor!==currentProduct){ _prodCat=curCat||_prodCat||groups[0].id; _prodCatFor=currentProduct; }
+    if(!_prodCat || !groups.filter(function(g){return g.id===_prodCat;}).length) _prodCat=curCat||groups[0].id;
+    var tabs=document.createElement('div'); tabs.className='prodcats';
+    groups.forEach(function(g){
+      var b=document.createElement('button');
+      b.type='button'; b.className='prodcat-tab'+(g.id===_prodCat?' on':'');
+      b.textContent=g.label+'（'+g.items.length+'）';
+      b.setAttribute('aria-pressed', g.id===_prodCat?'true':'false');
+      b.onclick=function(){ _prodCat=g.id; renderProductSelector(); };
+      tabs.appendChild(b);
+    });
+    wrap.appendChild(tabs);
+  }
+  groups.filter(function(g){ return !multi || g.id===_prodCat; }).forEach(function(g){
     var grid=document.createElement('div'); grid.className='prodgrid';
     g.items.forEach(function(pk){
       var p=PRODUCTS[pk];
@@ -2702,6 +2721,11 @@ function syncProductPanel(){
   });
 }
 function updateProductUI(){
+  /* 商品が変わったのに別カテゴリのタブを開いたままだと、選択中の商品が
+     どこにも見えなくなる。その時だけセレクタを作り直してカテゴリを合わせる。 */
+  if(_prodCatFor!==currentProduct || !document.querySelector('.prod-btn[data-prod="'+currentProduct+'"]')){
+    renderProductSelector();
+  }
   document.querySelectorAll('.prod-btn').forEach(function(b){
     var on=(b.dataset.prod===currentProduct);
     b.classList.toggle('active', on);
