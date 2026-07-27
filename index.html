@@ -870,6 +870,11 @@
   /* 実効解像度・穴の可否などの入稿チェック表示 */
   .die-info{font-size:11px;font-weight:700;color:var(--sub);line-height:1.5;max-width:340px;}
   .die-info b{color:var(--ink);}
+  /* カッティングシートのシート色 */
+  .die-vinyl{display:flex;gap:5px;flex-wrap:wrap;}
+  .die-vinyl button{width:24px;height:24px;border-radius:50%;border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;transition:.12s;}
+  .die-vinyl button.on{box-shadow:0 0 0 2px var(--accent);transform:scale(1.08);}
   .die-info .ng{color:#c0392b;}
   .die-info .ok{color:#1f7a5a;}
   @media (max-width:820px){
@@ -1454,6 +1459,9 @@
         </span>
         <span class="die-sld">径<input type="range" id="dieHoleDia" min="2" max="10" step="0.5" value="5"><span class="val" id="dieHoleDiaV">5.0mm</span></span>
         <button class="btn btn-ghost btn-xs" id="dieHoleDel" type="button">穴を削除</button>
+      </div>
+      <div class="die-grp hidden" id="dieVinylGrp"><span class="lbl">シート色</span>
+        <span class="die-vinyl" id="dieVinyl"></span>
       </div>
       <div class="die-grp hidden" id="dieBaseGrp"><span class="lbl">台座</span>
         <span class="die-seg" id="dieBaseSeg">
@@ -7147,7 +7155,7 @@ var SeeQDieCut=(function(){
       x.restore();
     }
     /* カッティングシートは単色カットなので、絵柄ではなく「シート色のシルエット」を見せる */
-    if(tplOf().singleColor){ buildSilhouette(currentColor?currentColor.hex:'#1d1f21'); x.drawImage(silCanvas,0,0); }
+    if(tplOf().singleColor){ buildSilhouette(S.vinylHex||(currentColor&&currentColor.hex)||'#1d1f21'); x.drawImage(silCanvas,0,0); }
     else x.drawImage(cutoutCanvas,0,0);
     var halo=Math.max(3,S.Wp/300), thin=Math.max(1.6,S.Wp/560);
     if(S.white && S.white.length>2){
@@ -7230,7 +7238,13 @@ var SeeQDieCut=(function(){
             standOn:!!(t.base&&t.base.enabled!==false&&t.type==='stand'),
             baseWMM:(t.base&&t.base.wMM)||60, baseHMM:(t.base&&t.base.hMM)||22,
             slitWMM:(t.base&&t.base.slitWMM)||34, slitTMM:(t.base&&t.base.slitTMM)||3.2,
-            tabMM:(t.base&&t.base.tabMM)||6 };
+            tabMM:(t.base&&t.base.tabMM)||6,
+            /* カッティングシートのシート色（商品カラーが該当すればそれを引き継ぐ） */
+            vinylHex:(function(){
+              if(!t.vinyl||!t.vinyl.length) return null;
+              var cur=(currentColor&&currentColor.hex)||'';
+              return t.vinyl.filter(function(v){return v.hex.toLowerCase()===cur.toLowerCase();})[0]?cur:t.vinyl[0].hex;
+            })() };
         S.keyCol=detectKey();
         drop.classList.add('hide');
         recompute();
@@ -7387,7 +7401,7 @@ var SeeQDieCut=(function(){
     }
     if(single){
       L.push('  <g inkscape:groupmode="layer" inkscape:label="VinylPreview" id="VinylPreview">');
-      L.push('    <path d="'+pathD(pts)+'" fill="'+((currentColor&&currentColor.hex)||'#1d1f21')+'" stroke="none" data-preview="vinyl"/>');
+      L.push('    <path d="'+pathD(pts)+'" fill="'+(S.vinylHex||(currentColor&&currentColor.hex)||'#1d1f21')+'" stroke="none" data-preview="vinyl"/>');
       L.push('  </g>');
     } else {
       L.push('  <g inkscape:groupmode="layer" inkscape:label="Artwork" id="Artwork">');
@@ -7459,6 +7473,8 @@ var SeeQDieCut=(function(){
     if(tplOf().singleColor){
       var pctThin=Math.round((S.thinRatio||0)*100);
       var minMM=(tplOf().minStrokeMM||1.2);
+      var vn=(tplOf().vinyl||[]).filter(function(v){ return S.vinylHex && v.hex.toLowerCase()===S.vinylHex.toLowerCase(); })[0];
+      if(vn) parts.push('シート色 <b>'+vn.name+'</b>');
       parts.push('カット点数 '+((S.cut&&S.cut.length)||0));
       parts.push(pctThin>50
         ? '<span class="ng">細い部分が多め（'+minMM+'mm未満が'+pctThin+'%）＝カット不可の恐れ</span>'
@@ -7485,6 +7501,20 @@ var SeeQDieCut=(function(){
     seg('dieHoleSeg','hole', holeMode);
     $('dieHoleDia').value=S.holeDiaMM; $('dieHoleDiaV').textContent=S.holeDiaMM.toFixed(1)+'mm';
     wrap.classList.toggle('hole', holeMode==='place');
+    /* カッティングシートのシート色 */
+    var vg=$('dieVinylGrp');
+    vg.classList.toggle('hidden', !(t.singleColor && t.vinyl && t.vinyl.length));
+    if(t.singleColor && t.vinyl){
+      var vw=$('dieVinyl'); vw.innerHTML='';
+      t.vinyl.forEach(function(v){
+        var b=document.createElement('button');
+        b.type='button'; b.title=v.name; b.setAttribute('aria-label',v.name);
+        b.style.background=v.hex;
+        b.className=(S.vinylHex&&S.vinylHex.toLowerCase()===v.hex.toLowerCase())?'on':'';
+        b.onclick=function(){ S.vinylHex=v.hex; render(); syncControls(); syncInfo(); };
+        vw.appendChild(b);
+      });
+    }
     /* アクリルスタンドの台座（寸法は暫定値） */
     $('dieBaseGrp').classList.toggle('hidden', t.type!=='stand');
     seg('dieBaseSeg','base', S.standOn?'on':'off');
@@ -7503,6 +7533,7 @@ var SeeQDieCut=(function(){
     S.baseWMM=(t.base&&t.base.wMM)||60; S.baseHMM=(t.base&&t.base.hMM)||22;
     S.slitWMM=(t.base&&t.base.slitWMM)||34; S.slitTMM=(t.base&&t.base.slitTMM)||3.2;
     S.tabMM=(t.base&&t.base.tabMM)||6;
+    S.vinylHex=(t.vinyl&&t.vinyl.length)?t.vinyl[0].hex:null;
     computeMask();
     computeCut();
     if(t.hole && !S.holes.length) autoPlaceHole();
