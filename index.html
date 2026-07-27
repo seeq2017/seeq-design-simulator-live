@@ -370,7 +370,9 @@
   .nm-txt small{font-size:11.5px;color:var(--sub);font-weight:700;}
   .fld-sub{font-weight:400;color:var(--sub);}
 
-  .prodsel{margin-bottom:13px;}
+  /* 旧ルール（.prodsel 自体が3列グリッド）を明示的に打ち消す。打ち消さないと
+     カテゴリごとの .prodgrid がグリッドアイテム扱いになり、3列に潰れる。 */
+  .prodsel{display:block;margin-bottom:13px;}
   .prodgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
   .prodcat{font-size:10.5px;font-weight:800;color:var(--sub);letter-spacing:.05em;
     margin:10px 0 5px;display:flex;align-items:center;gap:7px;}
