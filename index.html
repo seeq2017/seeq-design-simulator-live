@@ -370,7 +370,12 @@
   .nm-txt small{font-size:11.5px;color:var(--sub);font-weight:700;}
   .fld-sub{font-weight:400;color:var(--sub);}
 
-  .prodsel{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:13px;}
+  .prodsel{margin-bottom:13px;}
+  .prodgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+  .prodcat{font-size:10.5px;font-weight:800;color:var(--sub);letter-spacing:.05em;
+    margin:10px 0 5px;display:flex;align-items:center;gap:7px;}
+  .prodcat:first-child{margin-top:0;}
+  .prodcat::after{content:'';flex:1 1 auto;height:1px;background:var(--line);}
   .prod-btn{display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid var(--line);
     background:#fff;border-radius:12px;padding:8px 4px 7px;cursor:pointer;font-family:inherit;
     font-weight:700;font-size:11.5px;color:var(--sub);transition:.14s;-webkit-tap-highlight-color:transparent;}
@@ -778,6 +783,16 @@
     .s3d-chip{padding:7px 11px;}
     .s3d-hint{bottom:10px;}
   }
+
+  /* ===== スマートモックアップ・ステージ（2D合成：缶バッジ等） =====
+     .stage3d / .s3d-* を土台ごと再利用し、差分だけをここに置く。
+     3Dと違い回転しないので mount は「画像を中央に置く額縁」。 */
+  .mk-mount{cursor:default;display:flex;align-items:center;justify-content:center;padding:16px 16px 30px;}
+  .mk-mount:active{cursor:default;}
+  .mk-mount img{max-width:100%;max-height:100%;width:auto;height:auto;display:block;
+    border-radius:6px;box-shadow:0 6px 26px rgba(16,24,34,.10);}
+  .mk-mount img.alpha{background:
+    conic-gradient(from 90deg,#fff 0 25%,#eef1f4 0 50%,#fff 0 75%,#eef1f4 0) 0 0/18px 18px;}
 
   /* ===== 入稿データ変換ステージ（ダイカット系） ===== */
   .die-mount{cursor:default;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;}
@@ -1324,6 +1339,21 @@
     </div>
   </div>
 
+  <!-- スマートモックアップ・ステージ（缶バッジ等：正面の質感が命の品目） -->
+  <div class="stage3d" id="stageMk" aria-hidden="true">
+    <div class="s3d-mount mk-mount" id="mkMount"></div>
+    <div class="s3d-bar">
+      <button class="btn btn-ghost btn-xs" id="mkBack" type="button">← 編集に戻る</button>
+      <button class="btn btn-primary btn-xs" id="mkQuote" type="button">この仕上がりで見積へ</button>
+    </div>
+    <div class="s3d-panel" id="mkPanel">
+      <div class="s3d-group"><span class="lbl">環境光</span><span class="s3d-chips" id="mkEnv"></span></div>
+      <div class="s3d-group"><span class="lbl">背景</span><span class="s3d-chips" id="mkBg"></span></div>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-xs" id="mkSave" type="button">画像を保存</button>
+    </div>
+  </div>
+
   <!-- 入稿データ変換ステージ（ダイカットステッカー／アクリル） -->
   <div class="stage3d" id="stageDie" aria-hidden="true">
     <div class="s3d-mount die-mount" id="dieMount">
@@ -1503,6 +1533,13 @@
     <button class="btn btn-primary btn-block" id="modalClose">閉じる</button>
   </div>
 </div>
+
+<!-- 商品定義マニフェスト。編集するのは src/products.manifest.json のほうで、
+     ./build.ps1（deploy-live.ps1 が自動実行）でこの位置へ結合される。
+     公開形は従来どおり index.html 1枚のまま。 -->
+<!-- BUILD:MANIFEST -->
+<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
+<!-- /BUILD:MANIFEST -->
 
 <script>
 /* =====================================================================
@@ -1811,6 +1848,196 @@ function toteSVG(color, dark, back){
    each face: { id, label, svg(hex,dark,back), guide{x,y,w,h}, presets[] }
    ===================================================================== */
 /* =====================================================================
+   スマートモックアップ・テンプレート（多品目展開の中核）
+   --------------------------------------------------------------------
+   「回して見せたい立体＝3D(kind:'apparel'|'plate')／正面の質感が命＝2D合成
+   (kind:'mockup')」の後者。1品目 = ここに1式足すだけで、合成エンジン
+   (SeeQMockup) 側は品目を一切知らない＝エンジンを作り直さずに増やせる。
+
+   layers は「土台 / マスク / ディスプレイスメント(曲面の歪み) / 光影」の4点。
+   各レイヤは procedural（手続き生成）と src（実物写真）のどちらでも指定でき、
+   無地缶バッジの実物写真が用意でき次第 base を { src:'...' } に差し替えれば
+   実写ベースへ移行できる（エンジンは両対応）。
+   ===================================================================== */
+var MOCKUP_TEMPLATES = {
+  'can-badge-57': {
+    label:'缶バッジ 57mm', en:'CAN BADGE 57',
+    size:{ w:57, h:57 },        /* 仕上がり径 mm（正面から見える範囲） */
+    designMM:70,                /* 印刷紙の径 mm（フチへ巻き込む塗り足しを含む） */
+    out:{ w:1200, h:1200 },     /* 生成解像度 px */
+    ss:1.6,                     /* 合成時のスーパーサンプル倍率（縁のジャギー対策） */
+    disc:{ cx:0.5, cy:0.465, r:0.375 },   /* 出力内のバッジ中心・半径（比率＝解像度非依存） */
+    layers:{
+      base :{ procedural:'badge-paper' },        /* 将来: { src:'assets/canbadge-blank-front.jpg' } */
+      mask :{ procedural:'circle' },
+      /* domeH は「仕上がり半径に対するドーム高さ」。57mm径＝半径28.5mmなので
+         0.13 ≈ 3.7mm。実物の缶バッジはこの程度で、中央はほぼ平ら。 */
+      disp :{ procedural:'dome', domeH:0.13, edgeExp:0.30 },
+      /* sheen = ラミネート面を斜めに横切る広いソフト反射。座標は仕上がり半径を1とする
+         面上の位置（x:左が負 / y:上が正）、ax/ay は楕円の半径、rot はラジアン。 */
+      light:{ procedural:'studio-softbox',
+              sheen:{ x:-0.32, y:0.34, ax:0.80, ay:0.30, rot:-0.6, intensity:0.16 } }
+    },
+    params:{
+      /* coverage（デザイン円のうち正面に見える割合）は size と designMM から
+         幾何的に導出されるので既定では指定しない。数値で上書きしたい時だけ書く。 */
+      ambient:0.62, key:0.50,
+      gloss:0.50, specPow:90,
+      env:0.42,
+      camZ:7.0,        /* カメラ距離（仕上がり半径=1 単位）。小さいほど反射が強く振れる */
+      grain:0.012,     /* 紙／ラミネートの粒子 */
+      /* rimGloss を上げすぎるとリムがクローム（金属）に寄って一気に嘘くさくなる。
+         缶バッジのフチは「金属そのもの」ではなく金属の上のラミネート紙の光沢。 */
+      rimStart:0.84, rimGloss:1.8,
+      crimp:{ at:0.930, width:0.025, depth:0.30 },          /* フチの巻き込みの溝 */
+      wrinkle:{ count:64, amp:0.13, start:0.88 },           /* フチの放射状のシワ */
+      shadow:{ dy:0.055, blur:0.075, spread:0.94, alpha:0.34 }
+    }
+  }
+};
+
+/* 缶バッジのベース色（デザインの透過部分から覗く紙の色） */
+var BADGE_BASE_COLORS = [
+  {name:'ホワイト',hex:'#ffffff',dark:false},
+  {name:'クラフト',hex:'#e3d5bd',dark:false},
+  {name:'ライトグレー',hex:'#d5dade',dark:false},
+  {name:'ブラック',hex:'#20262c',dark:true}
+];
+/* BASE(480×560)座標でのバッジ配置。R=印刷紙(塗り足し込み)の半径、vis=仕上がり径の半径 */
+function badgePlacement(tpl){
+  var cx=240, cy=282, R=150, vis=R*(tpl.size.w/tpl.designMM);
+  return { cx:cx, cy:cy, R:R, vis:vis,
+    guide:{ x:Math.round(cx-R), y:Math.round(cy-R), w:Math.round(R*2), h:Math.round(R*2) } };
+}
+function badgePresets(pl){
+  return [
+    {label:'中央', x:pl.cx, y:pl.cy, w:Math.round(pl.vis*2*0.78)},
+    {label:'全面（フチまで）', x:pl.cx, y:pl.cy, w:Math.round(pl.R*2)},
+    {label:'仕上がり径いっぱい', x:pl.cx, y:pl.cy, w:Math.round(pl.vis*2)},
+    {label:'上寄せ', x:pl.cx, y:Math.round(pl.cy-pl.R*0.30), w:Math.round(pl.vis*2*0.6)}
+  ];
+}
+/* 2D編集画面の下絵：印刷紙の円 + 仕上がり径リング + 巻き込み帯 */
+function canbadgeSVG(tpl, pl, hex){
+  var cx=pl.cx, cy=pl.cy, R=pl.R, vis=pl.vis, band=(R+vis)/2, bw=R-vis;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+    +'<defs><linearGradient id="bgsheen" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient></defs>'
+    +'<rect x="0" y="0" width="480" height="560" fill="#edf0f3"/>'
+    +'<ellipse cx="'+cx+'" cy="'+(cy+R*0.06)+'" rx="'+R+'" ry="'+R+'" fill="rgba(20,28,38,0.10)"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="'+hex+'" stroke="#c7ced5" stroke-width="1.5"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+band+'" fill="none" stroke="rgba(20,28,38,0.09)" stroke-width="'+bw+'"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+vis+'" fill="none" stroke="rgba(20,28,38,0.34)" stroke-width="1.2" stroke-dasharray="5 4"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+(R*0.62)+'" fill="url(#bgsheen)" opacity="0.35"/>'
+    +'<text x="'+cx+'" y="'+(cy-R-9)+'" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="10.5" fill="#7b8792">'
+      +'外側は巻き込み（点線内が仕上がり '+tpl.size.w+'mm）</text>'
+    +'</svg>';
+}
+/* 缶バッジの径展開：57mm のテンプレを土台に、仕上がり径・印刷紙径・ドーム高さ・
+   フチのシワ本数だけを差し替える。ドーム高さは実物では径によらずほぼ一定(≈3.7mm)
+   なので、半径に対する比率は径が小さいほど大きくなる（マニフェストで指定）。 */
+function makeBadgeTemplate(def){
+  var b=def.badge;
+  var t=JSON.parse(JSON.stringify(MOCKUP_TEMPLATES['can-badge-57']));
+  t.label=def.label; t.en=def.en;
+  t.size={ w:b.sizeMM, h:b.sizeMM };
+  t.designMM=b.paperMM;
+  t.layers.disp.domeH=b.domeH;
+  t.params.wrinkle.count=b.wrinkle;
+  return t;
+}
+
+/* ---- タオル（平置きスマートモックアップ）---- */
+var TOWEL_COLORS = [
+  {name:'ホワイト',hex:'#ffffff',dark:false},
+  {name:'ナチュラル',hex:'#f0e9dc',dark:false},
+  {name:'ライトグレー',hex:'#cdd4d8',dark:false},
+  {name:'ネイビー',hex:'#22314a',dark:true},
+  {name:'ブラック',hex:'#23262a',dark:true}
+];
+/* BASE(480×560) に収まる平置きタオルの矩形。実寸比を保って中央に置く */
+function towelPlacement(t){
+  var ar=t.wMM/t.hMM, maxW=404, maxH=452;
+  var w=Math.min(maxW, maxH*ar), h=w/ar;
+  if(h>maxH){ h=maxH; w=h*ar; }
+  var x=240-w/2, y=286-h/2, ins=t.printInset;
+  return { x:x, y:y, w:w, h:h,
+    guide:{ x:Math.round(x+w*ins), y:Math.round(y+h*ins),
+            w:Math.round(w*(1-2*ins)), h:Math.round(h*(1-2*ins)) } };
+}
+function towelSVG(t, pl, hex, dark){
+  var stroke = dark ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.10)';
+  var band   = dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.05)';
+  var r=Math.min(10, pl.w*0.03, pl.h*0.03);
+  var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+    +'<defs><filter id="s" x="-12%" y="-12%" width="124%" height="124%">'
+    +'<feDropShadow dx="0" dy="5" stdDeviation="9" flood-color="rgba(0,0,0,.14)"/></filter>'
+    +'<pattern id="pile" width="6" height="6" patternUnits="userSpaceOnUse">'
+    +'<path d="M0,3 H6 M3,0 V6" stroke="'+(dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.04)')+'" stroke-width="1"/></pattern></defs>'
+    +'<g filter="url(#s)">'
+    +'<rect x="'+pl.x.toFixed(1)+'" y="'+pl.y.toFixed(1)+'" width="'+pl.w.toFixed(1)+'" height="'+pl.h.toFixed(1)+'" rx="'+r.toFixed(1)+'" fill="'+hex+'" stroke="'+stroke+'" stroke-width="1.5"/>'
+    +'<rect x="'+pl.x.toFixed(1)+'" y="'+pl.y.toFixed(1)+'" width="'+pl.w.toFixed(1)+'" height="'+pl.h.toFixed(1)+'" rx="'+r.toFixed(1)+'" fill="url(#pile)"/>';
+  /* 両端のヘム（縫製部）。マフラー/フェイスは短辺側に入る */
+  if(t.hem==='both'){
+    var vertical=(t.hMM>t.wMM), hb=vertical?pl.h*0.045:pl.w*0.045;
+    if(vertical){
+      s+='<rect x="'+pl.x.toFixed(1)+'" y="'+pl.y.toFixed(1)+'" width="'+pl.w.toFixed(1)+'" height="'+hb.toFixed(1)+'" fill="'+band+'"/>'
+       + '<rect x="'+pl.x.toFixed(1)+'" y="'+(pl.y+pl.h-hb).toFixed(1)+'" width="'+pl.w.toFixed(1)+'" height="'+hb.toFixed(1)+'" fill="'+band+'"/>';
+    } else {
+      s+='<rect x="'+pl.x.toFixed(1)+'" y="'+pl.y.toFixed(1)+'" width="'+hb.toFixed(1)+'" height="'+pl.h.toFixed(1)+'" fill="'+band+'"/>'
+       + '<rect x="'+(pl.x+pl.w-hb).toFixed(1)+'" y="'+pl.y.toFixed(1)+'" width="'+hb.toFixed(1)+'" height="'+pl.h.toFixed(1)+'" fill="'+band+'"/>';
+    }
+  }
+  return s+'</g>'
+    +'<text x="240" y="'+Math.max(24,(pl.y-12)).toFixed(0)+'" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="11" fill="#7b8792">'
+    +'仕上がり '+t.wMM+'×'+t.hMM+'mm（点線内がプリント範囲）</text></svg>';
+}
+function makeTowelTemplate(def){
+  var t=def.towel, ar=t.wMM/t.hMM, pad=0.12;
+  var boxW = ar>=1 ? 1100 : Math.round(1100*ar);
+  var boxH = ar>=1 ? Math.round(1100/ar) : 1100;
+  return {
+    label:def.label, en:def.en, renderer:'flat',
+    size:{ w:t.wMM, h:t.hMM }, designMM:Math.max(t.wMM,t.hMM),
+    towel:t,
+    out:{ w:Math.round(boxW*(1+pad*2)), h:Math.round(boxH*(1+pad*2)) },
+    ss:1.35,
+    rect:{ x:pad/(1+2*pad), y:pad/(1+2*pad), w:1/(1+2*pad), h:1/(1+2*pad) },
+    layers:{ base:{procedural:'towel-cloth'}, mask:{procedural:'rect'},
+             disp:{procedural:'flat'}, light:{procedural:'studio-soft'} },
+    params:{ shadow:{ dy:0.020, blur:0.028, spread:1.0, alpha:0.26 },
+             grain:0.030, pile:0.55, fold:0.05, ambient:0.96, key:0.16 }
+  };
+}
+function makeTowelProduct(def){
+  var t=def.towel, pl=towelPlacement(t);
+  var prod={ id:def.id, label:def.label, en:def.en, brand:def.brand||'seeq',
+    kind:'mockup', mockup:def.id, sizeMM:{w:t.wMM,h:t.hMM}, colors:TOWEL_COLORS };
+  prod.faces=[{ id:'front', label:'おもて',
+    guide:pl.guide,
+    printMM:{ w:Math.round(t.wMM*(1-2*t.printInset)), h:Math.round(t.hMM*(1-2*t.printInset)) },
+    presets:[
+      {label:'中央', x:240, y:Math.round(pl.y+pl.h/2), w:Math.round(pl.guide.w*0.8)},
+      {label:'全面', x:240, y:Math.round(pl.y+pl.h/2), w:pl.guide.w},
+      {label:'端寄せ', x:240, y:Math.round(pl.y+pl.h*0.22), w:Math.round(pl.guide.w*0.6)}
+    ],
+    svg:function(hex,dark){ return towelSVG(t, pl, hex, dark); } }];
+  return prod;
+}
+
+function makeMockupProduct(id,label,en,tplId){
+  var tpl=MOCKUP_TEMPLATES[tplId], pl=badgePlacement(tpl);
+  var prod={ id:id, label:label, en:en, brand:'seeq', kind:'mockup', mockup:tplId,
+    sizeMM:tpl.size, colors:BADGE_BASE_COLORS };
+  prod.faces=[{ id:'front', label:'おもて',
+    guide:{x:pl.guide.x,y:pl.guide.y,w:pl.guide.w,h:pl.guide.h},
+    printMM:{w:tpl.designMM,h:tpl.designMM},        /* 入稿は塗り足し込みの実寸で出す */
+    presets:badgePresets(pl),
+    svg:function(hex){ return canbadgeSVG(tpl, pl, hex); } }];
+  return prod;
+}
+
+/* =====================================================================
    入稿データ変換テンプレート（ダイカット系）— 画像→カットライン付きSVGへの変換
    --------------------------------------------------------------------
    モックアップ(kind:'mockup')・3D とは別系統の「入稿データ変換」モード。
@@ -1843,8 +2070,96 @@ function diecutHintSVG(label){
     +'<circle cx="240" cy="250" r="34" fill="none" stroke="#9aa6b2" stroke-width="4"/>'
     +'<path d="M240 236v28M226 250h28" stroke="#9aa6b2" stroke-width="4" stroke-linecap="round"/>'
     +'<text x="240" y="322" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="700" fill="#5b6672">'+(label||'入稿データに変換')+'</text>'
-    +'<text x="240" y="348" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="12.5" fill="#8a96a2">「変換」を押して画像からグッズ用データを作成</text>'
+    +'<text x="240" y="348" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="12.5" fill="#8a96a2">左の「画像から◯◯のデータを作る」から始めてください</text>'
     +'</svg>';
+}
+/* =====================================================================
+   アパレル・ボディ生成（Tシャツ／ロンT／スウェット／ドライ 共通）
+   --------------------------------------------------------------------
+   既存 tshirtSVG の胴体シルエットを土台に、袖丈・リブ・裾・生地感だけを
+   差し替えて品番を増やす。マニフェスト（src/products.manifest.json）の
+   body 定義がそのままここへ渡る＝新しいボディは「データ追記」で足せる。
+   ===================================================================== */
+function apparelSVG(color, dark, back, o){
+  o=o||{};
+  var stroke = dark ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.10)';
+  var shade  = dark ? 'rgba(0,0,0,.20)' : 'rgba(0,0,0,.05)';
+  var rib    = dark ? 'rgba(0,0,0,.26)' : 'rgba(0,0,0,.07)';
+  var long   = (o.sleeve==='long');
+  var hemY   = (o.hem==='rib') ? 502 : 534;      /* リブ裾の品番は着丈が短い */
+  /* 袖口（外側→内側）。半袖＝二の腕、長袖＝手首まで伸ばす */
+  var LO = long ? [26,416] : [14,196], LI = long ? [86,438] : [84,228];
+  var RO = long ? [454,416] : [466,196], RI = long ? [394,438] : [396,228];
+  function P(a){ return a[0]+','+a[1]; }
+  var body = '<path d="M180,52 C150,40 132,46 120,52 L34,98 L'+P(LO)+' L'+P(LI)+' L96,184 '
+    + 'L96,'+(hemY-14)+' C96,'+(hemY-6)+' 102,'+hemY+' 110,'+hemY+' L370,'+hemY+' '
+    + 'C378,'+hemY+' 384,'+(hemY-6)+' 384,'+(hemY-14)+' '
+    + 'L384,184 L'+P(RI)+' L'+P(RO)+' L446,98 L360,52 C348,46 330,40 300,52 '
+    + (back ? 'C300,84 180,84 180,52 Z' : 'C300,104 180,104 180,52 Z')
+    + '" fill="'+color+'" stroke="'+stroke+'" stroke-width="2"/>';
+  var collar = back
+    ? '<path d="M180,52 C210,74 270,74 300,52 C270,64 210,64 180,52 Z" fill="'+shade+'"/>'
+      + '<path d="M198,56 C228,70 252,70 282,56" stroke="'+stroke+'" stroke-width="3" fill="none"/>'
+    : '<path d="M180,52 C200,92 280,92 300,52 C280,72 200,72 180,52 Z" fill="'+shade+'"/>';
+  if(o.rib==='heavy'){   /* スウェットの襟リブ */
+    collar += '<path d="M176,50 C200,96 280,96 304,50 C288,80 192,80 176,50 Z" fill="'+rib+'"/>';
+  }
+  var extras='';
+  if(o.rib && o.rib!=='none'){          /* 袖口リブ */
+    var t=(o.rib==='heavy')?26:18;
+    extras += '<path d="M'+P(LO)+' L'+P(LI)+' L'+(LI[0]-6)+','+(LI[1]-t)+' L'+(LO[0]+2)+','+(LO[1]-t)+' Z" fill="'+rib+'"/>'
+           +  '<path d="M'+P(RO)+' L'+P(RI)+' L'+(RI[0]+6)+','+(RI[1]-t)+' L'+(RO[0]-2)+','+(RO[1]-t)+' Z" fill="'+rib+'"/>';
+  }
+  if(o.hem==='rib'){                     /* 裾リブ */
+    extras += '<path d="M96,'+(hemY-30)+' L384,'+(hemY-30)+' L384,'+(hemY-14)+' C384,'+(hemY-6)+' 378,'+hemY+' 370,'+hemY
+           +  ' L110,'+hemY+' C102,'+hemY+' 96,'+(hemY-6)+' 96,'+(hemY-14)+' Z" fill="'+rib+'"/>';
+  }
+  var tex='';
+  if(o.texture==='dry'){                 /* ドライ：細かいメッシュ目と軽い光沢 */
+    tex = '<defs><pattern id="dryMesh" width="7" height="7" patternUnits="userSpaceOnUse">'
+        + '<path d="M0,3.5 H7 M3.5,0 V7" stroke="'+(dark?'rgba(255,255,255,.06)':'rgba(0,0,0,.05)')+'" stroke-width="1"/></pattern>'
+        + '<linearGradient id="drySheen" x1="0" y1="0" x2="1" y2="1">'
+        + '<stop offset="0" stop-color="#ffffff" stop-opacity="'+(dark?0.10:0.22)+'"/>'
+        + '<stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/></linearGradient></defs>';
+    extras += '<path d="M96,184 L96,'+(hemY-14)+' C96,'+(hemY-6)+' 102,'+hemY+' 110,'+hemY+' L370,'+hemY
+           +  ' C378,'+hemY+' 384,'+(hemY-6)+' 384,'+(hemY-14)+' L384,184 Z" fill="url(#dryMesh)"/>'
+           +  '<path d="M96,184 L96,360 L384,300 L384,184 Z" fill="url(#drySheen)"/>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+    + tex
+    + '<defs><filter id="s" x="-10%" y="-10%" width="120%" height="120%">'
+    + '<feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="rgba(0,0,0,.12)"/></filter></defs>'
+    + '<g filter="url(#s)">' + body + collar + extras
+    + '<path d="M96,184 L'+P(LI)+'" stroke="'+stroke+'" stroke-width="2" fill="none"/>'
+    + '<path d="M384,184 L'+P(RI)+'" stroke="'+stroke+'" stroke-width="2" fill="none"/>'
+    + '</g></svg>';
+}
+/* マニフェスト1行 → アパレル商品定義（プリント位置プリセットはTシャツ準拠） */
+function makeApparelProduct(def){
+  var o=def.body||{};
+  var frontGuide=(o.hem==='rib')?{x:140,y:150,w:200,h:230}:{x:140,y:150,w:200,h:250};
+  var backGuide =(o.hem==='rib')?{x:120,y:150,w:240,h:280}:{x:120,y:150,w:240,h:300};
+  return {
+    id:def.id, label:def.label, en:def.en, brand:def.brand||'seeq', kind:'apparel',
+    faces:[
+      { id:'front', label:'おもて', guide:frontGuide,
+        svg:function(hex,dark){ return apparelSVG(hex,dark,false,o); },
+        presets:[
+          {label:'胸中央', x:240, y:255, w:200},
+          {label:'左胸ワンポイント', x:188, y:178, w:72},
+          {label:'右胸ワンポイント', x:292, y:178, w:72},
+          {label:'中央大', x:240, y:300, w:300}
+        ] },
+      { id:'back', label:'うら', guide:backGuide,
+        svg:function(hex,dark){ return apparelSVG(hex,dark,true,o); },
+        presets:[
+          {label:'背中・大', x:240, y:280, w:330},
+          {label:'背中・中央', x:240, y:255, w:230},
+          {label:'襟下ワンポイント', x:240, y:150, w:120},
+          {label:'裾ワイド', x:240, y:430, w:340}
+        ] }
+    ]
+  };
 }
 function makeDiecutProduct(id,label,en,tplId){
   var prod={ id:id, label:label, en:en, brand:'seeq', kind:'diecut', diecut:tplId,
@@ -1926,9 +2241,62 @@ var PRODUCTS = {
     ]
   }
 };
+PRODUCTS['canbadge-57'] = makeMockupProduct('canbadge-57','缶バッジ 57mm','CAN BADGE 57','can-badge-57');
 PRODUCTS['diecut-sticker'] = makeDiecutProduct('diecut-sticker','ダイカットステッカー','DIE-CUT STICKER','sticker');
 PRODUCTS['diecut-acryl']   = makeDiecutProduct('diecut-acryl','アクリルキーホルダー','ACRYLIC KEYRING','acryl');
-var PRODUCT_ORDER = ['tshirt','parka','tote','diecut-sticker','diecut-acryl'];
+
+/* =====================================================================
+   商品定義マニフェスト（最小版）
+   --------------------------------------------------------------------
+   開発時は src/products.manifest.json に書き、./build.ps1 がこのHTMLへ結合する。
+   ここでは「マニフェストの1行 → 商品定義」を組み立てるだけ。以降の商品追加は
+   原則データ追記（＋必要ならアセット）だけで済む。
+   legacy:true の行は、既にコードで組み立て済みの商品にカテゴリ等のメタ情報を
+   後付けするだけ（作り直さない＝既存デザインキーの互換を壊さない）。
+   ===================================================================== */
+var SEEQ_MANIFEST=(function(){
+  try{ return JSON.parse(document.getElementById('seeqManifest').textContent); }
+  catch(e){ console.warn('[manifest] 読み込みに失敗しました', e); return {categories:[],products:[]}; }
+})();
+var PRODUCT_ORDER=[];
+function manifestBuild(def){
+  if(def.kind==='apparel') return makeApparelProduct(def);
+  if(def.kind==='mockup' && def.badge){
+    MOCKUP_TEMPLATES[def.id]=makeBadgeTemplate(def);
+    return makeMockupProduct(def.id, def.label, def.en, def.id);
+  }
+  if(def.kind==='mockup' && def.towel){
+    MOCKUP_TEMPLATES[def.id]=makeTowelTemplate(def);
+    return makeTowelProduct(def);
+  }
+  return null;
+}
+function applyManifest(){
+  var order=[];
+  (SEEQ_MANIFEST.products||[]).slice()
+    .sort(function(a,b){ return (a.order||0)-(b.order||0); })
+    .forEach(function(def){
+      if(!def.legacy && !PRODUCTS[def.id]){
+        var p=manifestBuild(def);
+        if(!p){ console.warn('[manifest] 生成方法が不明な商品:', def.id); return; }
+        PRODUCTS[def.id]=p;
+      }
+      var prod=PRODUCTS[def.id];
+      if(!prod) return;                       /* まだコード側に無い legacy は無視 */
+      prod.category=def.category; prod.short=def.short||prod.label;
+      prod.sub=def.sub||''; prod.brand=def.brand||prod.brand||'seeq';
+      order.push(def.id);
+    });
+  PRODUCT_ORDER=order;
+  if(typeof ensureStateBuckets==='function') ensureStateBuckets();
+}
+function manifestCategories(){ return (SEEQ_MANIFEST.categories||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);}); }
+function manifestBrandCatalog(){
+  var cat={};
+  (SEEQ_MANIFEST.products||[]).slice().sort(function(a,b){ return (a.order||0)-(b.order||0); })
+    .forEach(function(def){ if(!PRODUCTS[def.id]) return; var b=def.brand||'seeq'; (cat[b]=cat[b]||[]).push(def.id); });
+  return cat;
+}
 
 /* =====================================================================
    Canvas / state
@@ -2272,18 +2640,39 @@ function faceThumbSVG(prodKey, faceId, color){
 }
 function renderProductSelector(){
   var wrap=document.getElementById('prodSel'); wrap.innerHTML='';
+  /* カテゴリ（アパレル／グッズ／タオル／看板）ごとに小見出しを挟んで並べる。
+     品目が増えても「どの塊にあるか」で探せるようにするため。 */
+  var cats=(typeof manifestCategories==='function')?manifestCategories():[];
+  var groups=[], byId={};
+  cats.forEach(function(c){ byId[c.id]={id:c.id,label:c.label,items:[]}; groups.push(byId[c.id]); });
+  var other={id:'other',label:'そのほか',items:[]};
   PRODUCT_ORDER.forEach(function(pk){
-    var p=PRODUCTS[pk];
-    var b=document.createElement('button');
-    b.type='button';
-    b.className='prod-btn'+(pk===currentProduct?' active':'');
-    b.dataset.prod=pk;
-    b.setAttribute('aria-pressed', pk===currentProduct?'true':'false');
-    b.title=p.label;
-    b.innerHTML='<span class="pb-thumb">'+faceThumbSVG(pk)+'</span><span class="pb-label"></span>';
-    b.querySelector('.pb-label').textContent=p.label;
-    b.onclick=function(){ switchProduct(pk); };
-    wrap.appendChild(b);
+    var p=PRODUCTS[pk]; if(!p) return;
+    (byId[p.category]||other).items.push(pk);
+  });
+  if(other.items.length) groups.push(other);
+  groups=groups.filter(function(g){ return g.items.length; });
+  var multi=groups.length>1;
+  groups.forEach(function(g){
+    if(multi){
+      var h=document.createElement('div'); h.className='prodcat'; h.textContent=g.label;
+      wrap.appendChild(h);
+    }
+    var grid=document.createElement('div'); grid.className='prodgrid';
+    g.items.forEach(function(pk){
+      var p=PRODUCTS[pk];
+      var b=document.createElement('button');
+      b.type='button';
+      b.className='prod-btn'+(pk===currentProduct?' active':'');
+      b.dataset.prod=pk;
+      b.setAttribute('aria-pressed', pk===currentProduct?'true':'false');
+      b.title=p.label+(p.sub?('（'+p.sub+'）'):'');
+      b.innerHTML='<span class="pb-thumb">'+faceThumbSVG(pk)+'</span><span class="pb-label"></span>';
+      b.querySelector('.pb-label').textContent=p.short||p.label;
+      b.onclick=function(){ switchProduct(pk); };
+      grid.appendChild(b);
+    });
+    wrap.appendChild(grid);
   });
 }
 /* 「いま作っているもの」の要約（商品／色／面）を1行で見せる */
@@ -5149,7 +5538,19 @@ PRODUCTS['plate-oval'] =makePlateProduct('plate-oval','楕円プレート','OVAL
 PRODUCTS['plate-cut']  =makePlateProduct('plate-cut','カット看板','CUT SIGN','cut',14);
 ensureStateBuckets();
 
-var BRAND_CATALOG={ seeq:['tshirt','parka','tote','diecut-sticker','diecut-acryl'], mori:['plate-rect','plate-round','plate-oval','plate-cut'] };
+/* すべての商品（コード側の legacy 含む）が出そろったところでマニフェストを適用し、
+   並び順・カテゴリ・ブランド別カタログをデータから決める。 */
+applyManifest();
+var BRAND_CATALOG=manifestBrandCatalog();
+/* 初期化（renderProductSelector 等）はこの行より前で走り終わっているので、
+   マニフェスト適用後の並びで商品セレクタを作り直す。表示するのは現ブランド分だけ。 */
+(function(){
+  var order=BRAND_CATALOG[window.SEEQ_BRAND||'seeq']||BRAND_CATALOG.seeq||[];
+  PRODUCT_ORDER.length=0; Array.prototype.push.apply(PRODUCT_ORDER, order);
+  if(order.length && order.indexOf(currentProduct)<0) currentProduct=order[0];
+  renderProductSelector(); updateProductUI();
+  if(typeof syncProductPanel==='function') syncProductPanel();
+})();
 
 function setPlateSize(sizeId){
   var prod=curProduct(); if(prod.kind!=='plate') return;
@@ -5171,7 +5572,7 @@ function updateMoriUI(){
       lf=document.getElementById('lblFace'), ft=document.getElementById('faceTabs');
   var single=prod.faces.length<2;      /* 面が1つだけの商品（プレート/缶バッジ）は面タブを出さない */
   if(lp) lp.textContent=isPlate?'形状を選ぶ':'商品を選ぶ';
-  if(lc) lc.textContent=isPlate?'素材を選ぶ':(prod.kind==='diecut'?'仕上がり':'商品カラー');
+  if(lc) lc.textContent=isPlate?'素材を選ぶ':(prod.kind==='mockup'?'ベース色':(prod.kind==='diecut'?'仕上がり':'商品カラー'));
   if(lf) lf.firstChild && (lf.firstChild.nodeValue=single?'プリント面':'プリント面（デザインする面）');
   if(lf) lf.style.display=single?'none':'';
   if(ft) ft.style.display=single?'none':'';
@@ -5551,6 +5952,512 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
   var backBtn=document.getElementById('s3dBack'); if(backBtn) backBtn.onclick=exit3D;
   var quoteBtn=document.getElementById('s3dQuote'); if(quoteBtn) quoteBtn.onclick=function(){ exit3D(); var q=document.getElementById('btnQuote'); if(q) q.click(); };
   /* rebuild texture when returning to 3D after edits is handled by enter3D()->build() */
+})();
+
+/* =====================================================================
+   スマートモックアップ合成エンジン（SeeQMockup）
+   --------------------------------------------------------------------
+   セカンドプレス級の「実物になったらこう見える」写真級モックアップを、
+   フル3Dではなく 2D合成（ディスプレイスメント方式）で作る。缶バッジのように
+   “正面の質感が命”の品目はこちら、回して見せたい立体は既存の3Dモジュール。
+   両者は kind で分岐するだけで同居する（3D側のコードには触れていない）。
+
+   1パスのフラグメントシェーダで4レイヤ相当を同時に解く：
+     ① disp  : ドーム高さ場 h(u)=domeH*(1-u²)^edgeExp から「弧長」を積分し、
+               平らな印刷紙がドームに貼られた時のUVを求める＝曲面の歪み。
+               フチほど詰まって見えるのはこの弧長写像が効いているため。
+     ② base  : デザイン（透過部分はベース紙色）
+     ③ light : h(u)の傾きから法線を出し、キーライト拡散＋スペキュラ＋
+               フレネルで環境を反射。フチの強い反射＝缶バッジらしさの鍵。
+     ④ mask  : 円マスク（1px幅のアナリティックAA）
+   背景と落ち影は canvas 2D で重ねる（将来ここに実写背景を差せる）。
+   Fabric コアには触れず get3DFrame() を読み出すだけ。
+   ===================================================================== */
+var SeeQMockup=(function(){
+  var THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+
+  /* 環境光プリセット（光の向き・強さ・色味・背景） */
+  var MK_ENV={
+    studio :{label:'スタジオ', light:[-0.42,0.72,0.55], env:1.00, key:1.00, amb:1.00, tint:[1.00,1.00,1.00], bg:['#f4f7f9','#dde4ea']},
+    outdoor:{label:'屋外',     light:[-0.30,0.86,0.42], env:1.25, key:1.22, amb:0.92, tint:[1.04,1.00,0.94], bg:['#eaf2fb','#c8d7e5']},
+    indoor :{label:'屋内',     light:[-0.52,0.58,0.62], env:0.72, key:0.86, amb:1.06, tint:[1.05,0.99,0.92], bg:['#efeae4','#d2cbc2']}
+  };
+  var MK_ENV_ORDER=['studio','outdoor','indoor'];
+  var MK_BG=[{k:'soft',label:'やわらか'},{k:'white',label:'白'},{k:'alpha',label:'透過'}];
+  var ARC_N=32;                       /* 弧長積分の分割数。JS側と完全一致させること */
+
+  var VERT=[
+    'varying vec2 vUv;',
+    'void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }'
+  ].join('\n');
+
+  var FRAG=[
+    'varying vec2 vUv;',
+    'uniform sampler2D uDesign;',
+    'uniform vec2  uRes;',
+    'uniform vec2  uCenter;',
+    'uniform float uR;',
+    'uniform float uAspect;',
+    'uniform float uDomeH;',
+    'uniform float uEdgeExp;',
+    'uniform float uCoverage;',
+    'uniform float uArcTotal;',
+    'uniform vec3  uBase;',
+    'uniform float uAmbient;',
+    'uniform float uKey;',
+    'uniform float uGloss;',
+    'uniform float uSpecPow;',
+    'uniform float uEnv;',
+    'uniform float uRimStart;',
+    'uniform float uRimGloss;',
+    'uniform vec3  uCrimp;',
+    'uniform vec3  uLightDir;',
+    'uniform vec3  uTint;',
+    'uniform float uCamZ;',
+    'uniform vec4  uSheen;',
+    'uniform float uSheenRot;',
+    'uniform float uSheenI;',
+    'uniform float uGrain;',
+    'uniform vec3  uWrinkle;',
+    '',
+    'vec3 s2l(vec3 c){ return pow(max(c,0.0), vec3(2.2)); }',
+    'vec3 l2s(vec3 c){ return pow(max(c,0.0), vec3(1.0/2.2)); }',
+    'float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }',
+    '',
+    '/* ドーム高さ場の傾き dh/dr（無次元）。u=1(シルエット)へ向かって発散＝縁が立つ */',
+    'float slopeAt(float u){',
+    '  float t=max(1.0-u*u, 1e-4);',
+    '  return uDomeH*uEdgeExp*pow(t, uEdgeExp-1.0)*(-2.0*u);',
+    '}',
+    '/* 中心からuまでの曲面上の弧長（中点則）。平らな紙の半径に対応する */',
+    'float arcAt(float u){',
+    '  float s=0.0, du=u/float('+ARC_N+');',
+    '  for(int i=0;i<'+ARC_N+';i++){',
+    '    float t=(float(i)+0.5)*du;',
+    '    float sl=slopeAt(t);',
+    '    s+=sqrt(1.0+sl*sl)*du;',
+    '  }',
+    '  return s;',
+    '}',
+    '/* 疑似スタジオ環境：空〜床のグラデ＋左上のソフトボックス＋右下の弱い返し */',
+    'vec3 envAt(vec3 d){',
+    '  vec3 n=normalize(d);',
+    '  vec3 c=mix(vec3(0.60,0.64,0.70), vec3(0.96,0.98,1.00), smoothstep(-0.25,0.90,n.y));',
+    '  c=mix(vec3(0.20,0.22,0.26), c, smoothstep(-0.90,-0.12,n.y));',
+    '  float sb=smoothstep(0.60,0.99, dot(n, normalize(vec3(-0.36,0.85,0.38))));',
+    '  c+=vec3(1.00,0.99,0.97)*sb*1.60;',
+    '  float sb2=smoothstep(0.82,1.00, dot(n, normalize(vec3(0.60,0.30,0.74))));',
+    '  c+=vec3(0.86,0.91,1.00)*sb2*0.40;',
+    '  return c*uTint;',
+    '}',
+    'void main(){',
+    '  vec2 p=(vUv-uCenter)*vec2(uAspect,1.0);',
+    '  float r=length(p);',
+    '  float u=r/uR;',
+    '  float px=1.0/(uR*uRes.y);                    /* 1px を u 単位で */',
+    '  float a=1.0-smoothstep(1.0-1.6*px, 1.0, u);  /* ④ 円マスク（AA） */',
+    '  if(a<=0.0) discard;',
+    '  float uc=min(u,0.9999);',
+    '  vec2 dir = r>1e-6 ? p/r : vec2(0.0);',
+    '  /* ① ディスプレイスメント：弧長→平らな紙の半径 */',
+    '  float du=(arcAt(uc)/uArcTotal)*uCoverage;',
+    '  vec2 duv=vec2(0.5)+dir*du*0.5;',
+    '  vec4 d=texture2D(uDesign, duv);',
+    '  /* ② デザイン（透過部はベース紙色） */',
+    '  vec3 col=mix(s2l(uBase), s2l(d.rgb), d.a);',
+    '  float cg=exp(-pow((uc-uCrimp.x)/uCrimp.y, 2.0));   /* フチの巻き込みジワ */',
+    '  col*=(1.0-uCrimp.z*cg);',
+    '  /* ③ ライティング */',
+    '  float sl=slopeAt(uc);',
+    '  vec3 N=normalize(vec3(-sl*dir, 1.0));',
+    '  /* 視線は平行投影ではなく有限距離のカメラ。平行投影だと平らな面の反射が',
+    '     全画素で同じ値になり「のっぺり」して一発でCGに見える。実写の艶は',
+    '     視線が面上で振れることで生まれるので、ここが写真らしさの要。 */',
+    '  vec2 q=p/uR;                                        /* 仕上がり半径を1とする座標 */',
+    '  float hR=uDomeH*pow(max(1.0-uc*uc,1e-4), uEdgeExp); /* その点のドーム高さ */',
+    '  vec3 V=normalize(vec3(-q, uCamZ-hR));',
+    '  vec3 L=normalize(uLightDir);',
+    '  vec3 H=normalize(L+V);',
+    '  float diff=max(dot(N,L),0.0);',
+    '  float spec=pow(max(dot(N,H),0.0), uSpecPow);',
+    '  float fres=pow(1.0-max(dot(N,V),0.0), 4.0);',
+    '  vec3 env=envAt(reflect(-V,N));',
+    '  float rim=smoothstep(uRimStart,1.0,uc);',
+    '  vec3 lit=col*(uAmbient+uKey*diff);',
+    '  lit+=vec3(spec)*uGloss*(1.0+rim*uRimGloss);',
+    '  lit+=env*uEnv*(0.04+fres*0.90);',
+    '  /* ラミネート面を斜めに横切る広いソフト反射（=光のオーバーレイ層） */',
+    '  vec2 sq=q-uSheen.xy;',
+    '  float ca=cos(uSheenRot), sa=sin(uSheenRot);',
+    '  vec2 sr=vec2(sq.x*ca+sq.y*sa, -sq.x*sa+sq.y*ca);',
+    '  float sheen=exp(-(sr.x*sr.x/(uSheen.z*uSheen.z) + sr.y*sr.y/(uSheen.w*uSheen.w)));',
+    '  lit+=vec3(1.0,1.0,1.0)*sheen*uSheenI;',
+    '  /* フチで紙が寄ってできる細かい放射状のシワ。実物の缶バッジの最大の特徴で、',
+    '     これが無いと縁がツルッとしてCGに見える。uWrinkle=(本数, 強さ, 開始u) */',
+    '  float wm=smoothstep(uWrinkle.z, 0.995, uc);',
+    '  float wa=atan(dir.y, dir.x);',
+    '  /* 単一サインだと等間隔すぎて機械的に見えるので、非整数比の波を重ねて崩す */',
+    '  float wv=(sin(wa*uWrinkle.x)*0.62 + sin(wa*uWrinkle.x*0.37+1.7)*0.38)*0.5+0.5;',
+    '  lit*=1.0-uWrinkle.y*wm*wv;',
+    '  lit*=1.0-0.22*smoothstep(0.955,1.0,uc);            /* 縁の落ち込み */',
+    '  lit+=vec3((hash(vUv*uRes)-0.5)*uGrain);            /* 紙／ラミネートの微細な粒子 */',
+    '  gl_FragColor=vec4(l2s(lit), a);',
+    '}'
+  ].join('\n');
+
+  /* シェーダの arcAt(1.0) と完全に同じ中点則。両者がズレると coverage が狂う */
+  function arcTotal(domeH,edgeExp){
+    var s=0, du=1/ARC_N;
+    for(var i=0;i<ARC_N;i++){
+      var t=(i+0.5)*du, q=Math.max(1-t*t,1e-4);
+      var sl=domeH*edgeExp*Math.pow(q,edgeExp-1)*(-2*t);
+      s+=Math.sqrt(1+sl*sl)*du;
+    }
+    return s;
+  }
+  function hex2rgb(h){
+    h=String(h||'#ffffff').replace('#','');
+    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var n=parseInt(h,16);
+    return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255];
+  }
+
+  var threeLoading=null, gl=null;
+  function ensureThree(){
+    if(window.THREE) return Promise.resolve(window.THREE);
+    if(threeLoading) return threeLoading;
+    threeLoading=new Promise(function(res,rej){
+      var s=document.createElement('script'); s.src=THREE_URL; s.async=true;
+      s.onload=function(){ res(window.THREE); };
+      s.onerror=function(){ threeLoading=null; rej(new Error('three load failed')); };
+      document.head.appendChild(s);
+    });
+    return threeLoading;
+  }
+  function initGL(THREE){
+    var renderer=new THREE.WebGLRenderer({antialias:false,alpha:true,preserveDrawingBuffer:true});
+    renderer.setPixelRatio(1);
+    renderer.setClearColor(0x000000,0);
+    var uniforms={
+      uDesign:{value:null}, uRes:{value:new THREE.Vector2(1,1)},
+      uCenter:{value:new THREE.Vector2(0.5,0.5)}, uR:{value:0.375}, uAspect:{value:1},
+      uDomeH:{value:0.30}, uEdgeExp:{value:0.36}, uCoverage:{value:0.93}, uArcTotal:{value:1},
+      uBase:{value:new THREE.Vector3(1,1,1)},
+      uAmbient:{value:0.62}, uKey:{value:0.5}, uGloss:{value:0.55}, uSpecPow:{value:48},
+      uEnv:{value:0.55}, uRimStart:{value:0.86}, uRimGloss:{value:2.2},
+      uCrimp:{value:new THREE.Vector3(0.935,0.03,0.22)},
+      uLightDir:{value:new THREE.Vector3(-0.42,0.72,0.55)},
+      uTint:{value:new THREE.Vector3(1,1,1)},
+      uCamZ:{value:7}, uSheen:{value:new THREE.Vector4(-0.32,0.34,0.80,0.30)},
+      uSheenRot:{value:-0.6}, uSheenI:{value:0.16}, uGrain:{value:0.012},
+      uWrinkle:{value:new THREE.Vector3(64,0.10,0.88)}
+    };
+    var mat=new THREE.ShaderMaterial({vertexShader:VERT,fragmentShader:FRAG,uniforms:uniforms,
+      transparent:true,depthTest:false,depthWrite:false});
+    var scene=new THREE.Scene();
+    scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2), mat));
+    return {renderer:renderer, scene:scene, cam:new THREE.Camera(), u:uniforms, tex:null};
+  }
+
+  /* 背景＋落ち影＋バッジ を 2D で重ね、出力解像度へダウンサンプル（＝縁のAA） */
+  function composite(tpl, env, bgMode, src){
+    var W=tpl.out.w, H=tpl.out.h, x, c=document.createElement('canvas');
+    c.width=W; c.height=H; x=c.getContext('2d');
+    if(bgMode==='white'){ x.fillStyle='#ffffff'; x.fillRect(0,0,W,H); }
+    else if(bgMode!=='alpha'){
+      var g=x.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,env.bg[0]); g.addColorStop(1,env.bg[1]);
+      x.fillStyle=g; x.fillRect(0,0,W,H);
+      var vg=x.createRadialGradient(W*0.5,H*0.40,H*0.05,W*0.5,H*0.5,H*0.80);
+      vg.addColorStop(0,'rgba(255,255,255,0.55)'); vg.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle=vg; x.fillRect(0,0,W,H);
+    }
+    var sh=tpl.params.shadow, R=tpl.disc.r*H, cx=tpl.disc.cx*W, cy=tpl.disc.cy*H;
+    x.save();
+    try{ x.filter='blur('+(sh.blur*H).toFixed(1)+'px)'; }catch(e){}
+    x.fillStyle='rgba(18,26,36,'+sh.alpha+')';
+    x.beginPath(); x.arc(cx, cy+sh.dy*H, R*sh.spread, 0, Math.PI*2); x.fill();
+    x.restore();
+    x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+    x.drawImage(src, 0,0, W,H);
+    return c;
+  }
+
+  /* ---------------------------------------------------------------
+     平置き合成（タオル等）— 曲面が無いのでWebGLは使わず2Dで組む。
+     ①布地（色＋パイルの粒＋織り目）②デザイン③やわらかい陰影と折り皺
+     ④ヘム（縫製部）⑤落ち影＋背景。缶バッジのシェーダ経路には触れない。
+     --------------------------------------------------------------- */
+  function noiseCanvas(w,h,amt,seed){
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var x=c.getContext('2d'), img=x.createImageData(w,h), d=img.data, s=seed||1;
+    function rnd(){ s=(s*1664525+1013904223)%4294967296; return s/4294967296; }
+    /* 乗算で重ねるので白（=変化なし）を基準に、下側へだけ振る。
+       中間グレーを基準にすると布全体が濁って沈むため。 */
+    for(var i=0;i<d.length;i+=4){
+      var v=255-rnd()*255*amt;
+      d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+    }
+    x.putImageData(img,0,0); return c;
+  }
+  function renderFlat(tpl, env, bgMode){
+    var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
+    var frame=get3DFrame(1400);
+    var P=tpl.params;
+    var rx=tpl.rect.x*W, ry=tpl.rect.y*H, rw=tpl.rect.w*W, rh=tpl.rect.h*H;
+    var rad=Math.min(rw,rh)*0.03;
+    var c=document.createElement('canvas'); c.width=W; c.height=H;
+    var x=c.getContext('2d');
+    function clothPath(){
+      x.beginPath();
+      if(x.roundRect) x.roundRect(rx,ry,rw,rh,rad);
+      else { x.moveTo(rx+rad,ry); x.lineTo(rx+rw-rad,ry); x.quadraticCurveTo(rx+rw,ry,rx+rw,ry+rad);
+             x.lineTo(rx+rw,ry+rh-rad); x.quadraticCurveTo(rx+rw,ry+rh,rx+rw-rad,ry+rh);
+             x.lineTo(rx+rad,ry+rh); x.quadraticCurveTo(rx,ry+rh,rx,ry+rh-rad);
+             x.lineTo(rx,ry+rad); x.quadraticCurveTo(rx,ry,rx+rad,ry); x.closePath(); }
+    }
+    x.save(); clothPath(); x.clip();
+    /* ① 布地 */
+    x.fillStyle=frame.color; x.fillRect(rx,ry,rw,rh);
+    /* パイルの粒（乗算）＝タオル特有のざらつき */
+    var n=noiseCanvas(Math.max(2,Math.round(rw/3)), Math.max(2,Math.round(rh/3)), P.grain*2.2, 7);
+    x.globalAlpha=P.pile*0.55; x.globalCompositeOperation='multiply';
+    x.imageSmoothingEnabled=true; x.drawImage(n, rx,ry,rw,rh);
+    x.globalAlpha=1; x.globalCompositeOperation='source-over';
+    /* 織り目（細い格子） */
+    var step=Math.max(3, Math.round(Math.min(rw,rh)/110));
+    x.strokeStyle='rgba(0,0,0,0.028)'; x.lineWidth=1;
+    for(var gx=rx;gx<rx+rw;gx+=step){ x.beginPath(); x.moveTo(gx,ry); x.lineTo(gx,ry+rh); x.stroke(); }
+    for(var gy=ry;gy<ry+rh;gy+=step){ x.beginPath(); x.moveTo(rx,gy); x.lineTo(rx+rw,gy); x.stroke(); }
+    /* ② デザイン（プリント範囲＝ヘム内側） */
+    var ins=(tpl.towel&&tpl.towel.printInset)||0.1;
+    var px=rx+rw*ins, py=ry+rh*ins, pw=rw*(1-2*ins), ph=rh*(1-2*ins);
+    x.globalAlpha=0.96;                     /* 生地に少し沈む＝印刷らしさ */
+    x.drawImage(frame.canvas, px,py,pw,ph);
+    x.globalAlpha=1;
+    /* ③ 陰影：左上からの光＋ゆるい折り皺 */
+    var lg=x.createLinearGradient(rx,ry,rx+rw,ry+rh);
+    lg.addColorStop(0,'rgba(255,255,255,'+(0.16*P.ambient).toFixed(3)+')');
+    lg.addColorStop(0.55,'rgba(255,255,255,0)');
+    lg.addColorStop(1,'rgba(0,0,0,'+(0.10).toFixed(3)+')');
+    x.fillStyle=lg; x.fillRect(rx,ry,rw,rh);
+    var folds=3, longSide=(rh>=rw);
+    for(var i=1;i<=folds;i++){
+      var t=i/(folds+1);
+      var fg=x.createLinearGradient(
+        longSide?rx:rx+rw*t, longSide?ry+rh*t:ry,
+        longSide?rx+rw:rx+rw*t+rw*0.06, longSide?ry+rh*t+rh*0.05:ry+rh);
+      fg.addColorStop(0,'rgba(0,0,0,0)');
+      fg.addColorStop(0.5,'rgba(0,0,0,'+P.fold.toFixed(3)+')');
+      fg.addColorStop(1,'rgba(0,0,0,0)');
+      x.fillStyle=fg; x.fillRect(rx,ry,rw,rh);
+    }
+    /* ④ ヘム（縫製部）の帯とステッチ */
+    if(tpl.towel && tpl.towel.hem==='both'){
+      var vertical=(tpl.size.h>tpl.size.w), hb=vertical?rh*0.045:rw*0.045;
+      x.fillStyle='rgba(0,0,0,0.055)';
+      if(vertical){ x.fillRect(rx,ry,rw,hb); x.fillRect(rx,ry+rh-hb,rw,hb); }
+      else { x.fillRect(rx,ry,hb,rh); x.fillRect(rx+rw-hb,ry,hb,rh); }
+      x.setLineDash([Math.max(3,rw/160), Math.max(3,rw/200)]);
+      x.strokeStyle='rgba(0,0,0,0.14)'; x.lineWidth=Math.max(1,Math.min(rw,rh)/400);
+      x.beginPath();
+      if(vertical){ x.moveTo(rx,ry+hb); x.lineTo(rx+rw,ry+hb); x.moveTo(rx,ry+rh-hb); x.lineTo(rx+rw,ry+rh-hb); }
+      else { x.moveTo(rx+hb,ry); x.lineTo(rx+hb,ry+rh); x.moveTo(rx+rw-hb,ry); x.lineTo(rx+rw-hb,ry+rh); }
+      x.stroke(); x.setLineDash([]);
+    }
+    x.restore();
+    /* フチの締まり */
+    x.save(); clothPath(); x.strokeStyle='rgba(0,0,0,0.10)'; x.lineWidth=Math.max(1,Math.min(rw,rh)/500); x.stroke(); x.restore();
+    return compositeFlat(tpl, env, bgMode, c);
+  }
+  /* 平置き用の合成（落ち影は角丸の矩形） */
+  function compositeFlat(tpl, env, bgMode, src){
+    var W=tpl.out.w, H=tpl.out.h, c=document.createElement('canvas');
+    c.width=W; c.height=H; var x=c.getContext('2d');
+    if(bgMode==='white'){ x.fillStyle='#ffffff'; x.fillRect(0,0,W,H); }
+    else if(bgMode!=='alpha'){
+      var g=x.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,env.bg[0]); g.addColorStop(1,env.bg[1]);
+      x.fillStyle=g; x.fillRect(0,0,W,H);
+    }
+    var sh=tpl.params.shadow;
+    var rx=tpl.rect.x*W, ry=tpl.rect.y*H, rw=tpl.rect.w*W, rh=tpl.rect.h*H;
+    x.save();
+    try{ x.filter='blur('+(sh.blur*H).toFixed(1)+'px)'; }catch(e){}
+    x.fillStyle='rgba(18,26,36,'+sh.alpha+')';
+    x.fillRect(rx+rw*0.02, ry+rh*0.02+sh.dy*H, rw*0.96, rh*0.98);
+    x.restore();
+    x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+    x.drawImage(src, 0,0, W,H);
+    return c;
+  }
+
+  /* 現在のデザイン → 指定テンプレートのモックアップ canvas */
+  function render(tplId, opts){
+    opts=opts||{};
+    var tpl=MOCKUP_TEMPLATES[tplId];
+    if(!tpl) return Promise.reject(new Error('unknown mockup template: '+tplId));
+    var envKey=opts.env||'studio', env=MK_ENV[envKey]||MK_ENV.studio;
+    var bgMode=opts.bg||'soft';
+    /* 平置き品目（タオル等）はWebGL不要なので即返す */
+    if(tpl.renderer==='flat'){
+      try{ return Promise.resolve(renderFlat(tpl, env, bgMode)); }
+      catch(e){ return Promise.reject(e); }
+    }
+    if(tpl.layers.base.src){
+      /* 実物写真ベースへの差し替えはここに来る。未実装なので手続き生成へフォールバック。 */
+      console.warn('[SeeQMockup] 実写土台(src)は未対応のため手続き生成で描画:', tpl.layers.base.src);
+    }
+    return ensureThree().then(function(THREE){
+      if(!gl) gl=initGL(THREE);
+      var frame=get3DFrame(1024);
+      var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
+      gl.renderer.setSize(W,H,false);
+
+      if(gl.tex) gl.tex.dispose();
+      gl.tex=new THREE.CanvasTexture(frame.canvas);
+      gl.tex.wrapS=gl.tex.wrapT=THREE.ClampToEdgeWrapping;
+      gl.tex.generateMipmaps=true;
+      gl.tex.minFilter=THREE.LinearMipmapLinearFilter;
+      gl.tex.magFilter=THREE.LinearFilter;
+      gl.tex.anisotropy=gl.renderer.capabilities.getMaxAnisotropy();
+      gl.tex.needsUpdate=true;
+
+      var u=gl.u, P=tpl.params, D=tpl.layers.disp, base=hex2rgb(frame.color);
+      /* coverage の導出：曲面上の弧長(仕上がり半径単位) × 仕上がり径 ÷ 印刷紙径。
+         平らな紙をドームに貼った時、シルエットまでに消費されるデザイン半径の割合＝
+         正面から見える割合。残りは裏へ巻き込む。品目を足すたびに勘で合わせずに済む。 */
+      var arcT=arcTotal(D.domeH, D.edgeExp);
+      var cov=(P.coverage!=null) ? P.coverage : arcT*tpl.size.w/tpl.designMM;
+      if(cov>1){ console.warn('[SeeQMockup] '+tplId+': 印刷紙(designMM)がドームに対して小さく、フチが露出します'); }
+      u.uDesign.value=gl.tex;
+      u.uRes.value.set(W,H);
+      u.uCenter.value.set(tpl.disc.cx, 1-tpl.disc.cy);   /* uv は下が0。テンプレは上からの比率 */
+      u.uR.value=tpl.disc.r;
+      u.uAspect.value=W/H;
+      u.uDomeH.value=D.domeH; u.uEdgeExp.value=D.edgeExp;
+      u.uArcTotal.value=arcT;
+      u.uCoverage.value=Math.min(cov,1);
+      u.uBase.value.set(base[0],base[1],base[2]);
+      u.uAmbient.value=P.ambient*env.amb;
+      u.uKey.value=P.key*env.key;
+      u.uGloss.value=P.gloss; u.uSpecPow.value=P.specPow;
+      u.uEnv.value=P.env*env.env;
+      u.uRimStart.value=P.rimStart; u.uRimGloss.value=P.rimGloss;
+      u.uCrimp.value.set(P.crimp.at,P.crimp.width,P.crimp.depth);
+      u.uLightDir.value.set(env.light[0],env.light[1],env.light[2]);
+      u.uTint.value.set(env.tint[0],env.tint[1],env.tint[2]);
+      u.uCamZ.value=P.camZ;
+      var S=tpl.layers.light.sheen;
+      u.uSheen.value.set(S.x,S.y,S.ax,S.ay);
+      u.uSheenRot.value=S.rot; u.uSheenI.value=S.intensity*env.env;
+      u.uGrain.value=P.grain;
+      u.uWrinkle.value.set(P.wrinkle.count, P.wrinkle.amp, P.wrinkle.start);
+
+      gl.renderer.render(gl.scene, gl.cam);
+      return composite(tpl, env, bgMode, gl.renderer.domElement);
+    });
+  }
+
+  return { templates:MOCKUP_TEMPLATES, env:MK_ENV, envOrder:MK_ENV_ORDER, bgOpts:MK_BG, render:render };
+})();
+
+/* =====================================================================
+   モックアップ・ステージ（2D/3Dトグルの受け皿）
+   kind:'mockup' の商品では「3D」ボタンをこちらが横取りする。既存の3Dモジュールの
+   クリックハンドラは bubble 段なので、capture 段で止めれば 3D 側は一切動かない
+   （＝アパレル/プレートの既存経路は無改変）。
+   ===================================================================== */
+(function(){
+  var stage=document.getElementById('stageMk');
+  var mount=document.getElementById('mkMount');
+  var viewToggle=document.getElementById('viewToggle');
+  var envWrap=document.getElementById('mkEnv');
+  var bgWrap=document.getElementById('mkBg');
+  if(!stage||!mount) return;
+
+  var opt={ env:'studio', bg:'soft' };
+  var open=false, lastCanvas=null, busy=false;
+
+  function isMockup(){ var p=curProduct(); return !!(p && p.kind==='mockup' && MOCKUP_TEMPLATES[p.mockup]); }
+  function setViewBtn(v){
+    viewToggle && viewToggle.querySelectorAll('.vt').forEach(function(b){ b.classList.toggle('on', b.dataset.view===v); });
+  }
+  function setLoading(on){
+    var ex=mount.querySelector('.s3d-loading');
+    if(on){ if(!ex){ var d=document.createElement('div'); d.className='s3d-loading'; d.textContent='モックアップを生成中…'; mount.appendChild(d); } }
+    else if(ex){ ex.remove(); }
+  }
+  function showFail(msg){
+    mount.innerHTML='<div class="s3d-fail"><div>'+(msg||'モックアップを生成できませんでした')+'</div>'
+      +'<small>WebGL対応ブラウザでご利用ください</small></div>';
+  }
+  function chip(label,on){ var b=document.createElement('span'); b.className='s3d-chip'+(on?' on':''); b.textContent=label; return b; }
+  function renderChips(){
+    if(envWrap){ envWrap.innerHTML='';
+      SeeQMockup.envOrder.forEach(function(k){
+        var b=chip(SeeQMockup.env[k].label, opt.env===k);
+        b.onclick=function(){ opt.env=k; renderChips(); refresh(); };
+        envWrap.appendChild(b);
+      });
+    }
+    if(bgWrap){ bgWrap.innerHTML='';
+      SeeQMockup.bgOpts.forEach(function(o){
+        var b=chip(o.label, opt.bg===o.k);
+        b.onclick=function(){ opt.bg=o.k; renderChips(); refresh(); };
+        bgWrap.appendChild(b);
+      });
+    }
+  }
+  function refresh(){
+    if(!isMockup() || busy) return;
+    busy=true; setLoading(true);
+    SeeQMockup.render(curProduct().mockup, opt).then(function(c){
+      setLoading(false); busy=false; lastCanvas=c;
+      var img=mount.querySelector('img.mk-out');
+      if(!img){ img=document.createElement('img'); img.className='mk-out'; img.alt='缶バッジの仕上がりイメージ'; mount.appendChild(img); }
+      img.classList.toggle('alpha', opt.bg==='alpha');
+      img.src=c.toDataURL('image/png');
+      /* 見積モーダルのサムネにも、この仕上がりイメージを使う */
+      try{ window.SEEQ_3D_THUMB=img.src; }catch(_){}
+    }).catch(function(e){ busy=false; setLoading(false); showFail(); console.error(e); });
+  }
+  function enter(){
+    open=true; setViewBtn('3d'); stage.classList.add('show'); stage.setAttribute('aria-hidden','false');
+    try{ window.SeeQ && window.SeeQ.snapTo && window.SeeQ.snapTo('peek'); }catch(_){}
+    renderChips(); refresh();
+  }
+  function exit(){ open=false; setViewBtn('2d'); stage.classList.remove('show'); stage.setAttribute('aria-hidden','true'); }
+
+  /* capture段でトグルを横取り（3D品目のときは何もせず既存3Dへ通す） */
+  if(viewToggle) viewToggle.addEventListener('click', function(e){
+    var b=e.target.closest('.vt'); if(!b) return;
+    if(b.dataset.view==='3d'){
+      if(!isMockup()) return;
+      e.stopPropagation(); enter();
+    } else if(open){ exit(); }      /* 2Dへ戻る：既存3Dのハンドラも走ってよい（無害） */
+  }, true);
+
+  var back=document.getElementById('mkBack'); if(back) back.onclick=exit;
+  var quote=document.getElementById('mkQuote');
+  if(quote) quote.onclick=function(){ exit(); var q=document.getElementById('btnQuote'); if(q) q.click(); };
+  var save=document.getElementById('mkSave');
+  if(save) save.onclick=function(){
+    if(!lastCanvas) return;
+    var a=document.createElement('a');
+    a.download='seeq-'+curProduct().id+'-mockup.png';
+    a.href=lastCanvas.toDataURL('image/png'); a.click();
+  };
+  /* モックアップ品目では「3D」ではなく「仕上がり」を見せるので、トグルの文言を合わせる */
+  function syncLabel(){
+    var l=viewToggle && viewToggle.querySelector('.vt[data-view="3d"] .vt-label');
+    if(l) l.textContent = isMockup() ? '仕上がり' : '3D';
+  }
+  /* 商品を切り替えたらモックアップ面は閉じる（別品目の絵が残らないように） */
+  window.addEventListener('seeq:productchange', function(){ if(open) exit(); syncLabel(); });
+  window.addEventListener('seeq:brandchange', function(){ if(open) exit(); syncLabel(); });
+  syncLabel();
+  window.SEEQ_MOCKUP={ enter:enter, exit:exit, refresh:refresh, isMockup:isMockup };
 })();
 
 /* =====================================================================
