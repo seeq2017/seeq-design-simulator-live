@@ -8303,8 +8303,15 @@ var SeeQDieCut=(function(){
       specUl.innerHTML='';
       specUl.appendChild(row('ブランド', B.name||'SeeQ'));
       specUl.appendChild(row('商品', prod.label||stt.product));
-      var colObj=(prod.colors||[]).filter(function(c){return c.hex===stt.color;})[0];
-      specUl.appendChild(row(prod.kind==='plate'?'素材':'カラー', colObj?colObj.name:(stt.color||'').toUpperCase(), {dot: stt.color}));
+      /* 商品によって色定義の持ち方が違う（PRODUCTS[id].colors が空で、
+         共通の COLORS から引くものがある）ため、まず現在の色オブジェクトの
+         呼び名を使う。お客様に #FFFFFF のような16進コードは見せない。 */
+      var colObj=(prod.colors||[]).filter(function(c){return (c.hex||'').toLowerCase()===(stt.color||'').toLowerCase();})[0];
+      var colName=(colObj&&colObj.name)
+        || (function(){ try{ var c=(curColors()||[]).filter(function(x){return (x.hex||'').toLowerCase()===(stt.color||'').toLowerCase();})[0]; return c&&c.name; }catch(e){ return null; } })()
+        || (function(){ try{ return currentColor&&currentColor.name; }catch(e){ return null; } })()
+        || (stt.color||'').toUpperCase();
+      specUl.appendChild(row(prod.kind==='plate'?'素材':'カラー', colName, {dot: stt.color}));
       if(prod.kind==='plate'){
         var sz=(prod.sizes||[]).filter(function(s){return s.id===(prod._sizeId||prod.defaultSize);})[0];
         if(sz) specUl.appendChild(row('サイズ', 'W'+sz.w+'×H'+sz.h+' / 厚'+prod.thickness+'mm', {badge:true}));
