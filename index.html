@@ -2050,8 +2050,15 @@ function toteSVG(color, dark, back){
   var shade  = dark ? 'rgba(0,0,0,.18)' : 'rgba(0,0,0,.05)';
   var bag = '<path d="M96,150 L384,150 L368,512 C367,524 358,532 346,532 L134,532 '
     + 'C122,532 113,524 112,512 Z" fill="'+color+'" stroke="'+stroke+'" stroke-width="2"/>';
-  var handleL = '<path d="M150,150 C150,84 190,68 204,68 C218,68 214,90 200,150" fill="none" stroke="'+stroke+'" stroke-width="9" stroke-linecap="round"/>';
-  var handleR = '<path d="M330,150 C330,84 290,68 276,68 C262,68 266,90 280,150" fill="none" stroke="'+stroke+'" stroke-width="9" stroke-linecap="round"/>';
+  /* 持ち手は半透明ストロークだと濃色ボディで背景に溶けるため、
+     「フチ線（太）→ボディ色（細）」の2度描きで実体のある帯にする */
+  var edge = dark ? 'rgba(255,255,255,.28)' : 'rgba(20,28,38,.30)';
+  var hL='M150,150 C150,84 190,68 204,68 C218,68 214,90 200,150';
+  var hR='M330,150 C330,84 290,68 276,68 C262,68 266,90 280,150';
+  var handleL = '<path d="'+hL+'" fill="none" stroke="'+edge+'" stroke-width="12" stroke-linecap="round"/>'
+    + '<path d="'+hL+'" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round"/>';
+  var handleR = '<path d="'+hR+'" fill="none" stroke="'+edge+'" stroke-width="12" stroke-linecap="round"/>'
+    + '<path d="'+hR+'" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round"/>';
   var seam = '<path d="M96,170 L384,170" stroke="'+shade+'" stroke-width="2"/>'
     + (back ? '<path d="M240,150 L240,532" stroke="'+shade+'" stroke-width="1.5" stroke-dasharray="4 5"/>' : '');
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
@@ -2151,11 +2158,17 @@ function canbadgeSVG(tpl, pl, hex, dark){
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
     +'<defs><linearGradient id="bgsheen" x1="0" y1="0" x2="0" y2="1">'
       +'<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>'
+    /* ドームの下側に落ちる内側の陰（濃色でも球面に見えるように） */
+    +'<linearGradient id="bgdome" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0.55" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity="0.14"/></linearGradient>'
       +goodsShadowDef('badgeShadow')+'</defs>'
     +'<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="'+hex+'" stroke="'+goodsEdge(dark)+'" stroke-width="1.6" filter="url(#badgeShadow)"/>'
-    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+band+'" fill="none" stroke="rgba(20,28,38,0.09)" stroke-width="'+bw+'"/>'
-    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+vis+'" fill="none" stroke="rgba(20,28,38,0.34)" stroke-width="1.2" stroke-dasharray="5 4"/>'
-    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+(R*0.62)+'" fill="url(#bgsheen)" opacity="0.35"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="url(#bgdome)"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+band+'" fill="none" stroke="'+(dark?'rgba(255,255,255,0.08)':'rgba(20,28,38,0.09)')+'" stroke-width="'+bw+'"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+vis+'" fill="none" stroke="'+(dark?'rgba(255,255,255,0.38)':'rgba(20,28,38,0.34)')+'" stroke-width="1.2" stroke-dasharray="5 4"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+(R*0.62)+'" fill="url(#bgsheen)" opacity="'+(dark?0.5:0.35)+'"/>'
+    /* 天面のハイライト（ドームのツヤ） */
+    +'<ellipse cx="'+cx+'" cy="'+(cy-R*0.52)+'" rx="'+(R*0.52)+'" ry="'+(R*0.20)+'" fill="url(#bgsheen)" opacity="'+(dark?0.55:0.35)+'"/>'
     +'<text x="'+cx+'" y="'+(cy-R-9)+'" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="10.5" fill="#7b8792">'
       +'外側は巻き込み（点線内が仕上がり '+tpl.size.w+'mm）</text>'
     +'</svg>';
@@ -2198,8 +2211,10 @@ function towelSVG(t, pl, hex, dark){
   var r=Math.min(10, pl.w*0.03, pl.h*0.03);
   var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
     +'<defs>'+goodsShadowDef('s')
-    +'<pattern id="pile" width="6" height="6" patternUnits="userSpaceOnUse">'
-    +'<path d="M0,3 H6 M3,0 V6" stroke="'+(dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.05)')+'" stroke-width="1"/></pattern>'
+    /* パイル地：格子線だと網目に見えるので、細かいドットのスティップルで表現する */
+    +'<pattern id="pile" width="7" height="7" patternUnits="userSpaceOnUse">'
+    +'<circle cx="1.8" cy="1.8" r="0.85" fill="'+(dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.04)')+'"/>'
+    +'<circle cx="5.3" cy="5.3" r="0.85" fill="'+(dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.04)')+'"/></pattern>'
     /* 真っ白なタオルが板のように見えないよう、上下の陰影で厚みを出す */
     +'<linearGradient id="towelVol" x1="0" y1="0" x2="0" y2="1">'
     +'<stop offset="0" stop-color="#000000" stop-opacity="0"/>'
@@ -2238,8 +2253,9 @@ function makeTowelTemplate(def){
     rect:{ x:pad/(1+2*pad), y:pad/(1+2*pad), w:1/(1+2*pad), h:1/(1+2*pad) },
     layers:{ base:{procedural:'towel-cloth'}, mask:{procedural:'rect'},
              disp:{procedural:'flat'}, light:{procedural:'studio-soft'} },
+    /* 質感ループ調整: つるっとしたカードに見えないよう粒とパイルを一段強く */
     params:{ shadow:{ dy:0.022, blur:0.020, spread:1.0, alpha:0.34 },
-             grain:0.030, pile:0.55, fold:0.05, ambient:0.96, key:0.16 }
+             grain:0.042, pile:0.68, fold:0.06, ambient:0.96, key:0.16 }
   };
 }
 function makeTowelProduct(def){
@@ -2430,9 +2446,12 @@ function dieHintShape(type){
       +'<rect x="196" y="405" width="88" height="8" rx="4" fill="rgba(20,28,38,.30)"/>';
   }
   if(type==='cutting'){        /* カッティングシート：単色シート＋転写（角にトンボ） */
+    /* 以前の黒い色見本チップは説明テキストに被って異物に見えたため、
+       右下の「シートのめくれ」で素材感を示す表現に変更 */
     return '<rect x="80" y="150" width="320" height="260" rx="6" fill="#f4f5f2" stroke="rgba(20,28,38,.26)" stroke-width="2.2" filter="url(#dieHintShadow)"/>'
       +'<path d="M104 174h34M104 174v34M376 174h-34M376 174v34M104 386h34M104 386v-34M376 386h-34M376 386v-34" stroke="rgba(20,28,38,.40)" stroke-width="2.6" stroke-linecap="round"/>'
-      +'<rect x="316" y="330" width="56" height="56" rx="6" fill="#4a545e"/>';
+      +'<path d="M400 356 L400 404 A6 6 0 01394 410 L346 410 Z" fill="#e6e8e3" stroke="rgba(20,28,38,.22)" stroke-width="1.6"/>'
+      +'<path d="M400 356 L346 410" stroke="rgba(20,28,38,.30)" stroke-width="1.6"/>';
   }
   /* ダイカットステッカー：自由な形 */
   return '<path d="M240 140c62 0 96 22 128 58s52 62 32 108-46 60-96 70-108 12-146-14-58-64-52-108 30-78 62-96 40-18 72-18z" fill="#fbfbf9" stroke="rgba(20,28,38,.34)" stroke-width="2.4" stroke-dasharray="10 7" filter="url(#dieHintShadow)"/>';
