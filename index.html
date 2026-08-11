@@ -1649,6 +1649,20 @@
   </div>
 </div>
 
+<!-- PDF/AI取込時のベクター変換案内 modal（1セッション1回） -->
+<div class="modal-bg" id="vecNotice">
+  <div class="modal">
+    <button class="modal-x" type="button" id="vecNoticeX" aria-label="閉じる" title="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2>PDF・AIデータの変換について</h2>
+    <p class="save-lead">お預かりしたデザインは、プリント・カット用のデータ（ベクター）に変換して仕上げます。</p>
+    <ul class="save-lead" style="margin:8px 0 0;padding-left:1.3em;">
+      <li>1色のデザインはもちろん、<strong>複数色でも色が離れているデザイン</strong>や<strong>グラデーション</strong>も対応できます</li>
+      <li>変換の際に<strong>わずかな歪みが出る場合があります</strong>。仕上がりは担当者が確認し、気になる点があればご連絡のうえ調整します</li>
+    </ul>
+    <button class="btn btn-primary btn-block mt-l" id="vecNoticeOk">わかりました</button>
+  </div>
+</div>
+
 <!-- 入稿データ (proof) modal -->
 <div class="modal-bg" id="proofModal">
   <div class="modal modal-wide">
@@ -3627,8 +3641,25 @@ function rasterPDF(file, label, fmt){
     reader.readAsArrayBuffer(file);
   }).catch(function(){ toast('PDFライブラリの読み込みに失敗しました'); });
 }
-function importPDF(file){ rasterPDF(file, 'PDF', 'pdf'); }
-function importAI(file){  rasterPDF(file, 'AI',  'ai');  }
+/* PDF/AI取込時に一度だけ、ベクター変換の対応範囲と注意（歪み・要確認）を案内する。
+   localStorage不使用のためセッション内メモリフラグで1回に制御 */
+var vecNoticeShown=false;
+function showVecNotice(){
+  if(vecNoticeShown) return;
+  vecNoticeShown=true;
+  var el=document.getElementById('vecNotice');
+  if(el) el.classList.add('show');
+}
+(function(){
+  var el=document.getElementById('vecNotice'); if(!el) return;
+  function close(){ el.classList.remove('show'); }
+  var ok=document.getElementById('vecNoticeOk'), x=document.getElementById('vecNoticeX');
+  if(ok) ok.onclick=close;
+  if(x) x.onclick=close;
+  el.addEventListener('click', function(e){ if(e.target===el) close(); });
+})();
+function importPDF(file){ showVecNotice(); rasterPDF(file, 'PDF', 'pdf'); }
+function importAI(file){  showVecNotice(); rasterPDF(file, 'AI',  'ai');  }
 
 /* psd — composite (flattened) image via ag-psd (lazy) */
 function importPSD(file){
