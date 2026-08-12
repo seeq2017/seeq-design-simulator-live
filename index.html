@@ -2391,7 +2391,8 @@ function lineartGarmentSVG(lf, hex){
   var L=lineartLayout(lf);
   var inner=(lf.svg||lf.front).split('fill="FABRIC"').join('fill="'+hex+'"')
     .replace('<svg ', '<svg x="'+L.x0+'" y="'+L.y0+'" width="'+L.W+'" height="'+L.H.toFixed(1)+'" ');
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+  /* root の width/height 明示は applyShirt の誤マッチ回避のため必須（lineartCapSVG と同様） */
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="560" viewBox="0 0 480 560">'
     +'<defs>'+goodsShadowDef('s')+'</defs>'
     +'<g filter="url(#s)">'+inner+'</g></svg>';
 }
@@ -2430,7 +2431,9 @@ function lineartCapSVG(la, c, hex){
   var L=lineartLayout(la), g=L.guide;
   var inner=la.front.split('fill="FABRIC"').join('fill="'+hex+'"')
     .replace('<svg ', '<svg x="'+L.x0+'" y="'+L.y0+'" width="'+L.W+'" height="'+L.H.toFixed(1)+'" ');
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560">'
+  /* root に width/height を明示する（applyShirt はサイズ未指定の SVG に付与するが、
+     その判定が内側のネスト svg の width に誤マッチするため、ここで確定させる） */
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="560" viewBox="0 0 480 560">'
     +'<defs>'+goodsShadowDef('s')+'</defs>'
     +'<g filter="url(#s)">'+inner+'</g>'
     +'<rect x="'+g.x+'" y="'+g.y+'" width="'+g.w+'" height="'+g.h+'" fill="none" stroke="rgba(20,28,38,0.30)" stroke-width="1.2" stroke-dasharray="6 5"/>'
@@ -2906,8 +2909,10 @@ function applyShirt(){
      subsequent scaleToWidth() blows it up (blurry / oversized shirt). */
   /* NB: a plain indexOf('width=') matches the children's stroke-width=, so the
      guard never fired and the <svg> root stayed dimensionless → it rasterised at
-     the browser default (300x150) and blew up. Only look at the opening tag. */
-  if(!/<svg[^>]*\swidth=/.test(svg)){
+     the browser default (300x150) and blew up. Only look at the opening tag.
+     NB2: 線画商品はネストした<svg width=…>を内包するため、判定は必ず「先頭の
+     rootタグ」に限定する（^アンカー無しだと内側にマッチして付与がスキップされる） */
+  if(!/^\s*<svg[^>]*\swidth=/.test(svg)){
     svg = svg.replace('<svg ', '<svg width="'+BASE_W+'" height="'+BASE_H+'" ');
   }
   var url = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
