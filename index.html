@@ -7223,6 +7223,48 @@ var SeeQMockup=(function(){
       img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
     });
   }
+  /* ---- 刺繍質感（質感エンジン第1弾）----
+     デザインテクスチャを「刺繍らしい見え方」に加工する。
+     ①サテンステッチの糸目（横方向の細ラインで明暗のうねり）
+     ②輪郭の下糸影＋上面ハイライト（盛り上がりの疑似エンボス）
+     ③糸の光沢（斜めのシーン帯）
+     デザインの形はそのまま・色もそのまま（糸色は入稿色に合わせる想定）。 */
+  function embroiderize(src){
+    var W=src.width, H=src.height;
+    var c=document.createElement('canvas'); c.width=W; c.height=H;
+    var x=c.getContext('2d');
+    /* 盛り上がり: 下に暗いオフセット→上に明るいオフセット→本体 */
+    x.save();
+    x.globalAlpha=0.45; x.filter='brightness(0.55)';
+    x.drawImage(src, 0, Math.max(1,H*0.004));
+    try{ x.filter='brightness(1.6)'; }catch(e){}
+    x.globalAlpha=0.5;
+    x.drawImage(src, 0, -Math.max(1,H*0.003));
+    x.restore();
+    try{ x.filter='none'; }catch(e){}
+    x.globalAlpha=1;
+    x.drawImage(src, 0, 0);
+    /* デザインのアルファ内だけに糸目・光沢を重ねる */
+    x.globalCompositeOperation='source-atop';
+    /* 糸目ピッチ: 最終出力でおよそ3px相当になるよう、貼り込み先のスケールから逆算する
+       （テクスチャ座標のまま固定ピッチにすると、縮小配置で糸目が潰れて見えなくなる） */
+    var step=Math.max(2, Math.round(3/(arguments[1]||1)));
+    for(var y=0; y<H; y+=step){
+      var t=(y/step)%2;
+      x.fillStyle = t ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.10)';
+      x.fillRect(0, y, W, Math.max(1, step*0.42));
+    }
+    /* 糸の光沢（ゆるい斜めグラデを2本） */
+    var g=x.createLinearGradient(0,0,W,H);
+    g.addColorStop(0.15,'rgba(255,255,255,0)');
+    g.addColorStop(0.3,'rgba(255,255,255,0.13)');
+    g.addColorStop(0.45,'rgba(255,255,255,0)');
+    g.addColorStop(0.7,'rgba(255,255,255,0.10)');
+    g.addColorStop(0.85,'rgba(255,255,255,0)');
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    x.globalCompositeOperation='source-over';
+    return c;
+  }
   function renderCapLineart(tpl, env, bgMode){
     var la=tpl.lineart;
     var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
@@ -7235,10 +7277,14 @@ var SeeQMockup=(function(){
       var ax=(W-aw)/2, ay=(la.disp.cy||250)/560*H - ah/2;
       x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
       x.drawImage(img, ax, ay, aw, ah);
-      /* デザインを前面パネル（ガイド領域）へ曲面合成 */
+      /* デザインを前面パネル（ガイド領域）へ曲面合成。
+         キャップは前面刺繍が標準なので、刺繍質感をかけてから貼る */
       var g=la.guide;
+      /* 貼り込みスケール（出力px / テクスチャpx）を渡して糸目ピッチを出力基準に */
+      var embScale=(ah*g.h)/frame.canvas.height;
+      var design=(tpl.cap ? embroiderize(frame.canvas, embScale) : frame.canvas);
       x.globalAlpha=0.97;
-      drawCurved(x, frame.canvas, ax+aw*g.x, ay+ah*g.y, aw*g.w, ah*g.h, la.curve||0.25);
+      drawCurved(x, design, ax+aw*g.x, ay+ah*g.y, aw*g.w, ah*g.h, la.curve||0.25);
       x.globalAlpha=1;
       return compositeFlat(tpl, env, bgMode, c);
     });
@@ -7490,7 +7536,8 @@ var SeeQMockup=(function(){
     });
   }
 
-  return { templates:MOCKUP_TEMPLATES, env:MK_ENV, envOrder:MK_ENV_ORDER, bgOpts:MK_BG, render:render };
+  return { templates:MOCKUP_TEMPLATES, env:MK_ENV, envOrder:MK_ENV_ORDER, bgOpts:MK_BG, render:render,
+           embroiderize:embroiderize };
 })();
 
 /* =====================================================================
