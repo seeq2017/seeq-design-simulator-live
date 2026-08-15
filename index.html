@@ -1082,6 +1082,11 @@
       </div>
       <label class="fld" id="lblFace">プリント面（デザインする面）</label>
       <div class="facetabs" id="faceTabs"></div>
+      <!-- 織ネームなど「サイズ自由」の品目だけに出すサイズプリセット -->
+      <div id="labelSizeWrap" hidden>
+        <label class="fld">サイズ <span class="fld-sub">（自由サイズ・代表例）</span></label>
+        <div class="chiprow" id="labelSizes"></div>
+      </div>
       <label class="fld" id="lblColor">商品カラー <span class="fld-sub" id="colorName"></span></label>
       <div class="swatches" id="swatches"></div>
       <!-- ステッカー／アクリルキーホルダーは編集ではなく「画像から作る」商品なので、
@@ -1809,7 +1814,7 @@
      ./build.ps1（deploy-live.ps1 が自動実行）でこの位置へ結合される。
      公開形は従来どおり index.html 1枚のまま。 -->
 <!-- BUILD:MANIFEST -->
-<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"cap-baseball","category":"apparel","brand":"seeq","order":15,"kind":"mockup","label":"ベースボールキャップ","short":"キャップ","en":"BASEBALL CAP","sub":"6方パネル・前面刺繍","provisional":"刺繍範囲110×55mmとつばの形は一般的な仕様の暫定値。採用ボディ確定後に差し替える","cap":{"style":"baseball","printWMM":110,"printHMM":55,"visor":"curved","mesh":false,"crownH":1.0}},{"id":"cap-low","category":"apparel","brand":"seeq","order":16,"kind":"mockup","label":"ローキャップ","short":"ローキャップ","en":"LOW CAP","sub":"浅め・前面刺繍","provisional":"刺繍範囲100×48mmは暫定値","cap":{"style":"low","printWMM":100,"printHMM":48,"visor":"curved","mesh":false,"crownH":0.86}},{"id":"cap-bucket","category":"apparel","brand":"seeq","order":17,"kind":"mockup","label":"バケットハット","short":"バケット","en":"BUCKET HAT","sub":"前面刺繍","provisional":"刺繍範囲90×40mmは暫定値。公式テンプレ（製品作成テンプレート/キャップ類）の実寸確定後に差し替える","cap":{"style":"bucket","printWMM":90,"printHMM":40,"visor":"bucket","mesh":false,"crownH":0.80}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"acryl-stand","category":"goods","brand":"seeq","order":27,"kind":"diecut","label":"アクリルスタンド","short":"アクスタ","en":"ACRYLIC STAND","sub":"台座つき・白版あり","provisional":"台座の寸法（幅60×高22mm・スリット34×3.2mm・差込代6mm）は一般的な仕様の暫定値。実測が出たら差し替える","diecut":{"type":"stand","defaultLongEdgeMM":100,"shapes":true,"whitePlate":true,"hole":false,"whiteInsetMM":0.2,"minCutRMM":1.5,"base":{"wMM":60,"hMM":22,"rMM":3,"slitWMM":34,"slitTMM":3.2,"tabMM":6,"provisional":true},"params":{"offsetMM":2.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"metal-keychain","category":"goods","brand":"seeq","order":27.5,"kind":"diecut","label":"メタルキーホルダー","short":"メタルKH","en":"METAL KEYCHAIN","sub":"縁取りカット・穴あき","provisional":"板厚・仕上げ（鏡面/梨地）は暫定。採用素材が確定したら差し替える","diecut":{"type":"metal","defaultLongEdgeMM":50,"shapes":true,"whitePlate":false,"hole":true,"holeDiaMM":2.5,"holeEdgeMM":3,"minCutRMM":1.2,"metal":{"base":"#c9ccd1","edge":"#8a9098"},"hardware":[{"id":"nasukan","label":"ナスカン"},{"id":"nijukan","label":"二重カン"}],"params":{"offsetMM":2.0,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"pin-badge","category":"goods","brand":"seeq","order":27.6,"kind":"diecut","label":"ピンバッジ","short":"ピンバッジ","en":"PIN BADGE","sub":"縁取りカット・ピン位置指定","provisional":"ピン金具の種類（バタフライ/ラバー）は暫定","diecut":{"type":"pin","defaultLongEdgeMM":30,"shapes":true,"whitePlate":false,"hole":false,"pin":true,"pinDiaMM":1.5,"pinEdgeMM":3,"minCutRMM":1.0,"metal":{"base":"#d4b060","edge":"#9a7c34"},"params":{"offsetMM":1.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"cutting-sheet","category":"goods","brand":"seeq","order":28,"kind":"diecut","label":"カッティングシート","short":"カッティング","en":"CUTTING SHEET","sub":"単色カット・転写シート","provisional":"シート色は代表色の暫定リスト。実際の在庫色が確定したら差し替える","diecut":{"type":"cutting","defaultLongEdgeMM":150,"whitePlate":false,"hole":false,"singleColor":true,"minCutRMM":0.6,"minStrokeMM":1.2,"vinyl":[{"name":"ブラック","hex":"#1d1f21"},{"name":"ホワイト","hex":"#ffffff"},{"name":"レッド","hex":"#c0303a"},{"name":"ブルー","hex":"#274690"},{"name":"イエロー","hex":"#f2cf3d"},{"name":"グリーン","hex":"#2f6b4f"},{"name":"シルバー","hex":"#c8ccd0"},{"name":"ゴールド","hex":"#c8a349"}],"params":{"offsetMM":0,"round":1,"smooth":1.6,"alphaThr":128,"keyTol":60}}},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
+<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"cap-baseball","category":"apparel","brand":"seeq","order":15,"kind":"mockup","label":"ベースボールキャップ","short":"キャップ","en":"BASEBALL CAP","sub":"6方パネル・前面刺繍","provisional":"刺繍範囲110×55mmとつばの形は一般的な仕様の暫定値。採用ボディ確定後に差し替える","cap":{"style":"baseball","printWMM":110,"printHMM":55,"visor":"curved","mesh":false,"crownH":1.0}},{"id":"cap-low","category":"apparel","brand":"seeq","order":16,"kind":"mockup","label":"ローキャップ","short":"ローキャップ","en":"LOW CAP","sub":"浅め・前面刺繍","provisional":"刺繍範囲100×48mmは暫定値","cap":{"style":"low","printWMM":100,"printHMM":48,"visor":"curved","mesh":false,"crownH":0.86}},{"id":"cap-bucket","category":"apparel","brand":"seeq","order":17,"kind":"mockup","label":"バケットハット","short":"バケット","en":"BUCKET HAT","sub":"前面刺繍","provisional":"刺繍範囲90×40mmは暫定値。公式テンプレ（製品作成テンプレート/キャップ類）の実寸確定後に差し替える","cap":{"style":"bucket","printWMM":90,"printHMM":40,"visor":"bucket","mesh":false,"crownH":0.80}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"acryl-stand","category":"goods","brand":"seeq","order":27,"kind":"diecut","label":"アクリルスタンド","short":"アクスタ","en":"ACRYLIC STAND","sub":"台座つき・白版あり","provisional":"台座の寸法（幅60×高22mm・スリット34×3.2mm・差込代6mm）は一般的な仕様の暫定値。実測が出たら差し替える","diecut":{"type":"stand","defaultLongEdgeMM":100,"shapes":true,"whitePlate":true,"hole":false,"whiteInsetMM":0.2,"minCutRMM":1.5,"base":{"wMM":60,"hMM":22,"rMM":3,"slitWMM":34,"slitTMM":3.2,"tabMM":6,"provisional":true},"params":{"offsetMM":2.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"metal-keychain","category":"goods","brand":"seeq","order":27.5,"kind":"diecut","label":"メタルキーホルダー","short":"メタルKH","en":"METAL KEYCHAIN","sub":"縁取りカット・穴あき","provisional":"板厚・仕上げ（鏡面/梨地）は暫定。採用素材が確定したら差し替える","diecut":{"type":"metal","defaultLongEdgeMM":50,"shapes":true,"whitePlate":false,"hole":true,"holeDiaMM":2.5,"holeEdgeMM":3,"minCutRMM":1.2,"metal":{"base":"#c9ccd1","edge":"#8a9098"},"hardware":[{"id":"nasukan","label":"ナスカン"},{"id":"nijukan","label":"二重カン"}],"params":{"offsetMM":2.0,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"pin-badge","category":"goods","brand":"seeq","order":27.6,"kind":"diecut","label":"ピンバッジ","short":"ピンバッジ","en":"PIN BADGE","sub":"縁取りカット・ピン位置指定","provisional":"ピン金具の種類（バタフライ/ラバー）は暫定","diecut":{"type":"pin","defaultLongEdgeMM":30,"shapes":true,"whitePlate":false,"hole":false,"pin":true,"pinDiaMM":1.5,"pinEdgeMM":3,"minCutRMM":1.0,"metal":{"base":"#d4b060","edge":"#9a7c34"},"params":{"offsetMM":1.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"cutting-sheet","category":"goods","brand":"seeq","order":28,"kind":"diecut","label":"カッティングシート","short":"カッティング","en":"CUTTING SHEET","sub":"単色カット・転写シート","provisional":"シート色は代表色の暫定リスト。実際の在庫色が確定したら差し替える","diecut":{"type":"cutting","defaultLongEdgeMM":150,"whitePlate":false,"hole":false,"singleColor":true,"minCutRMM":0.6,"minStrokeMM":1.2,"vinyl":[{"name":"ブラック","hex":"#1d1f21"},{"name":"ホワイト","hex":"#ffffff"},{"name":"レッド","hex":"#c0303a"},{"name":"ブルー","hex":"#274690"},{"name":"イエロー","hex":"#f2cf3d"},{"name":"グリーン","hex":"#2f6b4f"},{"name":"シルバー","hex":"#c8ccd0"},{"name":"ゴールド","hex":"#c8a349"}],"params":{"offsetMM":0,"round":1,"smooth":1.6,"alphaThr":128,"keyTol":60}}},{"id":"woven-label","category":"goods","brand":"seeq","order":29,"kind":"mockup","label":"織ネーム","short":"織ネーム","en":"WOVEN LABEL","sub":"サイズ自由・折り返し縫い付け","provisional":"サイズは自由。既定は40×15mm（見積時に希望サイズを指定）","towel":{"wMM":40,"hMM":15,"hem":"fold","printInset":0.10,"labelKind":"woven","sizes":[{"w":40,"h":15},{"w":50,"h":20},{"w":60,"h":25},{"w":30,"h":30}]}},{"id":"sub-tag-19","category":"goods","brand":"seeq","order":29.1,"kind":"mockup","label":"昇華タグ 19mm","short":"タグ19","en":"SUBLIMATION TAG 19","sub":"幅19mm・サテン","towel":{"wMM":19,"hMM":40,"hem":"none","printInset":0.08,"labelKind":"satin"}},{"id":"sub-tag-32","category":"goods","brand":"seeq","order":29.2,"kind":"mockup","label":"昇華タグ 32mm","short":"タグ32","en":"SUBLIMATION TAG 32","sub":"幅32mm・サテン","towel":{"wMM":32,"hMM":60,"hem":"none","printInset":0.08,"labelKind":"satin"}},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
 <!-- /BUILD:MANIFEST -->
 <!-- BUILD:LINEART -->
 <script id="seeqLineart">
@@ -2262,11 +2267,58 @@ function towelPlacement(t){
   var w=Math.min(maxW, maxH*ar), h=w/ar;
   if(h>maxH){ h=maxH; w=h*ar; }
   var x=240-w/2, y=286-h/2, ins=t.printInset;
+  /* 昇華タグは二つ折り＝表側は上半分。編集ガイドも上半分にして仕上がりと一致させる */
+  if(t.labelKind==='satin'){
+    return { x:x, y:y, w:w, h:h,
+      guide:{ x:Math.round(x+w*ins), y:Math.round(y+h*ins),
+              w:Math.round(w*(1-2*ins)), h:Math.round(h*0.5-h*ins*2) } };
+  }
   return { x:x, y:y, w:w, h:h,
     guide:{ x:Math.round(x+w*ins), y:Math.round(y+h*ins),
             w:Math.round(w*(1-2*ins)), h:Math.round(h*(1-2*ins)) } };
 }
+/* 織ネーム／昇華タグ（ラベル類）の下絵。タオルと同じ平置き型だが、
+   織ネーム=折り返し（両端の折り込み）＋織り目、昇華タグ=サテンの光沢＋中央の折り線 */
+function labelSVG(t, pl, hex, dark){
+  var stroke=goodsEdge(dark), kind=t.labelKind;
+  var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 560"><defs>'+goodsShadowDef('s');
+  if(kind==='woven'){
+    s+='<pattern id="weave" width="4" height="4" patternUnits="userSpaceOnUse">'
+      +'<path d="M0,2 H4" stroke="'+(dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)')+'" stroke-width="1"/>'
+      +'<path d="M2,0 V4" stroke="'+(dark?'rgba(255,255,255,.04)':'rgba(0,0,0,.035)')+'" stroke-width="1"/></pattern>';
+  } else {
+    s+='<linearGradient id="satin" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.35" stop-color="#fff" stop-opacity="'+(dark?0.18:0.55)+'"/>'
+      +'<stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="0.75" stop-color="#fff" stop-opacity="'+(dark?0.12:0.35)+'"/>'
+      +'<stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>';
+  }
+  s+='</defs><g filter="url(#s)">';
+  var x=pl.x, y=pl.y, w=pl.w, h=pl.h;
+  s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="'+hex+'" stroke="'+stroke+'" stroke-width="2"/>';
+  if(kind==='woven'){
+    s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="url(#weave)"/>';
+    /* 両端の折り返し（縫い付け代）：少し濃い帯＋折り目線 */
+    var fw=Math.max(8, w*0.07);
+    var band=dark?'rgba(255,255,255,.10)':'rgba(0,0,0,.07)';
+    s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+fw.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+band+'"/>'
+      +'<rect x="'+(x+w-fw).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+fw.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+band+'"/>'
+      +'<path d="M'+(x+fw).toFixed(1)+','+y.toFixed(1)+' V'+(y+h).toFixed(1)+' M'+(x+w-fw).toFixed(1)+','+y.toFixed(1)+' V'+(y+h).toFixed(1)+'" stroke="'+stroke+'" stroke-width="1" stroke-dasharray="3 3"/>';
+    /* 上下のロックミシン風の縁 */
+    s+='<path d="M'+(x+fw).toFixed(1)+','+(y+2).toFixed(1)+' H'+(x+w-fw).toFixed(1)+' M'+(x+fw).toFixed(1)+','+(y+h-2).toFixed(1)+' H'+(x+w-fw).toFixed(1)+'" stroke="'+stroke+'" stroke-width="1.2" stroke-dasharray="2 2"/>';
+  } else {
+    s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="url(#satin)"/>';
+    /* サテンの織り方向（細い横線）＋中央の折り線（二つ折りで縫い込む） */
+    s+='<path d="M'+x.toFixed(1)+','+(y+h/2).toFixed(1)+' H'+(x+w).toFixed(1)+'" stroke="'+(dark?'rgba(255,255,255,.35)':'rgba(20,28,38,.28)')+'" stroke-width="1.2" stroke-dasharray="5 4"/>';
+    /* 上下端は熱カット（ほつれ止め）＝わずかに濃い縁 */
+    s+='<path d="M'+x.toFixed(1)+','+(y+1).toFixed(1)+' H'+(x+w).toFixed(1)+' M'+x.toFixed(1)+','+(y+h-1).toFixed(1)+' H'+(x+w).toFixed(1)+'" stroke="'+stroke+'" stroke-width="1.6"/>';
+  }
+  s+='</g>';
+  var cap = kind==='woven' ? '仕上がり '+t.wMM+'×'+t.hMM+'mm（サイズは自由・両端は折り返し）'
+                           : '仕上がり 幅'+t.wMM+'×長さ'+t.hMM+'mm（中央で二つ折り・上半分が表）';
+  return s+'<text x="240" y="'+Math.max(24,(pl.y-12)).toFixed(0)+'" text-anchor="middle" font-family="Noto Sans JP,sans-serif" font-size="11" fill="#7b8792">'+cap+'</text></svg>';
+}
 function towelSVG(t, pl, hex, dark){
+  if(t.labelKind) return labelSVG(t, pl, hex, dark);
   var stroke = goodsEdge(dark);
   var band   = dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.05)';
   var r=Math.min(10, pl.w*0.03, pl.h*0.03);
@@ -2319,10 +2371,18 @@ function makeTowelTemplate(def){
              grain:0.042, pile:0.68, fold:0.06, ambient:0.96, key:0.16 }
   };
 }
+var LABEL_COLORS = {
+  woven: [ {name:'ホワイト',hex:'#ffffff',dark:false}, {name:'ブラック',hex:'#23262a',dark:true},
+           {name:'ネイビー',hex:'#22314a',dark:true}, {name:'生成り',hex:'#efe6d3',dark:false}, {name:'グレー',hex:'#9aa3a8',dark:false} ],
+  satin: [ {name:'ホワイト',hex:'#ffffff',dark:false}, {name:'ブラック',hex:'#23262a',dark:true}, {name:'アイボリー',hex:'#f3ecdc',dark:false} ]
+};
 function makeTowelProduct(def){
   var t=def.towel, pl=towelPlacement(t);
   var prod={ id:def.id, label:def.label, en:def.en, brand:def.brand||'seeq',
-    kind:'mockup', mockup:def.id, sizeMM:{w:t.wMM,h:t.hMM}, colors:TOWEL_COLORS };
+    kind:'mockup', mockup:def.id, sizeMM:{w:t.wMM,h:t.hMM},
+    colors:(t.labelKind && LABEL_COLORS[t.labelKind]) || TOWEL_COLORS };
+  /* 織ネーム: サイズ自由。代表サイズをプリセットで持ち、選ぶと下絵・ガイド・実寸が切り替わる */
+  if(t.sizes && t.sizes.length){ prod.labelSizes=t.sizes; prod._sizeIdx=0; }
   prod.faces=[{ id:'front', label:'おもて',
     guide:pl.guide,
     printMM:{ w:Math.round(t.wMM*(1-2*t.printInset)), h:Math.round(t.hMM*(1-2*t.printInset)) },
@@ -2905,6 +2965,7 @@ function applyManifest(){
   if(typeof ensureStateBuckets==='function') ensureStateBuckets();
 }
 function manifestCategories(){ return (SEEQ_MANIFEST.categories||[]).slice().sort(function(a,b){return (a.order||0)-(b.order||0);}); }
+function manifestDefOf(id){ return ((SEEQ_MANIFEST.products||[]).filter(function(d){return d.id===id;})[0])||null; }
 function manifestBrandCatalog(){
   var cat={};
   (SEEQ_MANIFEST.products||[]).slice().sort(function(a,b){ return (a.order||0)-(b.order||0); })
@@ -3022,6 +3083,9 @@ function applyShirt(){
 function guideVisibleFor(prod){
   if(!prod) return true;
   if(prod.kind==='diecut') return false;
+  /* 織ネーム／昇華タグは範囲が厳密（折り返し・二つ折り）なのでガイドを出す */
+  var tpl=MOCKUP_TEMPLATES[prod.mockup||''];
+  if(tpl && tpl.towel && tpl.towel.labelKind) return true;
   return prod.category!=='goods';
 }
 function positionGuide(){
@@ -3364,7 +3428,41 @@ function syncProductPanel(){
     var th=t.querySelector('.ft-thumb'); if(th) th.innerHTML=faceThumbSVG(currentProduct, t.dataset.face, currentColor);
   });
 }
+/* 織ネーム: サイズプリセットの表示と切替。切替時はタオル系ファクトリで面/テンプレを作り直す */
+function renderLabelSizes(){
+  var wrap=document.getElementById('labelSizeWrap'), row=document.getElementById('labelSizes');
+  if(!wrap||!row) return;
+  var p=curProduct();
+  if(!p || !p.labelSizes){ wrap.hidden=true; return; }
+  wrap.hidden=false; row.innerHTML='';
+  p.labelSizes.forEach(function(sz,i){
+    var b=document.createElement('button'); b.type='button'; b.className='chip'+(i===(p._sizeIdx||0)?' on':'');
+    b.textContent=sz.w+'×'+sz.h+'mm'; b.setAttribute('aria-pressed', i===(p._sizeIdx||0)?'true':'false');
+    b.onclick=function(){ setLabelSize(i); };
+    row.appendChild(b);
+  });
+}
+function setLabelSize(idx){
+  var p=curProduct(); if(!p||!p.labelSizes) return;
+  var sz=p.labelSizes[idx]; if(!sz) return;
+  p._sizeIdx=idx;
+  var def=(typeof manifestDefOf==='function')?manifestDefOf(currentProduct):null;
+  if(!def||!def.towel) return;
+  var t={}; for(var k in def.towel) t[k]=def.towel[k];
+  t.wMM=sz.w; t.hMM=sz.h;
+  var d2={}; for(var k2 in def) d2[k2]=def[k2]; d2.towel=t;
+  /* テンプレ（仕上がり）と面（下絵/ガイド/プリセット）を作り直して差し替える */
+  MOCKUP_TEMPLATES[currentProduct]=makeTowelTemplate(d2);
+  var np=makeTowelProduct(d2);
+  p.faces=np.faces; p.sizeMM=np.sizeMM;
+  applyShirt._sig=null;
+  positionGuide(); applyShirt(); buildPresets(); renderLabelSizes(); fitCanvas();
+  if(typeof syncProductPanel==='function') syncProductPanel();
+  updateFaceUI();
+  commitHistory();
+}
 function updateProductUI(){
+  renderLabelSizes();
   /* 商品が変わったのに別カテゴリのタブを開いたままだと、選択中の商品が
      どこにも見えなくなる。その時だけセレクタを作り直してカテゴリを合わせる。 */
   if(_prodCatFor!==currentProduct || !document.querySelector('.prod-btn[data-prod="'+currentProduct+'"]')){
@@ -3462,7 +3560,11 @@ function finishSizeLabel(){
     var d=(SEEQ_MANIFEST.products||[]).filter(function(x){return x.id===currentProduct;})[0];
     if(!d) return '';
     if(d.badge && d.badge.sizeMM) return '　／　仕上がり 直径'+d.badge.sizeMM+'mm';
-    if(d.towel && d.towel.wMM)    return '　／　仕上がり '+d.towel.wMM+'×'+d.towel.hMM+'mm';
+    if(d.towel && d.towel.wMM){
+      /* 織ネームはサイズ切替があるので、商品オブジェクト側の現在値を優先 */
+      var cur=curProduct(), sm=(cur&&cur.sizeMM)||d.towel;
+      return '　／　仕上がり '+(sm.w||d.towel.wMM)+'×'+(sm.h||d.towel.hMM)+'mm'+(cur&&cur.labelSizes?'（サイズは自由）':'');
+    }
     if(d.cap && d.cap.printWMM)   return '　／　刺繍範囲の目安 '+d.cap.printWMM+'×'+d.cap.printHMM+'mm';
     if(d.diecut && d.diecut.defaultLongEdgeMM) return '　／　仕上がり 長辺'+d.diecut.defaultLongEdgeMM+'mm（変更できます）';
     /* legacy 定義（缶バッジ57mm 等）は実寸フィールドを持たないので商品名から拾う */
@@ -7577,29 +7679,71 @@ var SeeQMockup=(function(){
     x.save(); clothPath(); x.clip();
     /* ① 布地 */
     x.fillStyle=frame.color; x.fillRect(rx,ry,rw,rh);
-    /* パイルの粒（乗算）＝タオル特有のざらつき */
-    var n=noiseCanvas(Math.max(2,Math.round(rw/3)), Math.max(2,Math.round(rh/3)), P.grain*2.2, 7);
-    x.globalAlpha=P.pile*0.55; x.globalCompositeOperation='multiply';
-    x.imageSmoothingEnabled=true; x.drawImage(n, rx,ry,rw,rh);
-    x.globalAlpha=1; x.globalCompositeOperation='source-over';
-    /* 織り目（細い格子） */
-    var step=Math.max(3, Math.round(Math.min(rw,rh)/110));
-    x.strokeStyle='rgba(0,0,0,0.028)'; x.lineWidth=1;
-    for(var gx=rx;gx<rx+rw;gx+=step){ x.beginPath(); x.moveTo(gx,ry); x.lineTo(gx,ry+rh); x.stroke(); }
-    for(var gy=ry;gy<ry+rh;gy+=step){ x.beginPath(); x.moveTo(rx,gy); x.lineTo(rx+rw,gy); x.stroke(); }
-    /* ② デザイン（プリント範囲＝ヘム内側） */
+    var LK=(tpl.towel&&tpl.towel.labelKind)||null;
+    if(LK==='woven'){
+      /* 織ネーム: 細かい平織りの目（縦横の細線を密に）＋わずかな粒 */
+      var wstep=Math.max(2, Math.round(Math.min(rw,rh)/90));
+      x.strokeStyle='rgba(0,0,0,0.055)'; x.lineWidth=1;
+      for(var wx=rx;wx<rx+rw;wx+=wstep){ x.beginPath(); x.moveTo(wx,ry); x.lineTo(wx,ry+rh); x.stroke(); }
+      x.strokeStyle='rgba(0,0,0,0.075)';
+      for(var wy=ry;wy<ry+rh;wy+=wstep){ x.beginPath(); x.moveTo(rx,wy); x.lineTo(rx+rw,wy); x.stroke(); }
+    } else if(LK==='satin'){
+      /* サテン: 横方向の光沢の帯（斜めのシーン） */
+      /* 濃色は光沢を弱める（強いと金属板に見える）。色の明度で係数を変える */
+      var _c=frame.color||'#ffffff', _r=parseInt(_c.slice(1,3),16)||255, _g=parseInt(_c.slice(3,5),16)||255, _b=parseInt(_c.slice(5,7),16)||255;
+      var lum=(0.299*_r+0.587*_g+0.114*_b)/255, k=lum>0.5?1:0.35;
+      var sg=x.createLinearGradient(rx,ry,rx+rw,ry+rh);
+      sg.addColorStop(0,'rgba(255,255,255,0)'); sg.addColorStop(0.35,'rgba(255,255,255,'+(0.45*k).toFixed(2)+')');
+      sg.addColorStop(0.5,'rgba(255,255,255,0)'); sg.addColorStop(0.75,'rgba(255,255,255,'+(0.28*k).toFixed(2)+')'); sg.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle=sg; x.fillRect(rx,ry,rw,rh);
+      var sstep=Math.max(2, Math.round(rh/160));
+      x.strokeStyle='rgba(0,0,0,0.04)'; x.lineWidth=1;
+      for(var sy=ry;sy<ry+rh;sy+=sstep){ x.beginPath(); x.moveTo(rx,sy); x.lineTo(rx+rw,sy); x.stroke(); }
+    } else {
+      /* パイルの粒（乗算）＝タオル特有のざらつき */
+      var n=noiseCanvas(Math.max(2,Math.round(rw/3)), Math.max(2,Math.round(rh/3)), P.grain*2.2, 7);
+      x.globalAlpha=P.pile*0.55; x.globalCompositeOperation='multiply';
+      x.imageSmoothingEnabled=true; x.drawImage(n, rx,ry,rw,rh);
+      x.globalAlpha=1; x.globalCompositeOperation='source-over';
+      /* 織り目（細い格子） */
+      var step=Math.max(3, Math.round(Math.min(rw,rh)/110));
+      x.strokeStyle='rgba(0,0,0,0.028)'; x.lineWidth=1;
+      for(var gx=rx;gx<rx+rw;gx+=step){ x.beginPath(); x.moveTo(gx,ry); x.lineTo(gx,ry+rh); x.stroke(); }
+      for(var gy=ry;gy<ry+rh;gy+=step){ x.beginPath(); x.moveTo(rx,gy); x.lineTo(rx+rw,gy); x.stroke(); }
+    }
+    /* ② デザイン（プリント範囲＝ヘム内側）。昇華タグは二つ折りなので表側＝上半分に貼る */
     var ins=(tpl.towel&&tpl.towel.printInset)||0.1;
     var px=rx+rw*ins, py=ry+rh*ins, pw=rw*(1-2*ins), ph=rh*(1-2*ins);
-    x.globalAlpha=0.96;                     /* 生地に少し沈む＝印刷らしさ */
+    if(LK==='satin'){ py=ry+rh*ins; ph=rh*0.5-rh*ins*2; }
+    x.globalAlpha=(LK==='woven')?0.90:0.96;   /* 織りは糸で表現＝少し沈む */
     x.drawImage(frame.canvas, px,py,pw,ph);
     x.globalAlpha=1;
+    if(LK==='woven'){
+      /* 織ネームは糸の目が絵柄にも乗る（刺繍質感の簡易版：横糸の明暗） */
+      x.save(); x.beginPath(); x.rect(px,py,pw,ph); x.clip();
+      var tstep=Math.max(2, Math.round(ph/70));
+      for(var ty=py, k=0; ty<py+ph; ty+=tstep, k++){ x.fillStyle=(k%2)?'rgba(0,0,0,0.07)':'rgba(255,255,255,0.08)'; x.fillRect(px,ty,pw,Math.max(1,tstep*0.45)); }
+      x.restore();
+    }
+    if(LK==='satin'){
+      /* 折り線（中央）＋熱カットの上下端 */
+      x.strokeStyle='rgba(0,0,0,0.22)'; x.lineWidth=Math.max(1,rw/300); x.setLineDash([rw/40, rw/60]);
+      x.beginPath(); x.moveTo(rx,ry+rh/2); x.lineTo(rx+rw,ry+rh/2); x.stroke(); x.setLineDash([]);
+    }
+    if(LK==='woven'){
+      /* 両端の折り返し（縫い付け代） */
+      var fw=Math.max(6, rw*0.07);
+      x.fillStyle='rgba(0,0,0,0.07)'; x.fillRect(rx,ry,fw,rh); x.fillRect(rx+rw-fw,ry,fw,rh);
+      x.strokeStyle='rgba(0,0,0,0.18)'; x.lineWidth=Math.max(1,rw/300); x.setLineDash([rw/80, rw/80]);
+      x.beginPath(); x.moveTo(rx+fw,ry); x.lineTo(rx+fw,ry+rh); x.moveTo(rx+rw-fw,ry); x.lineTo(rx+rw-fw,ry+rh); x.stroke(); x.setLineDash([]);
+    }
     /* ③ 陰影：左上からの光＋ゆるい折り皺 */
     var lg=x.createLinearGradient(rx,ry,rx+rw,ry+rh);
     lg.addColorStop(0,'rgba(255,255,255,'+(0.16*P.ambient).toFixed(3)+')');
     lg.addColorStop(0.55,'rgba(255,255,255,0)');
     lg.addColorStop(1,'rgba(0,0,0,'+(0.10).toFixed(3)+')');
     x.fillStyle=lg; x.fillRect(rx,ry,rw,rh);
-    var folds=3, longSide=(rh>=rw);
+    var folds=LK?0:3, longSide=(rh>=rw);
     for(var i=1;i<=folds;i++){
       var t=i/(folds+1);
       var fg=x.createLinearGradient(
