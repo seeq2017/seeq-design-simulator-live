@@ -423,6 +423,11 @@
      サムネイルに使う（別途画像を用意しなくてよい＝単一HTMLのまま）。 */
   .card-primary{border-color:var(--accent);box-shadow:0 2px 16px rgba(224,56,44,.10);}
   .card-primary>h3{color:var(--accent-d,#B3000E);}
+  .nm-change{margin-left:auto;flex:0 0 auto;white-space:nowrap;}
+  .nowmaking{flex-wrap:wrap;}
+  .nowmaking .nm-txt{flex:1 1 120px;}
+  .nm-txt b{overflow-wrap:anywhere;}
+  .prodpicker{margin-top:6px;}
   .nowmaking{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;
     background:var(--brand-soft,#FDECEA);margin-bottom:12px;}
   .nm-thumb{flex:0 0 auto;width:38px;height:44px;border-radius:8px;background:#ededea;
@@ -1067,9 +1072,14 @@
           <b id="nmProduct">Tシャツ</b>
           <small id="nmMeta">ホワイト ／ おもて</small>
         </span>
+        <button class="btn btn-ghost btn-xs nm-change" id="btnChangeProduct" type="button" aria-expanded="false">商品を変える</button>
       </div>
-      <label class="fld" id="lblProduct">商品を選ぶ</label>
-      <div class="prodsel" id="prodSel"></div>
+      <!-- 商品ピッカーは「商品を選んだら畳む」。他の商品が並んだままだと、
+           その下の「プリント面」が埋もれて見つけにくいため（森さんFB 2026-08-16） -->
+      <div class="prodpicker" id="prodPicker" hidden>
+        <label class="fld" id="lblProduct">商品を選ぶ</label>
+        <div class="prodsel" id="prodSel"></div>
+      </div>
       <label class="fld" id="lblFace">プリント面（デザインする面）</label>
       <div class="facetabs" id="faceTabs"></div>
       <label class="fld" id="lblColor">商品カラー <span class="fld-sub" id="colorName"></span></label>
@@ -3006,9 +3016,17 @@ function applyShirt(){
     canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
   });
 }
+/* 小物（グッズ・小物カテゴリ）の赤い点線ガイドは、缶バッジ・トート等で実物の
+   プリント範囲と合っていないため一旦非表示にする（森さんFB 2026-08-16）。
+   配置プリセット・実寸換算はそのまま生きる。アパレル/タオル/キャップは表示。 */
+function guideVisibleFor(prod){
+  if(!prod) return true;
+  if(prod.kind==='diecut') return false;
+  return prod.category!=='goods';
+}
 function positionGuide(){
   var g = curFaceDef().guide, u = scaleUnit();
-  guide.set({left:g.x*u, top:g.y*u, width:g.w, height:g.h, scaleX:u, scaleY:u});
+  guide.set({left:g.x*u, top:g.y*u, width:g.w, height:g.h, scaleX:u, scaleY:u, visible:guideVisibleFor(curProduct())});
   guide.setCoords();
   if(canvas.getObjects()[0]!==guide){ canvas.sendToBack(guide); }
   /* 商品・面の切替やリサイズで枠が変わるので、はみ出し判定もやり直す */
@@ -3304,12 +3322,24 @@ function renderProductSelector(){
       b.title=p.label+(p.sub?('（'+p.sub+'）'):'');
       b.innerHTML='<span class="pb-thumb">'+faceThumbSVG(pk)+'</span><span class="pb-label"></span>';
       b.querySelector('.pb-label').textContent=p.short||p.label;
-      b.onclick=function(){ switchProduct(pk); };
+      b.onclick=function(){ switchProduct(pk); setProductPicker(false); };
       grid.appendChild(b);
     });
     wrap.appendChild(grid);
   });
 }
+/* 商品ピッカーの開閉。商品を選んだ直後は畳み、「商品を変える」で開く */
+function setProductPicker(open){
+  var pk=document.getElementById('prodPicker'), b=document.getElementById('btnChangeProduct');
+  if(!pk) return;
+  pk.hidden=!open;
+  if(b){ b.textContent= open ? '閉じる' : '商品を変える'; b.setAttribute('aria-expanded', open?'true':'false'); }
+  if(open){ renderProductSelector(); try{ pk.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} }
+}
+(function(){
+  var b=document.getElementById('btnChangeProduct');
+  if(b) b.onclick=function(){ var pk=document.getElementById('prodPicker'); setProductPicker(!!(pk&&pk.hidden)); };
+})();
 /* 「いま作っているもの」の要約（商品／色／面）を1行で見せる */
 function syncProductPanel(){
   var nmT=document.getElementById('nmThumb'), nmP=document.getElementById('nmProduct'), nmM=document.getElementById('nmMeta');
@@ -3423,7 +3453,7 @@ function updateFaceUI(){
   /* M-10: 缶バッジ32/44/57/75mm はステージ上の描画サイズが同一（432×432px）で、
      画面だけでは大きさの違いが伝わらない。仕上がり寸法を説明行に明示する。 */
   document.getElementById('stageHint').textContent =
-    'プリント面：'+curFaceDef().label+finishSizeLabel()+'　／　破線の枠内がプリント可能エリアの目安です　·　Ctrl／Alt＋ホイールで拡大縮小';
+    'プリント面：'+curFaceDef().label+finishSizeLabel()+(guideVisibleFor(curProduct())?'　／　破線の枠内がプリント可能エリアの目安です':'')+'　·　Ctrl／Alt＋ホイールで拡大縮小';
   buildPresets();
 }
 /* マニフェストの実寸定義から「仕上がり ○○」を組み立てる（無い商品は空文字） */
@@ -3508,6 +3538,7 @@ function addObj(obj, name){
    ステージ上に注意を出す。印刷できない範囲があることを作業中に伝える。 */
 var _ovWarnEl=null, _ovTimer=0;
 function overflowCount(){
+  if(!guideVisibleFor(curProduct())) return 0;   /* ガイド非表示の品目でははみ出し警告も出さない */
   var g=guideBox(); if(!g) return 0;
   var eps=0.5, n=0;
   userObjects().forEach(function(o){
@@ -6323,10 +6354,14 @@ function ssPick(id){
      「テキストを追加」(y=1005)「画像をアップロード」(y=1185)が画面外に出る。
      スタート画面で商品を選んだ直後に商品パネルをもう一度見せる必要はないので、
      畳んで次の一手（文字・画像）を最初から見える位置に出す。 */
+  /* 2026-08-16: 商品ピッカーを畳む方式にしたので商品パネルは短くなった（約300px）。
+     畳まずに「いま作っているもの＋プリント面＋色」を見せた状態で編集を始める
+     （森さんFB: 選んだら他の商品は見せず、プリント箇所の選択を前面に）。 */
   try{
+    if(typeof setProductPicker==='function') setProductPicker(false);
     if(!isMobile()){
       var pc=document.querySelector('.card[data-panel="product"]');
-      if(pc) setPanel(pc, false);
+      if(pc) setPanel(pc, true);
       syncToggleAllLabel();
       var aside=document.getElementById('tools'); if(aside) aside.scrollTop=0;
     }
@@ -6366,7 +6401,8 @@ function ssInertBackdrop(on){
 }
 (function(){
   var skip=document.getElementById('ssSkip');
-  if(skip) skip.onclick=function(){ ssHide(); track('start:skip'); };
+  /* 白紙で入った人は商品を選んでいないので、ピッカーを開いた状態で編集画面へ */
+  if(skip) skip.onclick=function(){ ssHide(); if(typeof setProductPicker==='function') setProductPicker(true); track('start:skip'); };
   var el=document.getElementById('startScreen');
   if(el) el.addEventListener('keydown', function(e){ if(e.key==='Escape'){ ssHide(); } });
 })();
@@ -6679,7 +6715,7 @@ var BRAND_CATALOG=manifestBrandCatalog();
 (function(){
   var q=null; try{ q=new URLSearchParams(location.search); }catch(e){}
   var mode=q?q.get('start'):null;
-  if(mode==='0') return;
+  if(mode==='0'){ if(typeof setProductPicker==='function' && !(typeof hasAnyDesign==='function' && hasAnyDesign())) setProductPicker(true); return; }
   if(mode!=='1' && typeof hasAnyDesign==='function' && hasAnyDesign()) return;
   if(typeof ssShow==='function') ssShow();
 })();
