@@ -375,6 +375,12 @@
   .obj-act svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
   .obj-act small{font-size:11px;display:block;margin-top:2px;color:var(--ink-3);}
   .compose-hint{display:none;font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.5;}
+  /* 実寸の目安 */
+  .obj-dim{align-self:center;font-size:11.5px;font-weight:800;color:var(--ink);padding:0 8px 0 9px;border-left:1px solid var(--hair);margin-left:3px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .guide-dim{position:absolute;z-index:30;pointer-events:none;font-size:11px;font-weight:700;color:var(--ink-3);
+    background:rgba(255,255,255,.84);border:1px solid var(--hair-soft);border-radius:999px;padding:2px 9px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .real-dim-row input[type=number]{width:74px;min-width:0;padding:7px 8px;border:1px solid var(--line);border-radius:var(--radius-md,4px);font-size:13px;}
+  #realSizeInfo{margin-top:6px;}
 
   /* context menu */
   .ctxmenu{position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;min-width:170px;}
@@ -1103,6 +1109,13 @@
       </div>
       <label class="fld" id="lblColor">商品カラー <span class="fld-sub" id="colorName"></span></label>
       <div class="swatches" id="swatches"></div>
+      <!-- 実寸の目安: メーカーのサイズ表（身幅・身丈）から 1cm が何pxかを決め、プリント範囲や
+           選択中の要素の大きさを cm で表示する。サイズを選ぶと目安が変わる（デザインは動かさない） -->
+      <div id="realSizeWrap" hidden>
+        <label class="fld">サイズ <span class="fld-sub" id="realSizeSub">（実寸の目安）</span></label>
+        <div class="chiprow" id="realSizes"></div>
+        <div class="mini note" id="realSizeInfo"></div>
+      </div>
       <!-- ステッカー／アクリルキーホルダーは編集ではなく「画像から作る」商品なので、
            ヘッダーのトグル頼みにせず、商品カードから直接入口を出す -->
       <button class="btn btn-primary btn-block mt-s hidden" id="diecutEntry" type="button">画像からデータを作る</button>
@@ -1475,6 +1488,15 @@
       <h3><span class="dot"></span>配置プリセット</h3>
       <div class="presets" id="presetWrap"></div>
       <div class="mini note">選択中の要素を定番の位置・サイズに合わせます</div>
+      <div class="field" id="realDimWrap" hidden>
+        <label class="fld">実寸で大きさを指定 <span class="fld-sub">（cm・縦横比はそのまま）</span></label>
+        <div class="row real-dim-row">
+          <input type="number" id="realW" step="0.1" min="0.5" inputmode="decimal" placeholder="幅" aria-label="幅（cm）"><span class="mini">×</span>
+          <input type="number" id="realH" step="0.1" min="0.5" inputmode="decimal" placeholder="高さ" aria-label="高さ（cm）"><span class="mini">cm</span>
+          <button class="btn btn-ghost" id="realApply" type="button">適用</button>
+        </div>
+        <div class="mini note" id="realDimNote"></div>
+      </div>
     </div>
 
     <div class="card" data-tab="layer" data-panel="layer">
@@ -1486,6 +1508,8 @@
   </aside>
 
   <section class="stage" id="stage">
+    <!-- 実寸の目安: プリント範囲の cm 表示（枠の下に追従） -->
+    <div class="guide-dim" id="guideDim" hidden></div>
     <!-- F-4: プリント枠からはみ出したまま黙って進ませない -->
     <div class="ov-warn" id="ovWarn" role="status" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
@@ -1650,6 +1674,7 @@
   <button class="obj-act" id="actLock" title="ロック"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg><small>ロック</small></button>
   <button class="obj-act" id="actDup" title="複製"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg><small>複製</small></button>
   <button class="obj-act danger" id="actDel" title="削除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m-9 0v14a2 2 0 002 2h6a2 2 0 002-2V6"/></svg><small>削除</small></button>
+  <span class="obj-dim" id="objDim" hidden title="選択中の要素の実寸（外接サイズ・目安）"></span>
 </div>
 
 <!-- Context menu -->
@@ -3726,6 +3751,176 @@ function updateOverflowWarn(){
   }, 60);
 }
 
+/* =====================================================================
+   実寸の目安（SeeQReal）— 「Mサイズならこのプリントは何cm？」に答える
+   --------------------------------------------------------------------
+   メーカー公表のサイズ表（身幅・身丈）と、公式線画上の胴の幅（vb単位）から
+   「1cm = 何px」を決める。サイズを選ぶと換算だけが変わり、デザインや枠は動かさない
+   （枠＝公式テンプレ基準のプリント範囲は「商品に対する比率」で定義されているため）。
+   ・プリント範囲の cm（枠の下に追従表示）
+   ・選択中の要素の外接サイズ cm（操作バー）
+   ・cm を入力して大きさを指定（配置カード）
+   ・見積に「サイズ／プリント実寸」を同梱
+   サイズ表の出典は各品目の ref。採用ボディが違う場合は表を差し替えるだけでよい。
+   ===================================================================== */
+var SeeQReal=(function(){
+  /* sizes: [表示名, 身幅cm, 身丈cm]。torso: 前面線画で身幅に相当する胴の幅（vb単位）。
+     sleeveHem: 前面線画の袖口の長さ（vb単位）／ sleeveW: 袖アップ線画の袖口幅（vb単位） */
+  var CFG={
+    tshirt:{ ref:'United Athle 5001-01（5.6oz）', def:'M', torso:1601, sleeveHem:579, sleeveW:696,
+      sizes:[['S',49,65],['M',52,69],['L',55,73],['XL',58,77],['XXL',63,81],['XXXL',68,84]] },
+    dry:{ ref:'United Athle 5900-01（4.1oz）', def:'M', torso:1601, sleeveHem:579, sleeveW:696,
+      sizes:[['S',48,65],['M',51,68],['L',54,71],['XL',57,74],['XXL',60,77],['XXXL',64,80],['XXXXL',68,83],['5XL',73,85],['6XL',77,87]] },
+    longtee:{ ref:'United Athle 5010-01（5.6oz）', def:'M', torso:1343,
+      sizes:[['S',49,65],['M',52,69],['L',55,73],['XL',58,77],['XXL',63,81]] },
+    sweat:{ ref:'United Athle 5044-01（10.0oz）', def:'M', torso:1496,
+      sizes:[['S',52,63],['M',55,67],['L',58,71],['XL',63,76],['XXL',68,81],['XXXL',73,84]] },
+    parka:{ ref:'United Athle 5214-01（10.0oz）', def:'M', torso:1427,
+      sizes:[['S',52,63],['M',55,67],['L',58,71],['XL',63,76],['XXL',68,81],['XXXL',73,84]] }
+  };
+  var sel={};                                   /* productId → サイズ名（未選択は def） */
+  function cfg(pid){ return CFG[pid||currentProduct]||null; }
+  function sizeKey(pid){ var c=cfg(pid); if(!c) return null; var k=sel[pid||currentProduct]; return (k && c.sizes.some(function(s){return s[0]===k;})) ? k : c.def; }
+  function sizeRow(pid){ var c=cfg(pid); if(!c) return null; var k=sizeKey(pid); return c.sizes.filter(function(s){return s[0]===k;})[0]||null; }
+  /* BASE(480×560)座標での 1cm あたり px。線画のない面・対象外品目は null */
+  function ppcBase(pid, faceId){
+    pid=pid||currentProduct; faceId=faceId||currentFace;
+    var c=cfg(pid), row=sizeRow(pid); if(!c||!row) return null;
+    var lf=(typeof lineartFace==='function') ? lineartFace(pid, faceId) : null; if(!lf) return null;
+    var basePerUnit=lf.disp.w/lf.vb.w;                     /* BASE px / vb単位 */
+    if(faceId==='front'||faceId==='back'){ return (c.torso*basePerUnit)/row[1]; }
+    if(c.sleeveHem && c.sleeveW){                          /* 袖: 袖口の長さで前面と揃える */
+      var hemCm=c.sleeveHem*(row[1]/c.torso);
+      return (c.sleeveW*basePerUnit)/hemCm;
+    }
+    return null;
+  }
+  function ppcCanvas(pid, faceId){ var b=ppcBase(pid, faceId); return b ? b*scaleUnit() : null; }
+  function fmt(v){ return (Math.round(v*10)/10).toFixed(1); }
+  /* プリント範囲（枠）の cm */
+  function guideCm(){
+    var p=ppcBase(); if(!p) return null; var g=curFaceDef().guide; if(!g) return null;
+    return { w:g.w/p, h:g.h/p };
+  }
+  /* 要素の外接サイズ cm（回転込み） */
+  function objCm(o){
+    var p=ppcCanvas(); if(!p||!o) return null;
+    try{ var b=o.getBoundingRect(true,true); return { w:b.width/p, h:b.height/p }; }catch(e){ return null; }
+  }
+  /* 面のデザイン全体（全要素の外接）cm。編集中の面は実オブジェクト、他の面は保存状態(JSON)から近似 */
+  function designCm(faceId){
+    faceId=faceId||currentFace;
+    var p=ppcCanvas(currentProduct, faceId); if(!p) return null;
+    var l=1e9,t=1e9,r=-1e9,b=-1e9;
+    function acc(x0,y0,x1,y1){ l=Math.min(l,x0); t=Math.min(t,y0); r=Math.max(r,x1); b=Math.max(b,y1); }
+    if(faceId===currentFace){
+      userObjects().forEach(function(o){ if(o.visible===false) return; try{ var bb=o.getBoundingRect(true,true); acc(bb.left,bb.top,bb.left+bb.width,bb.top+bb.height); }catch(e){} });
+    } else {
+      (faceState[stateKey(currentProduct, faceId)]||[]).forEach(function(j){
+        if(!j || j.visible===false) return;
+        var w=(j.width||0)*(j.scaleX||1), h=(j.height||0)*(j.scaleY||1), a=(j.angle||0)*Math.PI/180;
+        var W=Math.abs(w*Math.cos(a))+Math.abs(h*Math.sin(a)), H=Math.abs(w*Math.sin(a))+Math.abs(h*Math.cos(a));
+        var cx=(j.originX==='center')?j.left:(j.originX==='right'?j.left-w/2:j.left+w/2);
+        var cy=(j.originY==='center')?j.top:(j.originY==='bottom'?j.top-h/2:j.top+h/2);
+        acc(cx-W/2, cy-H/2, cx+W/2, cy+H/2);
+      });
+    }
+    if(r<=l) return null; return { w:(r-l)/p, h:(b-t)/p };
+  }
+
+  /* ---- UI: サイズチップ ---- */
+  var wrap=document.getElementById('realSizeWrap'), chips=document.getElementById('realSizes'), info=document.getElementById('realSizeInfo');
+  function renderChips(){
+    if(!wrap) return; var c=cfg();
+    if(!c){ wrap.hidden=true; return; }
+    wrap.hidden=false; chips.innerHTML=''; var k=sizeKey();
+    c.sizes.forEach(function(s){
+      var b=document.createElement('button'); b.type='button'; b.className='chip'+(s[0]===k?' on':''); b.textContent=s[0];
+      b.setAttribute('aria-pressed', s[0]===k?'true':'false');
+      b.onclick=function(){ sel[currentProduct]=s[0]; renderChips(); refreshAll(); };
+      chips.appendChild(b);
+    });
+    var row=sizeRow();
+    info.textContent='身幅 '+row[1]+'cm・身丈 '+row[2]+'cm（'+c.ref+' のサイズ表を基準にした目安）';
+  }
+  /* ---- UI: 枠の cm ラベル（枠の下に追従） ---- */
+  var gd=document.getElementById('guideDim'), stageEl=document.getElementById('stage');
+  var posTimer=0;
+  function placeGuideLabel(){
+    if(!gd) return;
+    var g=guideCm();
+    if(!g || !guideVisibleFor(curProduct()) || !guide.visible){ gd.hidden=true; return; }
+    gd.textContent='プリント範囲 約'+fmt(g.w)+'×'+fmt(g.h)+'cm（'+sizeKey()+'）';
+    var gb=guideBox(); if(!gb){ gd.hidden=true; return; }
+    var cr=canvas.upperCanvasEl.getBoundingClientRect(), sr=stageEl.getBoundingClientRect();
+    gd.hidden=false;
+    var left=cr.left-sr.left+gb.left, top=cr.top-sr.top+gb.top+gb.height+6;
+    var maxTop=stageEl.clientHeight-gd.offsetHeight-6;
+    if(top>maxTop) top=cr.top-sr.top+gb.top+gb.height-gd.offsetHeight-6;   /* 下に余白が無ければ枠の内側 */
+    gd.style.left=Math.max(4,Math.round(left))+'px'; gd.style.top=Math.round(top)+'px';
+  }
+  function schedulePlace(){ if(posTimer) return; posTimer=setTimeout(function(){ posTimer=0; placeGuideLabel(); }, 40); }
+  /* ---- UI: 操作バーの cm ---- */
+  var od=document.getElementById('objDim');
+  function refreshObjDim(){
+    if(!od) return; var o=canvas.getActiveObject(); var d=o?objCm(o):null;
+    if(!d){ od.hidden=true; od.textContent=''; return; }
+    od.hidden=false; od.textContent=fmt(d.w)+'×'+fmt(d.h)+'cm';
+    /* 配置カードの入力欄にも現在値を入れておく */
+    if(rw && document.activeElement!==rw && document.activeElement!==rh){ rw.value=fmt(d.w); rh.value=fmt(d.h); }
+    if(dimWrap) dimWrap.hidden=false;
+  }
+  /* ---- UI: cm 指定 ---- */
+  var dimWrap=document.getElementById('realDimWrap'), rw=document.getElementById('realW'), rh=document.getElementById('realH'), rApply=document.getElementById('realApply'), rNote=document.getElementById('realDimNote');
+  var lastEdited='w';
+  if(rw) rw.addEventListener('input', function(){ lastEdited='w'; syncOther(); });
+  if(rh) rh.addEventListener('input', function(){ lastEdited='h'; syncOther(); });
+  function syncOther(){ var o=canvas.getActiveObject(), d=o?objCm(o):null; if(!d) return;
+    if(lastEdited==='w'){ var w=parseFloat(rw.value); if(w>0) rh.value=fmt(w*d.h/d.w); }
+    else { var h=parseFloat(rh.value); if(h>0) rw.value=fmt(h*d.w/d.h); } }
+  function applyDim(){
+    var o=canvas.getActiveObject(); var d=o?objCm(o):null; if(!o||!d){ toast('要素を選択してください'); return; }
+    if(o.locked){ toast('ロック中の要素は変更できません'); return; }
+    var w=parseFloat(rw.value), h=parseFloat(rh.value), k=null;
+    if(lastEdited==='w' && w>0) k=w/d.w; else if(h>0) k=h/d.h; else if(w>0) k=w/d.w;
+    if(!k || !isFinite(k)) return;
+    var cx=o.getCenterPoint();
+    o.set({ scaleX:o.scaleX*k, scaleY:o.scaleY*k });
+    o.setPositionByOrigin(cx,'center','center'); o.setCoords();
+    canvas.requestRenderAll(); commitHistory(); refreshObjDim(); try{ updateOverflowWarn(); }catch(e){}
+    var g=guideCm(); if(g && rNote){ var nd=objCm(o); rNote.textContent=(nd && (nd.w>g.w+0.05||nd.h>g.h+0.05)) ? 'プリント範囲（約'+fmt(g.w)+'×'+fmt(g.h)+'cm）を超えています' : ''; }
+  }
+  if(rApply) rApply.onclick=applyDim;
+  [rw,rh].forEach(function(el){ if(el) el.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); applyDim(); } }); });
+
+  function refreshAll(){ renderChips(); placeGuideLabel(); refreshObjDim(); if(dimWrap) dimWrap.hidden=!cfg(); if(rNote) rNote.textContent=''; }
+  /* 見積サマリ／送信用 */
+  function quoteRows(){
+    var c=cfg(); if(!c) return []; var row=sizeRow(), out=[];
+    out.push(['サイズ（目安）', row[0]+'　身幅'+row[1]+'／身丈'+row[2]+'cm']);
+    /* デザインのある面ごとに実寸 */
+    (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d) out.push(['プリント実寸（'+(f.label||f.id)+'）', '約'+fmt(d.w)+'×'+fmt(d.h)+'cm']); });
+    var g=guideCm(); if(g) out.push(['プリント範囲（'+(curFaceDef().label||currentFace)+'）', '約'+fmt(g.w)+'×'+fmt(g.h)+'cm']);
+    return out;
+  }
+  function payload(){ var c=cfg(); if(!c) return {}; var g=guideCm(), parts=[];
+    (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d) parts.push(f.id+':'+fmt(d.w)+'x'+fmt(d.h)); });
+    return { size:sizeKey(), sizeRef:c.ref, printCm:parts.join(';'), printAreaCm:g?(fmt(g.w)+'x'+fmt(g.h)):'' }; }
+
+  /* ---- 既存フローへの接続（宣言済み関数を包む） ---- */
+  var _upd=updateProductUI; updateProductUI=function(){ _upd.apply(this,arguments); refreshAll(); };
+  var _pg=positionGuide; positionGuide=function(){ _pg.apply(this,arguments); schedulePlace(); };
+  var _rb=refreshBars; refreshBars=function(){ _rb.apply(this,arguments); refreshObjDim(); };
+  canvas.on('after:render', schedulePlace);
+  canvas.on('object:scaling', refreshObjDim); canvas.on('object:modified', refreshObjDim); canvas.on('object:rotating', refreshObjDim);
+  window.addEventListener('resize', schedulePlace);
+  window.addEventListener('seeq:facechange', function(){ refreshAll(); });
+  window.addEventListener('seeq:productchange', function(){ refreshAll(); });
+  setTimeout(refreshAll, 0);
+  return { cfg:cfg, sizeKey:sizeKey, setSize:function(pid,k){ sel[pid]=k; refreshAll(); }, sizes:function(){ return sel; }, restore:function(m){ sel=Object.assign({}, m||{}); refreshAll(); },
+           ppcBase:ppcBase, guideCm:guideCm, objCm:objCm, designCm:designCm, quoteRows:quoteRows, payload:payload, refresh:refreshAll };
+})();
+
 /* text */
 document.getElementById('btnAddText').onclick=function(){
   /* M-9: 空欄のまま押すと無言で「テキスト」が入る。入れる動作は残しつつ、
@@ -4917,9 +5112,32 @@ function refreshBars(){
   if(isImg){ syncImagePanel(); }
   document.getElementById('actLock').querySelector('small').textContent = o.locked?'解除':'ロック';
   mobileFollowSelection(o);
+  pcFollowSelection(o, isText, isImg);
   positionContextBar();
   renderLayers();
 }
+/* PC: 選んだ要素の編集カード（テキストの編集／画像の編集）が畳まれていれば開き、
+   サイドバーの見える範囲外なら見える位置までスクロールする（Canva の『選ぶと右手に道具が出る』感覚）。
+   毎回ジャンプすると落ち着かないので、見えているときは動かさない */
+var _pcFollowLast=null;
+function pcFollowSelection(o, isText, isImg){
+  if(!o || isMobile()) return;
+  var card=isText?document.getElementById('textPanel'):(isImg?document.getElementById('imgPanel'):null);
+  if(!card){ _pcFollowLast=null; return; }
+  var tools=document.getElementById('tools'); if(!tools || !tools.contains(card)) return;
+  if(card.classList.contains('collapsed') && typeof setPanel==='function') setPanel(card, true);
+  var kind=isText?'text':'image'; if(_pcFollowLast===kind){ /* 同種の要素を選び直しただけならスクロールしない */ return; }
+  _pcFollowLast=kind;
+  var tr=tools.getBoundingClientRect(), cr=card.getBoundingClientRect();
+  var visible = cr.top>=tr.top && cr.top<=tr.bottom-140;
+  if(visible) return;
+  var target=tools.scrollTop + (cr.top-tr.top) - 12;
+  target=Math.max(0,target);
+  try{ tools.scrollTo({top:target, behavior:'smooth'}); }catch(e){ tools.scrollTop=target; }
+  /* 直後に別の処理（初期化の残り等）が scrollTop=0 に戻すことがあるので、少し後に位置を確かめて足りなければ確定させる */
+  clearTimeout(tools._followT); tools._followT=setTimeout(function(){ if(Math.abs(tools.scrollTop-target)>24) tools.scrollTop=target; }, 450);
+}
+canvas.on('selection:cleared', function(){ _pcFollowLast=null; });
 canvas.on('selection:created', refreshBars);
 canvas.on('selection:updated', refreshBars);
 canvas.on('selection:cleared', refreshBars);
@@ -5804,7 +6022,7 @@ document.getElementById('saveX').onclick=function(){ saveModal.classList.remove(
 saveModal.onclick=function(e){ if(e.target===saveModal) saveModal.classList.remove('show'); };
 function exportDesign(){
   saveCurrentFace();
-  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState});
+  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState, sizes:(window.SeeQReal?SeeQReal.sizes():undefined)});
 }
 /* opts.confirm=true のときは、いま編集中のデザインが消えることを必ず確認する。
    テンプレート適用にだけ確認があって、より危険な全置換に無かった非対称の解消（P0-5）。 */
@@ -5821,6 +6039,7 @@ function importDesign(json, opts){
   var faces = curProduct().faces.map(function(f){return f.id;});
   currentFace = (faces.indexOf(st.face)>=0) ? st.face : faces[0];
   currentColor = curColors().filter(function(c){return c.hex===st.color;})[0] || curColors()[0];
+  try{ if(st.sizes && window.SeeQReal) SeeQReal.restore(st.sizes); }catch(e){}
   renderProductSelector(); renderSwatches(curColors()); renderFaceTabs();
   updateProductUI(); updateFaceUI(); positionGuide(); applyShirt();
   loadFace(faceState[stateKey()], function(){ renderLayers(); refreshBars(); histGuard=false; commitHistory(); });
@@ -6122,6 +6341,7 @@ function quotePayload(){
   try{ preview=window.SEEQ_3D_THUMB || designThumb() || ''; }catch(e){}
   var key='';
   try{ key=exportDesign(); }catch(e){}
+  var rp={}; try{ rp=window.SeeQReal?SeeQReal.payload():{}; }catch(e){}
   /* デザインキーは写真を貼ると巨大になる。受け口の上限に合わせて安全側で落とす */
   if(key && key.length>6*1024*1024) key='';
   return {
@@ -6138,7 +6358,9 @@ function quotePayload(){
     designKey:key,
     preview:preview,
     designCode:(window.SEEQ_DESIGN_CODE||''),
-    pageUrl:location.href
+    pageUrl:location.href,
+    /* 実寸の目安（サイズ表ベース）。quote-server 側でメール本文に載せる */
+    realSize:rp.size||'', realSizeRef:rp.sizeRef||'', realPrintCm:rp.printCm||'', realPrintAreaCm:rp.printAreaCm||''
   };
 }
 (function(){
@@ -9292,6 +9514,8 @@ var SeeQDieCut=(function(){
         if(dt.hole) specUl.appendChild(row('穴', (ds.holes||[]).length+'箇所・径'+(ds.holeDiaMM||0).toFixed(1)+'mm'));
         if(dt.pin) specUl.appendChild(row('ピン位置', (ds.pins&&ds.pins.length)?'指定あり':'未指定'));
       }
+      /* 実寸の目安（サイズ／プリント実寸／プリント範囲） */
+      try{ if(window.SeeQReal){ SeeQReal.quoteRows().forEach(function(r){ specUl.appendChild(row(r[0], r[1], {badge:true})); }); } }catch(e3){}
       specUl.appendChild(row('デザイン要素', stt.objs+' 点'));
       specUl.appendChild(row('プレビュー', window.SEEQ_3D_THUMB?'3D 静止画 同梱':'2D 画像 同梱'));
       summary.hidden=false;
