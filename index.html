@@ -934,7 +934,6 @@
   @media (max-width:820px){
     .s3d-panel{gap:6px 10px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));}
     .s3d-group>.lbl{display:none;}
-    #mkTurnGrp .mini{display:none;}   /* 回転の案内は画面上のヒントに任せて1段節約 */
     .s3d-chip{padding:7px 11px;}
     .s3d-hint{bottom:10px;}
   }
@@ -948,13 +947,6 @@
     border-radius:6px;box-shadow:0 6px 26px rgba(16,24,34,.10);}
   .mk-mount img.alpha{background:
     conic-gradient(from 90deg,#fff 0 25%,#ededea 0 50%,#fff 0 75%,#ededea 0) 0 0/18px 18px;}
-  /* 衣類の本物3D（SeeQGarment3D）: mount いっぱいに WebGL キャンバスを敷く */
-  .mk-mount.g3d-on{padding:0;cursor:grab;touch-action:none;}
-  .mk-mount.g3d-on:active{cursor:grabbing;}
-  .mk-mount canvas.g3d{position:absolute;inset:0;width:100%!important;height:100%!important;display:block;border-radius:0;box-shadow:none;touch-action:none;}
-  .mk-mount.g3d-bg-alpha{background:conic-gradient(from 90deg,#fff 0 25%,#ededea 0 50%,#fff 0 75%,#ededea 0) 0 0/18px 18px;}
-  .mk-mount .g3d-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:11.5px;color:var(--ink-3);
-    background:rgba(255,255,255,.72);border:1px solid var(--hair-soft);border-radius:999px;padding:4px 13px;pointer-events:none;white-space:nowrap;}
 
   /* ===== 入稿データ変換ステージ（ダイカット系） ===== */
   .die-mount{cursor:default;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;}
@@ -1548,7 +1540,6 @@
         </span>
         <span class="mini" style="color:var(--sub);margin-left:6px">ドラッグでも回せます</span>
       </div>
-      <div class="s3d-group" id="mkModeGrp" hidden><span class="lbl">見え方</span><span class="s3d-chips" id="mkMode"></span></div>
       <div class="s3d-group"><span class="lbl">環境光</span><span class="s3d-chips" id="mkEnv"></span></div>
       <div class="s3d-group"><span class="lbl">背景</span><span class="s3d-chips" id="mkBg"></span></div>
       <span class="spacer"></span>
@@ -8051,375 +8042,6 @@ var SeeQMockup=(function(){
 })();
 
 /* =====================================================================
-   衣類の本物3D（SeeQGarment3D）— 公式線画から起こす立体メッシュ
-   --------------------------------------------------------------------
-   外部の3Dモデルは使わず、公式線画（SEEQ_LINEART）そのものを立体にする：
-     ① 前面／背面の線画をラスタライズ → 生地のあるピクセルをマスクにする
-     ② マスクの内側で「ふちからの距離」を距離変換（chamfer）で求める
-     ③ 距離に応じて手前へふくらむ高さ場（ピロー）を前後2枚つくり、
-        背面は Y 軸で180°回して合わせる（＝ふちで z=0 になり閉じる）
-     ④ テクスチャ＝線画（色付き）＋各面のデザイン（＋袖プリント）。
-        線画の外は透明なので alphaTest で切り抜く＝輪郭は線画のまま
-   胴は厚く・袖や持ち手は細く、というふくらみ方は距離場から自然に出る。
-   Fabric コア・2Dモックアップには触れず faceTexturePromise() を読むだけ。
-   ===================================================================== */
-var SeeQGarment3D=(function(){
-  var THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-  var TEX_MAX=2048;          /* テクスチャ長辺(px)。maxTextureSize で下げる */
-  var GRID=168;              /* メッシュ列数（行数は線画の縦横比から） */
-  var FINE=4;                /* 距離変換はメッシュの FINE 倍の細かさで */
-  /* ふくらみ: 半厚 T と丸めの効く距離 R（いずれも線画横幅比）。断面は放物線 z=T(2x-x²)：
-     ふちの傾きが有限（円弧のように垂直に立ち上がらない）ので、線画の輪郭線が側面で太い帯にならない。
-     胴(d≈0.31W)で最厚・袖(d≈0.11W)で約0.58倍＝袖は自然に細くなる */
-  var PUFF={ T:0.155, R:0.31 };
-  /* 輪郭線のなじませ: 生地のふちから EDGE_SOFT×texW 以内の画素を生地色へ EDGE_MIX だけ寄せる
-     （線画の太い輪郭線が立体の側面で「黒い縁」に見えるのを抑える。正面の輪郭は残す） */
-  var EDGE_SOFT=0.0045, EDGE_MIX=0.55;
-  /* 袖プリントの前面線画上の配置（線画 viewBox 比率・暫定）。
-     rot はデザインの「上」を肩へ向ける回転(rad)。実物の袖位置が確定したら差し替える */
-  var SLEEVE_MAP={
-    tshirt:{ sleeveR:{fx:0.0883, fy:0.2548, fw:0.090, rot: 0.71}, sleeveL:{fx:0.9117, fy:0.2548, fw:0.090, rot:-0.71} }
-  };
-  SLEEVE_MAP.dry=SLEEVE_MAP.tshirt;
-
-  var threeLoading=null, st=null, mount=null, supportedCache=null;
-  var opt={ env:'studio', bg:'soft' };
-  var cur={ prodId:null, color:null, faces:null };
-  var laCache={};            /* prodId:face:color:w → HTMLImageElement */
-
-  function ensureThree(){
-    if(window.THREE) return Promise.resolve(window.THREE);
-    if(threeLoading) return threeLoading;
-    threeLoading=new Promise(function(res,rej){
-      var s=document.createElement('script'); s.src=THREE_URL; s.async=true;
-      s.onload=function(){ res(window.THREE); }; s.onerror=function(){ rej(new Error('three load failed')); };
-      document.head.appendChild(s);
-    });
-    return threeLoading;
-  }
-  function supported(){
-    if(supportedCache!=null) return supportedCache;
-    try{ var c=document.createElement('canvas'); supportedCache=!!(c.getContext('webgl')||c.getContext('experimental-webgl')); }
-    catch(e){ supportedCache=false; }
-    return supportedCache;
-  }
-  function envOf(){ var E=(window.SeeQMockup&&SeeQMockup.env)||{}; return E[opt.env]||E.studio||{ light:[-0.42,0.72,0.55], env:1, key:1, amb:1, tint:[1,1,1], bg:['#f4f4f1','#dcdbd6'] }; }
-
-  /* ---- 線画 → 色付き Image（品目×面×色×幅でキャッシュ） ---- */
-  function lineartImg(prodId, faceId, lf, color, w){
-    var key=prodId+':'+faceId+':'+color+':'+w;
-    if(laCache[key]) return Promise.resolve(laCache[key]);
-    return new Promise(function(res,rej){
-      var h=Math.round(w*lf.vb.h/lf.vb.w);
-      var img=new Image();
-      img.onload=function(){ laCache[key]=img; res(img); };
-      img.onerror=function(){ rej(new Error('lineart rasterize failed')); };
-      var svg=lf.svg.split('fill="FABRIC"').join('fill="'+color+'"').replace('<svg ', '<svg width="'+w+'" height="'+h+'" ');
-      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
-    });
-  }
-  /* ---- 面テクスチャ: 線画 + デザイン(+袖) → canvas ---- */
-  function faceTexture(prodId, faceId, color, texW){
-    var lf=lineartFace(prodId, faceId); if(!lf) return Promise.resolve(null);
-    var texH=Math.round(texW*lf.vb.h/lf.vb.w);
-    var jobs=[ lineartImg(prodId, faceId, lf, color, texW), faceTexturePromise(prodId, faceId, 1400) ];
-    var smap=(faceId==='front' && SLEEVE_MAP[prodId]) || null, sids=smap?Object.keys(smap):[];
-    sids.forEach(function(sid){ jobs.push(faceTexturePromise(prodId, sid, 700)); });
-    return Promise.all(jobs).then(function(r){
-      var img=r[0], des=r[1];
-      var c=document.createElement('canvas'); c.width=texW; c.height=texH;
-      var x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
-      x.drawImage(img,0,0,texW,texH);
-      var g=lf.guide;
-      if(des){ x.globalAlpha=0.94; x.drawImage(des, g.x*texW, g.y*texH, g.w*texW, g.h*texH); x.globalAlpha=1; }
-      sids.forEach(function(sid,i){
-        var t=r[2+i], m=smap[sid]; if(!t) return;
-        var w=m.fw*texW, h=w*(t.height/t.width);
-        x.save(); x.translate(m.fx*texW, m.fy*texH); x.rotate(m.rot); x.globalAlpha=0.94;
-        x.drawImage(t,-w/2,-h/2,w,h); x.restore();
-      });
-      /* デザインが線画の外に出ていても、生地の外は必ず透明にする（浮いた欠片を出さない） */
-      x.save(); x.globalCompositeOperation='destination-in'; x.drawImage(img,0,0,texW,texH); x.restore();
-      softenEdge(x, texW, texH, color);
-      return { canvas:c, img:img, lf:lf, w:texW, h:texH };
-    });
-  }
-  /* 輪郭線のなじませ（分離型 min フィルタで「ふちからr画素以内」を求め、生地色へ寄せる） */
-  function softenEdge(x, W, H, color){
-    var r=Math.max(2,Math.round(W*EDGE_SOFT)); if(EDGE_MIX<=0) return;
-    var id=x.getImageData(0,0,W,H), d=id.data, N=W*H, i,j,k;
-    var a=new Uint8Array(N), m1=new Uint8Array(N), m2=new Uint8Array(N);
-    for(k=0;k<N;k++) a[k]=d[k*4+3];
-    /* 横パス */
-    for(j=0;j<H;j++){ var row=j*W; for(i=0;i<W;i++){ var mn=255, i0=Math.max(0,i-r), i1=Math.min(W-1,i+r); for(k=i0;k<=i1;k++){ var v=a[row+k]; if(v<mn){ mn=v; if(!mn) break; } } m1[row+i]=mn; } }
-    /* 縦パス */
-    for(i=0;i<W;i++){ for(j=0;j<H;j++){ var mn2=255, j0=Math.max(0,j-r), j1=Math.min(H-1,j+r); for(k=j0;k<=j1;k++){ var v2=m1[k*W+i]; if(v2<mn2){ mn2=v2; if(!mn2) break; } } m2[j*W+i]=mn2; } }
-    var c=parseInt(String(color||'#cccccc').replace('#',''),16); if(isNaN(c)) c=0xcccccc;
-    var cr=(c>>16)&255, cg=(c>>8)&255, cb=c&255, mix=EDGE_MIX;
-    for(k=0;k<N;k++){ if(m2[k]<128 && a[k]>0){ var o=k*4; d[o]=d[o]+(cr-d[o])*mix; d[o+1]=d[o+1]+(cg-d[o+1])*mix; d[o+2]=d[o+2]+(cb-d[o+2])*mix; } }
-    x.putImageData(id,0,0);
-  }
-  /* ---- マスク＋距離変換（chamfer 3-4）。線画のアルファを FINE 倍解像度で ---- */
-  function distanceField(img, cols, rows){
-    var fc=cols*FINE, fr=rows*FINE;
-    var c=document.createElement('canvas'); c.width=fc; c.height=fr;
-    var x=c.getContext('2d'); x.drawImage(img,0,0,fc,fr);
-    var a=x.getImageData(0,0,fc,fr).data;
-    var INF=1e9, d=new Float32Array(fc*fr), i,j,k;
-    for(k=0;k<fc*fr;k++) d[k]=(a[k*4+3]>=128)?INF:0;
-    for(j=0;j<fr;j++) for(i=0;i<fc;i++){ k=j*fc+i; if(!d[k]) continue; var v=d[k];
-      if(i>0) v=Math.min(v,d[k-1]+3); if(j>0){ v=Math.min(v,d[k-fc]+3); if(i>0) v=Math.min(v,d[k-fc-1]+4); if(i<fc-1) v=Math.min(v,d[k-fc+1]+4); } d[k]=v; }
-    for(j=fr-1;j>=0;j--) for(i=fc-1;i>=0;i--){ k=j*fc+i; if(!d[k]) continue; var v2=d[k];
-      if(i<fc-1) v2=Math.min(v2,d[k+1]+3); if(j<fr-1){ v2=Math.min(v2,d[k+fc]+3); if(i<fc-1) v2=Math.min(v2,d[k+fc+1]+4); if(i>0) v2=Math.min(v2,d[k+fc-1]+4); } d[k]=v2; }
-    /* 単位: メッシュ列（=線画横幅/cols）。ふちのセルは 0 */
-    for(k=0;k<fc*fr;k++) d[k]=d[k]/3/FINE;
-    return { d:d, fc:fc, fr:fr, sample:function(u,v){          /* u,v ∈[0,1] 双一次 */
-      var px=u*(fc-1), py=v*(fr-1), x0=Math.floor(px), y0=Math.floor(py), x1=Math.min(fc-1,x0+1), y1=Math.min(fr-1,y0+1), tx=px-x0, ty=py-y0;
-      return (d[y0*fc+x0]*(1-tx)+d[y0*fc+x1]*tx)*(1-ty)+(d[y1*fc+x0]*(1-tx)+d[y1*fc+x1]*tx)*ty; } };
-  }
-  /* ---- 高さ場メッシュ（前面向き。背面はこれを Y 軸180°回転） ---- */
-  function buildGeometry(THREE, tex, W){
-    var cols=GRID, rows=Math.max(8,Math.round(GRID*tex.h/tex.w));
-    var H=W*tex.h/tex.w, DF=distanceField(tex.img, cols, rows);
-    var cell=W/(cols-1);                     /* 1列 = 世界座標でこの幅 */
-    var T=PUFF.T*W, R=PUFF.R*W;
-    var pos=new Float32Array(cols*rows*3), uv=new Float32Array(cols*rows*2), inside=new Uint8Array(cols*rows), dist=new Float32Array(cols*rows);
-    var i,j,n=0;
-    for(j=0;j<rows;j++) for(i=0;i<cols;i++){
-      var u=i/(cols-1), v=j/(rows-1);
-      var d=DF.sample(u,v)*cell; dist[n]=d;                   /* ふちからの距離（世界座標） */
-      var xr=Math.min(1,d/R), z=d>0 ? T*(2*xr-xr*xr) : 0;
-      pos[n*3]=(u-0.5)*W; pos[n*3+1]=(0.5-v)*H; pos[n*3+2]=z;
-      uv[n*2]=u; uv[n*2+1]=1-v;
-      /* 生地セルの近傍（半セル以内）にある頂点だけを面に含める＝透明な平面部を作らない */
-      var near=d>0; if(!near){ var e=0.5/(cols-1), e2=0.5/(rows-1);
-        near = DF.sample(Math.min(1,u+e),v)>0 || DF.sample(Math.max(0,u-e),v)>0 || DF.sample(u,Math.min(1,v+e2))>0 || DF.sample(u,Math.max(0,v-e2))>0; }
-      inside[n]=near?1:0; n++;
-    }
-    /* 高さ場をマスク付きで平滑化（袖と胴の距離場が出会う稜線＝折り目状の面を丸める。
-       生地の外(z=0)は混ぜないので輪郭は痩せない） */
-    (function(){ var rad=3, it=2, z=new Float32Array(cols*rows), z2=new Float32Array(cols*rows), z0=new Float32Array(cols*rows), k;
-      for(k=0;k<cols*rows;k++) z0[k]=z[k]=pos[k*3+2];
-      for(var t=0;t<it;t++){
-        for(j=0;j<rows;j++) for(i=0;i<cols;i++){ k=j*cols+i; if(!(z[k]>0)){ z2[k]=z[k]; continue; }
-          var s=0,c=0; for(var dj=-rad;dj<=rad;dj++){ var jj=j+dj; if(jj<0||jj>=rows) continue; for(var di=-rad;di<=rad;di++){ var ii=i+di; if(ii<0||ii>=cols) continue; var v=z[jj*cols+ii]; if(v>0){ s+=v; c++; } } }
-          z2[k]=c?s/c:z[k]; }
-        var tmp=z; z=z2; z2=tmp; }
-      /* ふち付近は元の高さを保つ（前後のふちが z≈0 で合わさる＝側面に隙間を作らない）。
-         内側へ入るほど平滑化した値へ寄せる */
-      for(k=0;k<cols*rows;k++){ var w=Math.min(1, dist[k]/(R*0.30)); pos[k*3+2]=z0[k]+(z[k]-z0[k])*w; }
-    })();
-    var idx=[];
-    for(j=0;j<rows-1;j++) for(i=0;i<cols-1;i++){
-      var a=j*cols+i, b=a+1, c=a+cols, dd=c+1;
-      if(!(inside[a]||inside[b]||inside[c]||inside[dd])) continue;
-      idx.push(a,c,b, b,c,dd);
-    }
-    var geo=new THREE.BufferGeometry();
-    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
-    geo.setIndex(idx); geo.computeVertexNormals();
-    return { geo:geo, W:W, H:H, T:T };
-  }
-  /* 生地の粒（バンプ用・タイル） */
-  var grainTex=null;
-  function grain(THREE){
-    if(grainTex) return grainTex;
-    var c=document.createElement('canvas'); c.width=c.height=128; var x=c.getContext('2d');
-    var id=x.createImageData(128,128), s=7;
-    for(var k=0;k<128*128;k++){ s=(s*16807)%2147483647; var v=118+ (s%36); id.data[k*4]=id.data[k*4+1]=id.data[k*4+2]=v; id.data[k*4+3]=255; }
-    x.putImageData(id,0,0);
-    grainTex=new THREE.CanvasTexture(c); grainTex.wrapS=grainTex.wrapT=THREE.RepeatWrapping; grainTex.repeat.set(70,70);
-    return grainTex;
-  }
-  /* 床の接地影（楕円のソフト影） */
-  function blobShadow(THREE){
-    var c=document.createElement('canvas'); c.width=256; c.height=128; var x=c.getContext('2d');
-    /* scale(1,0.5) 後の座標系で描くので中心は (128,128)。半径120→縦60でキャンバス内に収まり、縁は完全に透明 */
-    var g=x.createRadialGradient(128,128,4,128,128,118);
-    g.addColorStop(0,'rgba(18,26,36,0.50)'); g.addColorStop(0.5,'rgba(18,26,36,0.18)'); g.addColorStop(1,'rgba(18,26,36,0)');
-    x.save(); x.scale(1,0.5); x.fillStyle=g; x.fillRect(0,0,256,256); x.restore();
-    var t=new THREE.CanvasTexture(c); return t;
-  }
-
-  /* ---- ランタイム（renderer / camera / orbit） ---- */
-  function init(THREE, m){
-    var renderer;
-    try{ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true}); }
-    catch(e){ return null; }
-    renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
-    renderer.setClearColor(0x000000,0);
-    if('outputColorSpace' in renderer) renderer.outputColorSpace=THREE.SRGBColorSpace; else renderer.outputEncoding=THREE.sRGBEncoding;
-    var dom=renderer.domElement; dom.className='g3d'; dom.setAttribute('aria-label','仕上がり3Dプレビュー');
-    var scene=new THREE.Scene();
-    var camera=new THREE.PerspectiveCamera(28,1,0.05,100);
-    /* ライトはカメラに固定（どの角度から見ても正面が明るい・商品ビューア流儀） */
-    var key=new THREE.DirectionalLight(0xffffff,1.25); key.position.set(-2.6,3.4,3.0);
-    var fill=new THREE.DirectionalLight(0xffffff,0.30); fill.position.set(3.2,0.2,2.2);
-    var rim=new THREE.DirectionalLight(0xffffff,0.30); rim.position.set(0.5,2,-4);
-    camera.add(key,fill,rim); scene.add(camera);
-    var hemi=new THREE.HemisphereLight(0xffffff,0x6f767d,0.45); scene.add(hemi);
-    var amb=new THREE.AmbientLight(0xffffff,0.22); scene.add(amb);
-    var orbit={ yaw:0, pitch:0.10, radius:6, fit:6, vy:0, target:new THREE.Vector3(0,0,0), anim:null };
-    var dirty=true, raf=0, running=false;
-    function place(){
-      var y=orbit.yaw, p=orbit.pitch, r=orbit.radius;
-      camera.position.set(orbit.target.x + r*Math.cos(p)*Math.sin(y), orbit.target.y + r*Math.sin(p), orbit.target.z + r*Math.cos(p)*Math.cos(y));
-      camera.lookAt(orbit.target);
-    }
-    function render(){ place(); renderer.render(scene,camera); dirty=false; }
-    function loop(){
-      raf=requestAnimationFrame(loop);
-      var moved=false;
-      if(orbit.anim){ var a=orbit.anim, t=Math.min(1,(performance.now()-a.t0)/a.dur), e=1-Math.pow(1-t,3);
-        orbit.yaw=a.from+(a.to-a.from)*e; moved=true; if(t>=1){ orbit.anim=null; afterMove(); } }
-      else if(Math.abs(orbit.vy)>0.0004 && !drag.on){ orbit.yaw+=orbit.vy; orbit.vy*=0.92; moved=true; if(Math.abs(orbit.vy)<=0.0004){ orbit.vy=0; afterMove(); } }
-      if(dirty||moved) render();
-    }
-    /* 操作: ドラッグ回転（横=ヨー・縦=ピッチ）／ホイール・ピンチで拡大 */
-    var drag={on:false,x:0,y:0,lx:0,t:0,pinch:0,moved:false};
-    function onDown(e){ if(e.button!=null&&e.button!==0) return; drag.on=true; drag.moved=false; drag.x=drag.lx=e.clientX; drag.y=e.clientY; drag.t=performance.now(); orbit.anim=null; orbit.vy=0; try{ dom.setPointerCapture(e.pointerId);}catch(_){} }
-    function onMove(e){ if(!drag.on) return; var dx=e.clientX-drag.x, dy=e.clientY-drag.y; if(Math.abs(dx)+Math.abs(dy)>2) drag.moved=true;
-      orbit.yaw+=dx*0.011; orbit.pitch=Math.max(-0.35,Math.min(0.75,orbit.pitch+dy*0.006));
-      var now=performance.now(), dt=Math.max(1,now-drag.t); orbit.vy=(e.clientX-drag.lx)*0.011*Math.min(1,16/dt);
-      drag.lx=e.clientX; drag.t=now; drag.x=e.clientX; drag.y=e.clientY; dirty=true; }
-    function onUp(e){ if(!drag.on) return; drag.on=false; try{ dom.releasePointerCapture(e.pointerId);}catch(_){} if(Math.abs(orbit.vy)<0.0004){ orbit.vy=0; afterMove(); } }
-    function onWheel(e){ e.preventDefault(); orbit.radius=Math.max(orbit.fit*0.55,Math.min(orbit.fit*1.7,orbit.radius*(1+(e.deltaY>0?0.08:-0.08)))); dirty=true; }
-    function tDist(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY); }
-    function onTS(e){ if(e.touches.length===2){ drag.pinch=tDist(e.touches); drag.on=false; } }
-    function onTM(e){ if(e.touches.length===2){ e.preventDefault(); var d=tDist(e.touches); if(drag.pinch) orbit.radius=Math.max(orbit.fit*0.55,Math.min(orbit.fit*1.7,orbit.radius*(drag.pinch/d))); drag.pinch=d; dirty=true; } }
-    dom.addEventListener('pointerdown',onDown); dom.addEventListener('pointermove',onMove); dom.addEventListener('pointerup',onUp); dom.addEventListener('pointercancel',onUp);
-    dom.addEventListener('wheel',onWheel,{passive:false}); dom.addEventListener('touchstart',onTS,{passive:true}); dom.addEventListener('touchmove',onTM,{passive:false});
-    var ro=new ResizeObserver(function(){ resize(); });
-    function resize(){ if(!mount) return; var w=mount.clientWidth, h=mount.clientHeight; if(!w||!h) return; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); fit(); dirty=true; }
-    function fit(){ if(!st||!st.size) return; var S=st.size, half=Math.tan(camera.fov*Math.PI/360);
-      var rv=(S.H/2*1.16)/half, rh=(Math.max(S.W,S.T*2)/2*1.12)/(half*camera.aspect);
-      var f=Math.max(rv,rh)+S.T; var keep=orbit.fit?orbit.radius/orbit.fit:1; orbit.fit=f; orbit.radius=f*keep; }
-    function afterMove(){ settleListeners.forEach(function(fn){ try{ fn(); }catch(_){} }); }
-    st={ THREE:THREE, renderer:renderer, scene:scene, camera:camera, orbit:orbit, dom:dom, group:null, size:null,
-      lights:{key:key,fill:fill,hemi:hemi,amb:amb},
-      start:function(){ if(!running){ running=true; loop(); } dirty=true; },
-      stop:function(){ running=false; cancelAnimationFrame(raf); },
-      invalidate:function(){ dirty=true; }, render:render, resize:resize, fit:fit, ro:ro,
-      dragMoved:function(){ return drag.moved; } };
-    return st;
-  }
-  var settleListeners=[];
-
-  function disposeGroup(){
-    if(!st||!st.group) return;
-    st.scene.remove(st.group);
-    st.group.traverse(function(o){ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); } });
-    st.group=null;
-  }
-  function applyEnv(){
-    if(!st) return; var E=envOf();
-    st.lights.key.intensity=1.25*E.key; st.lights.hemi.intensity=0.45*E.amb; st.lights.amb.intensity=0.22*E.amb;
-    st.lights.key.color.setRGB(E.tint[0],E.tint[1],E.tint[2]);
-    if(mount){ mount.classList.remove('g3d-bg-white','g3d-bg-alpha');
-      if(opt.bg==='white'){ mount.style.background='#fff'; }
-      else if(opt.bg==='alpha'){ mount.style.background=''; mount.classList.add('g3d-bg-alpha'); }
-      else { mount.style.background='linear-gradient(180deg,'+E.bg[0]+' 0%,'+E.bg[1]+' 100%)'; } }
-    st.invalidate();
-  }
-  /* テクスチャ長辺: GPU上限と端末メモリで決める */
-  function texSize(){
-    var mx=TEX_MAX; try{ mx=Math.min(mx, st.renderer.capabilities.maxTextureSize||mx); }catch(_){}
-    if((navigator.deviceMemory && navigator.deviceMemory<=2)) mx=Math.min(mx,1536);
-    return mx;
-  }
-  function facesOf(prodId){
-    var p=PRODUCTS[prodId]; if(!p||!p.faces) return null;
-    var ids=p.faces.map(function(f){return f.id;});
-    var front=ids.indexOf('front')>=0?'front':ids[0], back=ids.indexOf('back')>=0?'back':null;
-    if(!lineartFace(prodId, front)) return null;
-    return { front:front, back:(back&&lineartFace(prodId,back))?back:null };
-  }
-  function build(prodId){
-    var THREE=st.THREE, faces=facesOf(prodId), color=currentColor.hex, W=2.5;
-    if(!faces) return Promise.reject(new Error('no lineart faces'));
-    var texW=texSize();
-    return Promise.all([ faceTexture(prodId, faces.front, color, texW), faces.back?faceTexture(prodId, faces.back, color, texW):Promise.resolve(null) ]).then(function(r){
-      disposeGroup();
-      var group=new THREE.Group(), gF=buildGeometry(THREE, r[0], W), gB=r[1]?buildGeometry(THREE, r[1], W):null;
-      function mat(tex){
-        var t=new THREE.CanvasTexture(tex.canvas);
-        if('colorSpace' in t) t.colorSpace=THREE.SRGBColorSpace; else t.encoding=THREE.sRGBEncoding;
-        t.anisotropy=Math.min(8, st.renderer.capabilities.getMaxAnisotropy?st.renderer.capabilities.getMaxAnisotropy():1);
-        t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.needsUpdate=true;
-        return new THREE.MeshStandardMaterial({ map:t, color:0xffffff, roughness:0.93, metalness:0, alphaTest:0.5, transparent:true,
-          side:THREE.FrontSide, bumpMap:grain(THREE), bumpScale:0.004 });
-      }
-      var mF=new THREE.Mesh(gF.geo, mat(r[0])); group.add(mF);
-      var H=gF.H;
-      if(gB){ var mB=new THREE.Mesh(gB.geo, mat(r[1])); mB.rotation.y=Math.PI;
-        /* 背面線画の縦位置は前面と同じレイアウト（disp.cy）で描かれる前提。高さ差は中央合わせで吸収 */
-        group.add(mB); H=Math.max(H,gB.H); }
-      else { /* 背面線画が無い品目: 前面を裏返して背面に（デザインなし） */
-        var gB2=buildGeometry(THREE, r[0], W); var lfImg=r[0].img, c2=document.createElement('canvas'); c2.width=r[0].w; c2.height=r[0].h; c2.getContext('2d').drawImage(lfImg,0,0,c2.width,c2.height);
-        var mB2=new THREE.Mesh(gB2.geo, mat({canvas:c2})); mB2.rotation.y=Math.PI; group.add(mB2); }
-      /* 床の接地影 */
-      var sh=new THREE.Mesh(new THREE.PlaneGeometry(W*1.05, W*0.55), new THREE.MeshBasicMaterial({map:blobShadow(THREE), transparent:true, depthWrite:false}));
-      sh.rotation.x=-Math.PI/2; sh.position.y=-H/2-0.02*H; group.add(sh);
-      st.scene.add(group); st.group=group;
-      st.size={ W:W, H:H, T:gF.T };
-      st.fit(); st.invalidate();
-      cur={ prodId:prodId, color:color, faces:faces };
-    });
-  }
-
-  /* ---- 公開API ---- */
-  function show(mountEl, prodId, o){
-    o=o||{}; if(o.env) opt.env=o.env; if(o.bg) opt.bg=o.bg;
-    if(!supported()) return Promise.reject(new Error('webgl unsupported'));
-    return ensureThree().then(function(THREE){
-      if(!st){ if(!init(THREE, mountEl)) throw new Error('renderer init failed'); }
-      if(mount!==mountEl){ if(mount){ try{ st.ro.unobserve(mount); }catch(_){} } mount=mountEl; st.ro.observe(mount); }
-      if(st.dom.parentNode!==mount) mount.appendChild(st.dom);
-      mount.classList.add('g3d-on'); st.dom.style.display='block';
-      applyEnv(); st.resize();
-      return build(prodId).then(function(){
-        if(o.angle!=null){ st.orbit.yaw=o.angle*Math.PI/180; }
-        st.orbit.pitch=0.10; st.orbit.radius=st.orbit.fit; st.orbit.vy=0; st.orbit.anim=null;
-        st.start(); st.render();
-        return st;
-      });
-    });
-  }
-  function hide(){ if(st){ st.stop(); st.dom.style.display='none'; } if(mount){ mount.classList.remove('g3d-on','g3d-bg-alpha'); mount.style.background=''; } }
-  function isActive(){ return !!(st && mount && st.dom.style.display!=='none' && st.dom.parentNode===mount && st.group); }
-  function angleDeg(){ if(!st) return 0; var a=st.orbit.yaw*180/Math.PI; a=((a%360)+360)%360; return a; }
-  function setAngle(deg, animate){
-    if(!st) return; var to=deg*Math.PI/180, from=st.orbit.yaw;
-    /* 最短回転方向 */
-    var d=((to-from)%(Math.PI*2)); if(d>Math.PI) d-=Math.PI*2; if(d<-Math.PI) d+=Math.PI*2;
-    if(animate===false){ st.orbit.yaw=from+d; st.invalidate(); settleListeners.forEach(function(fn){ try{ fn(); }catch(_){} }); return; }
-    st.orbit.vy=0; st.orbit.anim={ from:from, to:from+d, t0:performance.now(), dur:420 }; st.start();
-  }
-  function rotateBy(deg){ if(!st) return; var base=st.orbit.anim?st.orbit.anim.to:st.orbit.yaw; setAngle((base*180/Math.PI)+deg, true); }
-  function setEnv(k){ opt.env=k; applyEnv(); }
-  function setBg(k){ opt.bg=k; applyEnv(); }
-  /* 静止画（見積サムネ・画像保存用）: 商品まわりを縦長に切り出し、背景を焼き込む（透過モードは透過のまま） */
-  function thumb(){
-    if(!st) return '';
-    try{
-      st.render();
-      var src=st.renderer.domElement, sw=src.width, sh=src.height;
-      var cw=Math.min(sw, Math.round(sh*0.86)), ch=sh, sx=Math.round((sw-cw)/2);
-      var c=document.createElement('canvas'); c.width=cw; c.height=ch; var x=c.getContext('2d');
-      if(opt.bg!=='alpha'){ var E=envOf();
-        if(opt.bg==='white'){ x.fillStyle='#fff'; } else { var g=x.createLinearGradient(0,0,0,ch); g.addColorStop(0,E.bg[0]); g.addColorStop(1,E.bg[1]); x.fillStyle=g; }
-        x.fillRect(0,0,cw,ch); }
-      x.drawImage(src, sx,0,cw,ch, 0,0,cw,ch);
-      return c.toDataURL('image/png');
-    }catch(e){ return ''; }
-  }
-  function onSettle(fn){ settleListeners.push(fn); }
-  return { supported:supported, show:show, hide:hide, isActive:isActive, angle:angleDeg, setAngle:setAngle, rotateBy:rotateBy,
-           setEnv:setEnv, setBg:setBg, thumb:thumb, onSettle:onSettle, dragMoved:function(){ return st?st.dragMoved():false; } };
-})();
-
-/* =====================================================================
    モックアップ・ステージ（2D/3Dトグルの受け皿）
    kind:'mockup' の商品では「3D」ボタンをこちらが横取りする。既存の3Dモジュールの
    クリックハンドラは bubble 段なので、capture 段で止めれば 3D 側は一切動かない
@@ -8435,11 +8057,6 @@ var SeeQGarment3D=(function(){
 
   var opt={ env:'studio', bg:'soft' };
   var open=false, lastCanvas=null, busy=false;
-  /* 衣類の見え方: 'solid'=本物3D（SeeQGarment3D） / 'flat'=平置きターンテーブル。WebGL 不可なら自動で flat */
-  var viewMode='solid';
-  var modeWrap=document.getElementById('mkMode'), modeGrp=document.getElementById('mkModeGrp');
-  var G3D=window.SeeQGarment3D||null;
-  function g3dOn(){ return !!(G3D && G3D.isActive()); }
 
   function garmentTplId(){
     /* legacy定義（Tシャツ/パーカー/トート）は kind が無い＝アパレル扱い */
@@ -8466,41 +8083,17 @@ var SeeQGarment3D=(function(){
     if(envWrap){ envWrap.innerHTML='';
       SeeQMockup.envOrder.forEach(function(k){
         var b=chip(SeeQMockup.env[k].label, opt.env===k);
-        b.onclick=function(){ opt.env=k; renderChips(); if(g3dOn()){ G3D.setEnv(k); setThumbSoon(); } else refresh(); };
+        b.onclick=function(){ opt.env=k; renderChips(); refresh(); };
         envWrap.appendChild(b);
       });
     }
     if(bgWrap){ bgWrap.innerHTML='';
       SeeQMockup.bgOpts.forEach(function(o){
         var b=chip(o.label, opt.bg===o.k);
-        b.onclick=function(){ opt.bg=o.k; renderChips(); if(g3dOn()){ G3D.setBg(o.k); setThumbSoon(); } else refresh(); };
+        b.onclick=function(){ opt.bg=o.k; renderChips(); refresh(); };
         bgWrap.appendChild(b);
       });
     }
-    /* 見え方（衣類のみ）: 立体 / 平置き */
-    var canSolid=isGarment() && G3D && G3D.supported();
-    if(modeGrp) modeGrp.hidden=!canSolid;
-    if(modeWrap && canSolid){ modeWrap.innerHTML='';
-      [{k:'solid',label:'立体'},{k:'flat',label:'平置き'}].forEach(function(o){
-        var b=chip(o.label, viewMode===o.k);
-        b.onclick=function(){ if(viewMode===o.k) return; viewMode=o.k; renderChips(); refresh(); };
-        modeWrap.appendChild(b);
-      });
-    }
-  }
-  /* 3D の静止画を見積サムネへ（操作が落ち着いた時・環境変更時） */
-  var thumbTimer=0;
-  function setThumbSoon(){ clearTimeout(thumbTimer); thumbTimer=setTimeout(function(){ if(!g3dOn()) return; try{ var d=G3D.thumb(); if(d){ window.SEEQ_3D_THUMB=d; } }catch(_){} syncFaceChips(); }, 120); }
-  function syncFaceChips(){
-    if(!g3dOn()) return; var c=Math.cos(G3D.angle()*Math.PI/180);
-    var f=document.getElementById('mkTurnFront'), b=document.getElementById('mkTurnBack');
-    if(f) f.classList.toggle('on', c>=0); if(b) b.classList.toggle('on', c<0);
-  }
-  if(G3D) G3D.onSettle(setThumbSoon);
-  function g3dHint(on){
-    var h=mount.querySelector('.g3d-hint');
-    if(on){ if(!h){ h=document.createElement('div'); h.className='g3d-hint'; h.textContent='ドラッグで回転 · ホイール／ピンチで拡大'; mount.appendChild(h); } }
-    else if(h) h.remove();
   }
   /* ---- 衣類ターンテーブル（前後2枚の仕上がりを角度で切替＋横幅を cos で縮めて回転感） ---- */
   var turn={ angle:0, front:null, back:null, ready:false, dragging:false, x0:0, a0:0 };
@@ -8541,20 +8134,6 @@ var SeeQGarment3D=(function(){
     if(!isMockup() || busy) return;
     busy=true; setLoading(true);
     var tg=document.getElementById('mkTurnGrp');
-    if(isGarment() && viewMode==='solid' && G3D && G3D.supported()){
-      /* 本物3D。失敗（WebGL初期化不可・線画なし等）は平置きへ静かにフォールバック */
-      var pid3=curProduct().id||currentProduct, ids3=turnFaceIds();
-      if(tg) tg.hidden=false;
-      turn.ready=false; var oldImg=mount.querySelector('img.mk-out'); if(oldImg) oldImg.remove();
-      G3D.show(mount, pid3, { env:opt.env, bg:opt.bg, angle:(currentFace===ids3.back && ids3.back)?180:0 }).then(function(){
-        setLoading(false); busy=false; g3dHint(true); setThumbSoon();
-      }).catch(function(e){
-        console.warn('[SeeQGarment3D] fallback to flat:', e&&e.message);
-        G3D.hide(); g3dHint(false); busy=false; viewMode='flat'; renderChips(); refresh();
-      });
-      return;
-    }
-    if(G3D){ G3D.hide(); g3dHint(false); }
     if(isGarment()){
       var ids=turnFaceIds(), pid=curProduct().id||currentProduct;
       if(tg) tg.hidden=!ids.back;
@@ -8580,10 +8159,10 @@ var SeeQGarment3D=(function(){
   /* 回転操作: ボタン＋ドラッグ／スワイプ */
   (function(){
     var L=document.getElementById('mkTurnL'), R=document.getElementById('mkTurnR'), F=document.getElementById('mkTurnFront'), B=document.getElementById('mkTurnBack');
-    if(L) L.onclick=function(){ if(g3dOn()) G3D.rotateBy(-45); else setAngle(turn.angle-45); };
-    if(R) R.onclick=function(){ if(g3dOn()) G3D.rotateBy(45); else setAngle(turn.angle+45); };
-    if(F) F.onclick=function(){ if(g3dOn()) G3D.setAngle(0,true); else setAngle(0); };
-    if(B) B.onclick=function(){ if(g3dOn()) G3D.setAngle(180,true); else setAngle(180); };
+    if(L) L.onclick=function(){ setAngle(turn.angle-45); };
+    if(R) R.onclick=function(){ setAngle(turn.angle+45); };
+    if(F) F.onclick=function(){ setAngle(0); };
+    if(B) B.onclick=function(){ setAngle(180); };
     function down(e){ if(!turn.ready) return; var t=e.touches?e.touches[0]:e; turn.dragging=true; turn.x0=t.clientX; turn.a0=turn.angle; }
     function move(e){ if(!turn.dragging) return; var t=e.touches?e.touches[0]:e; setAngle(turn.a0 + (t.clientX-turn.x0)*0.6); if(e.cancelable) e.preventDefault(); }
     function up(){ if(!turn.dragging) return; turn.dragging=false; /* 近い面にスナップ */ var a=turn.angle, c=Math.cos(a*Math.PI/180); setAngle(c>=0?0:180); }
@@ -8595,7 +8174,7 @@ var SeeQGarment3D=(function(){
     try{ window.SeeQ && window.SeeQ.snapTo && window.SeeQ.snapTo('peek'); }catch(_){}
     renderChips(); refresh();
   }
-  function exit(){ open=false; setViewBtn('2d'); stage.classList.remove('show'); stage.setAttribute('aria-hidden','true'); if(G3D){ G3D.hide(); g3dHint(false); } }
+  function exit(){ open=false; setViewBtn('2d'); stage.classList.remove('show'); stage.setAttribute('aria-hidden','true'); }
 
   /* capture段でトグルを横取り（3D品目のときは何もせず既存3Dへ通す） */
   if(viewToggle) viewToggle.addEventListener('click', function(e){
@@ -8608,18 +8187,13 @@ var SeeQGarment3D=(function(){
 
   var back=document.getElementById('mkBack'); if(back) back.onclick=exit;
   var quote=document.getElementById('mkQuote');
-  if(quote) quote.onclick=function(){
-    if(g3dOn()){ try{ var d=G3D.thumb(); if(d) window.SEEQ_3D_THUMB=d; }catch(_){} }
-    exit(); var q=document.getElementById('btnQuote'); if(q) q.click(); };
+  if(quote) quote.onclick=function(){ exit(); var q=document.getElementById('btnQuote'); if(q) q.click(); };
   var save=document.getElementById('mkSave');
   if(save) save.onclick=function(){
-    var href=null;
-    if(g3dOn()){ href=G3D.thumb(); }
-    else if(lastCanvas){ href=lastCanvas.toDataURL('image/png'); }
-    if(!href) return;
+    if(!lastCanvas) return;
     var a=document.createElement('a');
     a.download='seeq-'+curProduct().id+'-mockup.png';
-    a.href=href; a.click();
+    a.href=lastCanvas.toDataURL('image/png'); a.click();
   };
   /* モックアップ品目では「3D」ではなく「仕上がり」を見せるので、トグルの文言を合わせる */
   function syncLabel(){
