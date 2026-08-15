@@ -1560,6 +1560,12 @@
         <span class="die-sld">幅<input type="range" id="dieBaseW" min="40" max="100" step="1" value="60"><span class="val" id="dieBaseWV">60mm</span></span>
         <span class="die-sld">差込<input type="range" id="dieTab" min="3" max="10" step="0.5" value="6"><span class="val" id="dieTabV">6.0mm</span></span>
       </div>
+      <div class="die-grp hidden" id="diePinGrp"><span class="lbl">ピン</span>
+        <span class="mini" style="color:var(--sub)">青い×印がピン（裏面金具）の位置。ドラッグ／タップで動かせます</span>
+      </div>
+      <div class="die-grp hidden" id="dieHwGrp"><span class="lbl">金具</span>
+        <span class="die-seg" id="dieHwSeg"></span>
+      </div>
       <div class="die-sep-v"></div>
       <div class="die-grp"><span class="lbl">仕上がり</span>
         <span class="die-sld">長辺<input type="range" id="dieSize" min="30" max="200" step="5" value="80"><span class="val" id="dieSizeV">80mm</span></span>
@@ -1770,7 +1776,7 @@
      ./build.ps1（deploy-live.ps1 が自動実行）でこの位置へ結合される。
      公開形は従来どおり index.html 1枚のまま。 -->
 <!-- BUILD:MANIFEST -->
-<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"cap-baseball","category":"apparel","brand":"seeq","order":15,"kind":"mockup","label":"ベースボールキャップ","short":"キャップ","en":"BASEBALL CAP","sub":"6方パネル・前面刺繍","provisional":"刺繍範囲110×55mmとつばの形は一般的な仕様の暫定値。採用ボディ確定後に差し替える","cap":{"style":"baseball","printWMM":110,"printHMM":55,"visor":"curved","mesh":false,"crownH":1.0}},{"id":"cap-low","category":"apparel","brand":"seeq","order":16,"kind":"mockup","label":"ローキャップ","short":"ローキャップ","en":"LOW CAP","sub":"浅め・前面刺繍","provisional":"刺繍範囲100×48mmは暫定値","cap":{"style":"low","printWMM":100,"printHMM":48,"visor":"curved","mesh":false,"crownH":0.86}},{"id":"cap-bucket","category":"apparel","brand":"seeq","order":17,"kind":"mockup","label":"バケットハット","short":"バケット","en":"BUCKET HAT","sub":"前面刺繍","provisional":"刺繍範囲90×40mmは暫定値。公式テンプレ（製品作成テンプレート/キャップ類）の実寸確定後に差し替える","cap":{"style":"bucket","printWMM":90,"printHMM":40,"visor":"bucket","mesh":false,"crownH":0.80}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"acryl-stand","category":"goods","brand":"seeq","order":27,"kind":"diecut","label":"アクリルスタンド","short":"アクスタ","en":"ACRYLIC STAND","sub":"台座つき・白版あり","provisional":"台座の寸法（幅60×高22mm・スリット34×3.2mm・差込代6mm）は一般的な仕様の暫定値。実測が出たら差し替える","diecut":{"type":"stand","defaultLongEdgeMM":100,"shapes":true,"whitePlate":true,"hole":false,"whiteInsetMM":0.2,"minCutRMM":1.5,"base":{"wMM":60,"hMM":22,"rMM":3,"slitWMM":34,"slitTMM":3.2,"tabMM":6,"provisional":true},"params":{"offsetMM":2.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"cutting-sheet","category":"goods","brand":"seeq","order":28,"kind":"diecut","label":"カッティングシート","short":"カッティング","en":"CUTTING SHEET","sub":"単色カット・転写シート","provisional":"シート色は代表色の暫定リスト。実際の在庫色が確定したら差し替える","diecut":{"type":"cutting","defaultLongEdgeMM":150,"whitePlate":false,"hole":false,"singleColor":true,"minCutRMM":0.6,"minStrokeMM":1.2,"vinyl":[{"name":"ブラック","hex":"#1d1f21"},{"name":"ホワイト","hex":"#ffffff"},{"name":"レッド","hex":"#c0303a"},{"name":"ブルー","hex":"#274690"},{"name":"イエロー","hex":"#f2cf3d"},{"name":"グリーン","hex":"#2f6b4f"},{"name":"シルバー","hex":"#c8ccd0"},{"name":"ゴールド","hex":"#c8a349"}],"params":{"offsetMM":0,"round":1,"smooth":1.6,"alphaThr":128,"keyTol":60}}},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
+<script id="seeqManifest" type="application/json">{"version":1,"note":"SeeQ 商品定義マニフェスト（最小版）。ここに追記して ./build.ps1 を実行すると index.html へ反映される。公開形は従来どおり単一HTML。","categories":[{"id":"apparel","label":"アパレル","order":1},{"id":"goods","label":"グッズ・小物","order":2},{"id":"towel","label":"タオル","order":3},{"id":"sign","label":"看板・サイン","order":4}],"products":[{"id":"tshirt","legacy":true,"category":"apparel","brand":"seeq","order":10,"short":"Tシャツ","sub":"5.6oz ハイクオリティ"},{"id":"longtee","category":"apparel","brand":"seeq","order":11,"kind":"apparel","label":"ロングスリーブTシャツ","short":"ロンT","en":"LONG SLEEVE TEE","sub":"5.6oz","body":{"sleeve":"long","rib":"light","hem":"plain"}},{"id":"sweat","category":"apparel","brand":"seeq","order":12,"kind":"apparel","label":"スウェット（クルーネック）","short":"スウェット","en":"CREW SWEAT","sub":"10.0oz 裏起毛","body":{"sleeve":"long","rib":"heavy","hem":"rib","bulk":1.05}},{"id":"parka","legacy":true,"category":"apparel","brand":"seeq","order":13,"short":"パーカー","sub":"10.0oz プルオーバー"},{"id":"dry","category":"apparel","brand":"seeq","order":14,"kind":"apparel","label":"ドライTシャツ","short":"ドライT","en":"DRY ATHLETIC TEE","sub":"4.1oz 吸汗速乾","body":{"sleeve":"short","rib":"none","hem":"plain","texture":"dry"}},{"id":"cap-baseball","category":"apparel","brand":"seeq","order":15,"kind":"mockup","label":"ベースボールキャップ","short":"キャップ","en":"BASEBALL CAP","sub":"6方パネル・前面刺繍","provisional":"刺繍範囲110×55mmとつばの形は一般的な仕様の暫定値。採用ボディ確定後に差し替える","cap":{"style":"baseball","printWMM":110,"printHMM":55,"visor":"curved","mesh":false,"crownH":1.0}},{"id":"cap-low","category":"apparel","brand":"seeq","order":16,"kind":"mockup","label":"ローキャップ","short":"ローキャップ","en":"LOW CAP","sub":"浅め・前面刺繍","provisional":"刺繍範囲100×48mmは暫定値","cap":{"style":"low","printWMM":100,"printHMM":48,"visor":"curved","mesh":false,"crownH":0.86}},{"id":"cap-bucket","category":"apparel","brand":"seeq","order":17,"kind":"mockup","label":"バケットハット","short":"バケット","en":"BUCKET HAT","sub":"前面刺繍","provisional":"刺繍範囲90×40mmは暫定値。公式テンプレ（製品作成テンプレート/キャップ類）の実寸確定後に差し替える","cap":{"style":"bucket","printWMM":90,"printHMM":40,"visor":"bucket","mesh":false,"crownH":0.80}},{"id":"tote","legacy":true,"category":"goods","brand":"seeq","order":20,"short":"トート","sub":"キャンバス"},{"id":"canbadge-32","category":"goods","brand":"seeq","order":21,"kind":"mockup","label":"缶バッジ 32mm","short":"缶バッジ32","en":"CAN BADGE 32","badge":{"sizeMM":32,"paperMM":44,"domeH":0.23,"wrinkle":40}},{"id":"canbadge-44","category":"goods","brand":"seeq","order":22,"kind":"mockup","label":"缶バッジ 44mm","short":"缶バッジ44","en":"CAN BADGE 44","badge":{"sizeMM":44,"paperMM":57,"domeH":0.17,"wrinkle":52}},{"id":"canbadge-57","legacy":true,"category":"goods","brand":"seeq","order":23,"short":"缶バッジ57","sub":"定番サイズ"},{"id":"canbadge-75","category":"goods","brand":"seeq","order":24,"kind":"mockup","label":"缶バッジ 75mm","short":"缶バッジ75","en":"CAN BADGE 75","badge":{"sizeMM":75,"paperMM":89,"domeH":0.10,"wrinkle":78}},{"id":"diecut-sticker","legacy":true,"category":"goods","brand":"seeq","order":25,"short":"ステッカー","sub":"自由な形にカット"},{"id":"diecut-acryl","legacy":true,"category":"goods","brand":"seeq","order":26,"short":"アクリルキーホルダー","sub":"白版・丸穴つき"},{"id":"acryl-stand","category":"goods","brand":"seeq","order":27,"kind":"diecut","label":"アクリルスタンド","short":"アクスタ","en":"ACRYLIC STAND","sub":"台座つき・白版あり","provisional":"台座の寸法（幅60×高22mm・スリット34×3.2mm・差込代6mm）は一般的な仕様の暫定値。実測が出たら差し替える","diecut":{"type":"stand","defaultLongEdgeMM":100,"shapes":true,"whitePlate":true,"hole":false,"whiteInsetMM":0.2,"minCutRMM":1.5,"base":{"wMM":60,"hMM":22,"rMM":3,"slitWMM":34,"slitTMM":3.2,"tabMM":6,"provisional":true},"params":{"offsetMM":2.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"metal-keychain","category":"goods","brand":"seeq","order":27.5,"kind":"diecut","label":"メタルキーホルダー","short":"メタルKH","en":"METAL KEYCHAIN","sub":"縁取りカット・穴あき","provisional":"板厚・仕上げ（鏡面/梨地）は暫定。採用素材が確定したら差し替える","diecut":{"type":"metal","defaultLongEdgeMM":50,"shapes":true,"whitePlate":false,"hole":true,"holeDiaMM":2.5,"holeEdgeMM":3,"minCutRMM":1.2,"metal":{"base":"#c9ccd1","edge":"#8a9098"},"hardware":[{"id":"nasukan","label":"ナスカン"},{"id":"nijukan","label":"二重カン"}],"params":{"offsetMM":2.0,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"pin-badge","category":"goods","brand":"seeq","order":27.6,"kind":"diecut","label":"ピンバッジ","short":"ピンバッジ","en":"PIN BADGE","sub":"縁取りカット・ピン位置指定","provisional":"ピン金具の種類（バタフライ/ラバー）は暫定","diecut":{"type":"pin","defaultLongEdgeMM":30,"shapes":true,"whitePlate":false,"hole":false,"pin":true,"pinDiaMM":1.5,"pinEdgeMM":3,"minCutRMM":1.0,"metal":{"base":"#d4b060","edge":"#9a7c34"},"params":{"offsetMM":1.5,"round":2,"smooth":1.2,"alphaThr":128,"keyTol":60}}},{"id":"cutting-sheet","category":"goods","brand":"seeq","order":28,"kind":"diecut","label":"カッティングシート","short":"カッティング","en":"CUTTING SHEET","sub":"単色カット・転写シート","provisional":"シート色は代表色の暫定リスト。実際の在庫色が確定したら差し替える","diecut":{"type":"cutting","defaultLongEdgeMM":150,"whitePlate":false,"hole":false,"singleColor":true,"minCutRMM":0.6,"minStrokeMM":1.2,"vinyl":[{"name":"ブラック","hex":"#1d1f21"},{"name":"ホワイト","hex":"#ffffff"},{"name":"レッド","hex":"#c0303a"},{"name":"ブルー","hex":"#274690"},{"name":"イエロー","hex":"#f2cf3d"},{"name":"グリーン","hex":"#2f6b4f"},{"name":"シルバー","hex":"#c8ccd0"},{"name":"ゴールド","hex":"#c8a349"}],"params":{"offsetMM":0,"round":1,"smooth":1.6,"alphaThr":128,"keyTol":60}}},{"id":"towel-face","category":"towel","brand":"seeq","order":30,"kind":"mockup","label":"フェイスタオル","short":"フェイス","en":"FACE TOWEL","sub":"850×340mm","towel":{"wMM":850,"hMM":340,"hem":"both","printInset":0.10}},{"id":"towel-muffler","category":"towel","brand":"seeq","order":31,"kind":"mockup","label":"マフラータオル","short":"マフラー","en":"MUFFLER TOWEL","sub":"210×1100mm","towel":{"wMM":210,"hMM":1100,"hem":"both","printInset":0.06}},{"id":"towel-mini","category":"towel","brand":"seeq","order":32,"kind":"mockup","label":"ミニタオル","short":"ミニ","en":"MINI TOWEL","sub":"250×250mm","towel":{"wMM":250,"hMM":250,"hem":"none","printInset":0.10}},{"id":"plate-rect","legacy":true,"category":"sign","brand":"mori","order":40,"short":"角型"},{"id":"plate-round","legacy":true,"category":"sign","brand":"mori","order":41,"short":"丸型"},{"id":"plate-oval","legacy":true,"category":"sign","brand":"mori","order":42,"short":"楕円"},{"id":"plate-cut","legacy":true,"category":"sign","brand":"mori","order":43,"short":"カット"}]}</script>
 <!-- /BUILD:MANIFEST -->
 <!-- BUILD:LINEART -->
 <script id="seeqLineart">
@@ -2552,6 +2558,8 @@ var DIECUT_TEMPLATES = {
     /* 穴径の既定は公式カットテンプレ（キーホルダー【MDF アクリル】.pdf: 内径2.5mm・外径7mm）に合わせる */
     whitePlate:true, hole:true, holeDiaMM:2.5, holeEdgeMM:4, whiteInsetMM:0.2, shapes:true,
     minCutRMM:1.5,
+    /* 金具は二択（森さん指定）。見積・入稿メタに含める */
+    hardware:[ {id:'nasukan', label:'ナスカン'}, {id:'nijukan', label:'二重カン'} ],
     params:{ offsetMM:2.5, round:2, smooth:1.2, alphaThr:128, keyTol:60 }
   }
 };
@@ -2568,6 +2576,21 @@ function dieHintShape(type){
     return '<path d="M110 150h260a16 16 0 0116 16v190a16 16 0 01-16 16H110a16 16 0 01-16-16V166a16 16 0 0116-16z" fill="#fbfbf9" stroke="rgba(20,28,38,.34)" stroke-width="2.4" stroke-dasharray="10 7" filter="url(#dieHintShadow)"/>'
       +'<rect x="150" y="392" width="180" height="34" rx="9" fill="#f2f3f0" stroke="rgba(20,28,38,.32)" stroke-width="2.2"/>'
       +'<rect x="196" y="405" width="88" height="8" rx="4" fill="rgba(20,28,38,.30)"/>';
+  }
+  if(type==='metal'){          /* メタルキーホルダー：金属板＋穴＋二重カン */
+    return '<defs><linearGradient id="dieMetalG" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0" stop-color="#e6e8eb"/><stop offset="0.5" stop-color="#c3c7cc"/><stop offset="1" stop-color="#eef0f2"/></linearGradient></defs>'
+      +'<rect x="110" y="160" width="260" height="240" rx="24" fill="url(#dieMetalG)" stroke="rgba(20,28,38,.40)" stroke-width="2.4" stroke-dasharray="10 7" filter="url(#dieHintShadow)"/>'
+      +'<circle cx="240" cy="192" r="9" fill="#fbfbf9" stroke="rgba(20,28,38,.50)" stroke-width="2.4"/>'
+      +'<circle cx="240" cy="150" r="24" fill="none" stroke="#9aa3ab" stroke-width="5"/>'
+      +'<circle cx="240" cy="150" r="17" fill="none" stroke="#b9c1c8" stroke-width="2.5"/>';
+  }
+  if(type==='pin'){            /* ピンバッジ：小さめの金属板＋ピン位置マーク */
+    return '<defs><linearGradient id="diePinG" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0" stop-color="#eed9a2"/><stop offset="0.5" stop-color="#d1ac5a"/><stop offset="1" stop-color="#f1e0b3"/></linearGradient></defs>'
+      +'<circle cx="240" cy="270" r="118" fill="url(#diePinG)" stroke="rgba(20,28,38,.40)" stroke-width="2.4" stroke-dasharray="10 7" filter="url(#dieHintShadow)"/>'
+      +'<circle cx="240" cy="270" r="7" fill="none" stroke="rgba(20,28,38,.55)" stroke-width="2.4"/>'
+      +'<path d="M232 262l16 16M248 262l-16 16" stroke="rgba(20,28,38,.55)" stroke-width="2.2"/>';
   }
   if(type==='cutting'){        /* カッティングシート：単色シート＋転写（角にトンボ） */
     /* 以前の黒い色見本チップは説明テキストに被って異物に見えたため、
@@ -8029,6 +8052,29 @@ var SeeQDieCut=(function(){
       hl.clearMM = (pi.inside? (pi.dist-r) : -(pi.dist+r))*mmPerPx();
     });
   }
+  /* ピン位置：カット線から pinEdgeMM 以上内側なら OK。初回は形の重心（バランスが良い＝定番） */
+  function checkPins(){
+    if(!S.pins) return;
+    var edgePx=(tplOf().pinEdgeMM||3)*pxPerMM();
+    S.pins.forEach(function(p){
+      if(!S.cut||S.cut.length<3){ p.ok=false; return; }
+      var pi=polyInfo([p.x,p.y],S.cut);
+      p.ok = pi.inside && pi.dist>=edgePx;
+    });
+  }
+  function autoPlacePin(){
+    if(!S.cut||S.cut.length<3) return;
+    var sx=0, sy=0, n=S.cut.length;
+    S.cut.forEach(function(p){ sx+=p[0]; sy+=p[1]; });
+    var cx=sx/n, cy=sy/n, pi=polyInfo([cx,cy],S.cut);
+    if(!pi.inside){ /* 凹形状で重心が外に出たら、バウンディング中央から内側の点を探す */
+      var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+      S.cut.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[1]<minY)minY=p[1]; if(p[0]>maxX)maxX=p[0]; if(p[1]>maxY)maxY=p[1]; });
+      cx=(minX+maxX)/2;
+      for(var y=(minY+maxY)/2; y<maxY; y+=Math.max(2,(maxY-minY)/120)){ if(polyInfo([cx,y],S.cut).inside){ cy=y; break; } }
+    }
+    S.pins=[{x:cx,y:cy}]; checkPins();
+  }
   /* 初回は「上端の中央あたり」でクリアランスを満たす位置に自動で置く（キーホルダーの定番位置） */
   function autoPlaceHole(){
     if(!S.cut||S.cut.length<3) return;
@@ -8090,6 +8136,15 @@ var SeeQDieCut=(function(){
       x.fillStyle='rgba(255,255,255,0.92)'; x.fill('evenodd');
       x.restore();
     }
+    /* メタル系（メタルKH/ピンバッジ）は金属板の上にプリントされるので、
+       カットライン内側を金属色で塗ってから絵柄を重ねる（透明部分＝地金が見える） */
+    if(tplOf().metal && S.cut && S.cut.length>2){
+      x.save(); pathOf(x,S.cut);
+      var mg=x.createLinearGradient(0,0,S.Wp,S.Hp), mb=tplOf().metal.base;
+      mg.addColorStop(0,'#ffffff'); mg.addColorStop(0.35,mb); mg.addColorStop(0.7,mb); mg.addColorStop(1,'#ffffff');
+      x.fillStyle=mg; x.globalAlpha=0.95; x.fill(); x.globalAlpha=1;
+      x.restore();
+    }
     /* カッティングシートは単色カットなので、絵柄ではなく「シート色のシルエット」を見せる */
     if(tplOf().singleColor){ buildSilhouette(S.vinylHex||(currentColor&&currentColor.hex)||'#1d1f21'); x.drawImage(silCanvas,0,0); }
     else x.drawImage(cutoutCanvas,0,0);
@@ -8128,6 +8183,17 @@ var SeeQDieCut=(function(){
       x.strokeStyle=CUT_COLOR; x.stroke(); x.setLineDash([]);
       x.restore();
     }
+    /* ピン位置（裏面金具）：貫通しないので抜かず、×付きの小円で位置だけ示す */
+    if(S.pins && S.pins.length && tplOf().pin){
+      var pr=Math.max(4, (S.pinDiaMM/2)*pxPerMM()*2.2);
+      S.pins.forEach(function(p){
+        x.beginPath(); x.arc(p.x,p.y,pr,0,Math.PI*2);
+        x.strokeStyle='rgba(255,255,255,0.9)'; x.lineWidth=halo; x.stroke();
+        x.strokeStyle= p.ok===false ? '#c0392b' : '#1f6fb2'; x.lineWidth=thin; x.stroke();
+        x.beginPath(); x.moveTo(p.x-pr*0.5,p.y-pr*0.5); x.lineTo(p.x+pr*0.5,p.y+pr*0.5);
+        x.moveTo(p.x+pr*0.5,p.y-pr*0.5); x.lineTo(p.x-pr*0.5,p.y+pr*0.5); x.stroke();
+      });
+    }
     /* 丸穴のガイド：クリアランス不足は赤で警告表示 */
     if(S.holes) S.holes.forEach(function(hl){
       var r=holeRadPx();
@@ -8139,7 +8205,7 @@ var SeeQDieCut=(function(){
       x.fillStyle= hl.ok===false ? '#c0392b' : CUT_COLOR; x.fill();
     });
   }
-  function recompute(){ computeBase(); buildCutout(); computeMask(); computeCut(); render(); syncInfo(); }
+  function recompute(){ computeBase(); buildCutout(); computeMask(); computeCut(); if(S&&S.pins) checkPins(); render(); syncInfo(); }
 
   /* ---- 画像読み込み ---- */
   function loadImageSrc(src){
@@ -8171,6 +8237,10 @@ var SeeQDieCut=(function(){
             longEdgeMM:t.defaultLongEdgeMM,
             whiteOn:!!t.whitePlate, whiteInsetMM:(t.whiteInsetMM!=null?t.whiteInsetMM:0.2),
             holeDiaMM:(t.holeDiaMM||5), holes:[],
+            /* ピンバッジ：ピン位置（穴と違って貫通しない・入稿メタに座標を記載） */
+            pins:[], pinDiaMM:(t.pinDiaMM||1.5),
+            /* 金具（アクキー/メタルKH: ナスカン or 二重カン） */
+            hardware:(t.hardware&&t.hardware.length)?t.hardware[0].id:null,
             /* アクリルスタンド：台座と差し込み代（寸法は暫定値・マニフェスト参照） */
             standOn:!!(t.base&&t.base.enabled!==false&&t.type==='stand'),
             baseWMM:(t.base&&t.base.wMM)||60, baseHMM:(t.base&&t.base.hMM)||22,
@@ -8187,6 +8257,7 @@ var SeeQDieCut=(function(){
         syncDieReady();
         recompute();
         if(t.hole && !S.holes.length){ autoPlaceHole(); render(); }
+        if(t.pin && !S.pins.length){ autoPlacePin(); render(); }
         syncControls();
         syncInfo();
         fitDisplay();
@@ -8222,6 +8293,14 @@ var SeeQDieCut=(function(){
     return -1;
   }
   function moveHoleTo(i,px,py){ S.holes[i].x=px; S.holes[i].y=py; checkHoles(); render(); syncInfo(); }
+  /* ピン（1個・ドラッグで移動。タップで置き直しも可） */
+  var dragPin=-1;
+  function hitPin(px,py){
+    if(!S||!S.pins) return -1;
+    var r=Math.max(10,(S.pinDiaMM/2)*pxPerMM()*3);
+    for(var i=S.pins.length-1;i>=0;i--){ var h=S.pins[i]; if(Math.hypot(px-h.x,py-h.y)<=r) return i; }
+    return -1;
+  }
   function bindBrush(){
     function down(e){
       if(!S) return;
@@ -8231,17 +8310,25 @@ var SeeQDieCut=(function(){
         if(hit>=0){ dragHole=hit; e.preventDefault(); return; }
         if(holeMode==='place'){ S.holes.push({x:p[0],y:p[1]}); dragHole=S.holes.length-1; checkHoles(); render(); syncInfo(); syncControls(); e.preventDefault(); return; }
       }
+      if(tplOf().pin){
+        var hp=hitPin(p[0],p[1]);
+        if(hp>=0){ dragPin=hp; e.preventDefault(); return; }
+        /* ピンは1個なので、空いた場所をタップしたらそこへ移動 */
+        if(brush.mode==='off'){ S.pins=[{x:p[0],y:p[1]}]; dragPin=0; checkPins(); render(); syncInfo(); e.preventDefault(); return; }
+      }
       if(brush.mode==='off') return;
       painting=true; paintAt(t.clientX,t.clientY); e.preventDefault();
     }
     function move(e){
       var t=e.touches?e.touches[0]:e;
       if(dragHole>=0){ var p=toWork(t.clientX,t.clientY); moveHoleTo(dragHole,p[0],p[1]); e.preventDefault(); return; }
+      if(dragPin>=0){ var q=toWork(t.clientX,t.clientY); S.pins[dragPin].x=q[0]; S.pins[dragPin].y=q[1]; checkPins(); render(); syncInfo(); e.preventDefault(); return; }
       if(!painting) return;
       paintAt(t.clientX,t.clientY); e.preventDefault();
     }
     function up(){
       if(dragHole>=0){ dragHole=-1; return; }
+      if(dragPin>=0){ dragPin=-1; return; }
       if(!painting) return;
       painting=false; computeMask(); computeCut(); render(); syncInfo();
     }
@@ -8368,6 +8455,19 @@ var SeeQDieCut=(function(){
       });
       L.push('  </g>');
     }
+    /* ピン位置（ピンバッジ）：カットしない印刷用マーカー層。裏面金具の取付位置を工場へ伝える */
+    if(tplOf().pin && S.pins && S.pins.length){
+      L.push('  <!-- PinMarks = position of the back pin fitting (NOT a cut). Reference only for assembly. -->');
+      L.push('  <g inkscape:groupmode="layer" inkscape:label="PinMarks" id="PinMarks">');
+      S.pins.forEach(function(p){
+        var r=+((S.pinDiaMM/2)).toFixed(3);
+        L.push('    <circle cx="'+mmx(p.x)+'" cy="'+mmy(p.y)+'" r="'+r+'" fill="none" stroke="#1f6fb2" stroke-width="0.2" data-part="pin"/>');
+      });
+      L.push('  </g>');
+    }
+    if(S.hardware && tplOf().hardware){
+      L.push('  <!-- Hardware: '+S.hardware+' -->');
+    }
     L.push('</svg>');
     return L.join('\n')+'\n';
   }
@@ -8406,6 +8506,14 @@ var SeeQDieCut=(function(){
         var bad=S.holes.filter(function(h){ return h.ok===false; }).length;
         parts.push(bad ? '<span class="ng">穴がフチに近すぎます</span>' : '<span class="ok">穴OK</span>');
       }
+    }
+    if(tplOf().pin){
+      if(!S.pins||!S.pins.length) parts.push('<span class="ng">ピン位置が未指定</span>');
+      else parts.push(S.pins.some(function(p){return p.ok===false;}) ? '<span class="ng">ピンがフチに近すぎます</span>' : '<span class="ok">ピン位置OK</span>');
+    }
+    if(S.hardware && tplOf().hardware){
+      var hw=tplOf().hardware.filter(function(h){return h.id===S.hardware;})[0];
+      if(hw) parts.push('金具 <b>'+hw.label+'</b>');
     }
     /* カットの角丸は「フチの数値と独立に」最小Rを確保していることを明示する */
     parts.push('角の最小R <b>'+((tplOf().minCutRMM!=null?tplOf().minCutRMM:1.0).toFixed(1))+'mm</b> 確保');
@@ -8468,6 +8576,20 @@ var SeeQDieCut=(function(){
     seg('dieBaseSeg','base', S.standOn?'on':'off');
     $('dieBaseW').value=S.baseWMM; $('dieBaseWV').textContent=S.baseWMM+'mm';
     $('dieTab').value=S.tabMM; $('dieTabV').textContent=S.tabMM.toFixed(1)+'mm';
+    /* ピン位置（ピンバッジ）：説明だけ。位置はキャンバス上のドラッグ/タップで決める */
+    $('diePinGrp').classList.toggle('hidden', !t.pin);
+    /* 金具（アクキー/メタルKH） */
+    var hg=$('dieHwGrp');
+    hg.classList.toggle('hidden', !(t.hardware && t.hardware.length));
+    if(t.hardware && t.hardware.length){
+      var hs=$('dieHwSeg'); hs.innerHTML='';
+      t.hardware.forEach(function(h){
+        var b=document.createElement('button'); b.type='button'; b.textContent=h.label;
+        b.className=(S.hardware===h.id)?'on':'';
+        b.onclick=function(){ S.hardware=h.id; syncControls(); syncInfo(); };
+        hs.appendChild(b);
+      });
+    }
   }
   /* 商品（テンプレ）が変わった時に既存の読み込み画像へ新テンプレの既定値を当て直す */
   function applyTplDefaults(){
@@ -8477,6 +8599,8 @@ var SeeQDieCut=(function(){
     S.longEdgeMM=t.defaultLongEdgeMM;
     S.whiteOn=!!t.whitePlate; S.whiteInsetMM=(t.whiteInsetMM!=null?t.whiteInsetMM:0.2);
     S.holeDiaMM=(t.holeDiaMM||5); S.holes=[];
+    S.pins=[]; S.pinDiaMM=(t.pinDiaMM||1.5);
+    S.hardware=(t.hardware&&t.hardware.length)?t.hardware[0].id:null;
     S.standOn=!!(t.base && t.base.enabled!==false && t.type==='stand');
     S.baseWMM=(t.base&&t.base.wMM)||60; S.baseHMM=(t.base&&t.base.hMM)||22;
     S.slitWMM=(t.base&&t.base.slitWMM)||34; S.slitTMM=(t.base&&t.base.slitTMM)||3.2;
@@ -8485,6 +8609,7 @@ var SeeQDieCut=(function(){
     computeMask();
     computeCut();
     if(t.hole && !S.holes.length) autoPlaceHole();
+    if(t.pin && !S.pins.length) autoPlacePin();
     render(); syncControls(); syncInfo();
   }
   function bindControls(){
@@ -8585,6 +8710,8 @@ var SeeQDieCut=(function(){
     loadImageSrc:loadImageSrc, exportSVGString:exportSVGString, exportSVG:exportSVG,
     setParam:function(k,v){ if(!S) return; S[k]=v; syncControls(); recompute(); },
     addHole:function(x,y){ if(!S) return; S.holes.push({x:x,y:y}); checkHoles(); render(); syncInfo(); },
+    cutSizeMM:function(){ return S ? cutSizeMM() : null; },
+    svgString:exportSVGString,
     _fillet:filletMin, _minCutRPx:minCutRPx,      /* 検証用（角の最小R） */
     _state:function(){ return S; } };
   return window.SEEQ_DIECUT;
@@ -8634,6 +8761,20 @@ var SeeQDieCut=(function(){
       if(prod.kind==='plate'){
         var sz=(prod.sizes||[]).filter(function(s){return s.id===(prod._sizeId||prod.defaultSize);})[0];
         if(sz) specUl.appendChild(row('サイズ', 'W'+sz.w+'×H'+sz.h+' / 厚'+prod.thickness+'mm', {badge:true}));
+      }
+      /* 入稿変換品目（アクキー/メタルKH/ピンバッジ等）は仕上がり寸法・金具・穴/ピンを見積に載せる */
+      if(prod.kind==='diecut' && window.SEEQ_DIECUT && SEEQ_DIECUT._state && SEEQ_DIECUT._state()){
+        var ds=SEEQ_DIECUT._state(), dt=ds.tpl||{};
+        try{
+          var szmm=SEEQ_DIECUT.cutSizeMM ? SEEQ_DIECUT.cutSizeMM() : null;
+          if(szmm) specUl.appendChild(row('仕上がり', szmm.w.toFixed(1)+'×'+szmm.h.toFixed(1)+'mm', {badge:true}));
+        }catch(e2){}
+        if(dt.hardware && ds.hardware){
+          var hw=dt.hardware.filter(function(h){return h.id===ds.hardware;})[0];
+          if(hw) specUl.appendChild(row('金具', hw.label));
+        }
+        if(dt.hole) specUl.appendChild(row('穴', (ds.holes||[]).length+'箇所・径'+(ds.holeDiaMM||0).toFixed(1)+'mm'));
+        if(dt.pin) specUl.appendChild(row('ピン位置', (ds.pins&&ds.pins.length)?'指定あり':'未指定'));
       }
       specUl.appendChild(row('デザイン要素', stt.objs+' 点'));
       specUl.appendChild(row('プレビュー', window.SEEQ_3D_THUMB?'3D 静止画 同梱':'2D 画像 同梱'));
