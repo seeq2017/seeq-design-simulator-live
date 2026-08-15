@@ -393,6 +393,17 @@
   .obj-act svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
   .obj-act small{font-size:11px;display:block;margin-top:2px;color:var(--ink-3);}
   .compose-hint{display:none;font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.5;}
+  /* 整列・等間隔メニュー */
+  .alignmenu{position:fixed;z-index:85;transform:translate(-50%,-100%);background:#fff;border:1px solid var(--line);border-radius:11px;
+    box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;}
+  .alignmenu.show{display:block;}
+  .am-row{display:flex;gap:4px;}
+  .am-row+.am-row{margin-top:4px;}
+  .am-row button{border:1px solid var(--line);background:#fbfdfd;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;white-space:nowrap;flex:1 1 0;}
+  .am-row button:hover{border-color:var(--accent);color:var(--accent-d);}
+  .am-dist{display:none;}
+  .alignmenu.dist-ok .am-dist{display:flex;}
+  .obj-act[hidden]{display:none;}
   /* PC クイックバー（選択中だけ表示・スマホでは出さない） */
   .quickbar{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:36;
     background:#fff;border:1px solid var(--hair);border-radius:var(--radius-lg,8px);padding:5px 6px;
@@ -401,6 +412,8 @@
   .quickbar .qb-group{display:none;align-items:center;gap:4px;}
   .quickbar[data-kind="text"] .qb-text{display:flex;}
   .quickbar[data-kind="image"] .qb-image{display:flex;}
+  .quickbar[data-kind="shape"] .qb-shape{display:flex;}
+  .qb-swatch-ring{background:transparent !important;box-shadow:inset 0 0 0 4px var(--qb-stroke,#1a1a1a), 0 0 0 1px var(--hair);}
   .qb-btn{border:1px solid transparent;background:transparent;color:var(--ink);cursor:pointer;border-radius:var(--radius-md,4px);
     min-width:32px;height:32px;padding:0 8px;font-size:13px;font-weight:700;display:grid;place-items:center;line-height:1;white-space:nowrap;}
   .qb-btn:hover{background:var(--bg-2);}
@@ -1538,7 +1551,45 @@
         <button class="shape-btn" data-shape="diamond"  title="ひし形"><svg viewBox="0 0 24 24"><path d="M12 2l10 10-10 10L2 12z"/></svg></button>
         <button class="shape-btn" data-shape="hexagon"  title="六角形"><svg viewBox="0 0 24 24"><path d="M7 3h10l5 9-5 9H7l-5-9z"/></svg></button>
         <button class="shape-btn" data-shape="line"     title="ライン"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="2.5" rx="1.2"/></svg></button>
+        <button class="shape-btn" data-shape="pentagon" title="五角形"><svg viewBox="0 0 24 24"><path d="M12 2.5l9.5 6.9-3.6 11.1H6.1L2.5 9.4z"/></svg></button>
+        <button class="shape-btn" data-shape="squircle" title="角丸四角"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="6"/></svg></button>
+        <button class="shape-btn" data-shape="ring"     title="リング"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 5a5 5 0 110 10 5 5 0 010-10z"/></svg></button>
+        <button class="shape-btn" data-shape="arrow"    title="矢印"><svg viewBox="0 0 24 24"><path d="M3 9.5h11V5l8 7-8 7v-4.5H3z"/></svg></button>
+        <button class="shape-btn" data-shape="dblarrow" title="両矢印"><svg viewBox="0 0 24 24"><path d="M2 12l6-5.5v3.5h8V6.5L22 12l-6 5.5V14H8v3.5z"/></svg></button>
+        <button class="shape-btn" data-shape="bubble"   title="吹き出し"><svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 012 2v9a2 2 0 01-2 2h-8l-5 4v-4H4a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg></button>
+        <button class="shape-btn" data-shape="seal"     title="ギザギザ丸（シール）"><svg viewBox="0 0 24 24"><path d="M12 1.8l1.7 2.4 2.7-1 .6 2.8 2.9.4-.6 2.8 2.4 1.7-1.7 2.3 1.7 2.3-2.4 1.7.6 2.8-2.9.4-.6 2.8-2.7-1L12 22.2l-1.7-2.4-2.7 1-.6-2.8-2.9-.4.6-2.8L2.3 13.1 4 10.8 2.3 8.5l2.4-1.7-.6-2.8 2.9-.4.6-2.8 2.7 1z"/></svg></button>
+        <button class="shape-btn" data-shape="ribbon"   title="リボン"><svg viewBox="0 0 24 24"><path d="M2 7h20l-3 5 3 5H2l3-5z"/></svg></button>
+        <button class="shape-btn" data-shape="plus"     title="十字"><svg viewBox="0 0 24 24"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg></button>
+        <button class="shape-btn" data-shape="bolt"     title="いなずま"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></button>
+        <button class="shape-btn" data-shape="check"    title="チェック"><svg viewBox="0 0 24 24"><path d="M3.5 12.5l2.8-2.8 4 4L18.2 3.8 21 6.6 10.3 17.3z"/></svg></button>
       </div>
+      <p class="mini note">図形は置いたあと、色・線・不透明度を「図形の編集」で変えられます。</p>
+    </div>
+
+    <!-- 図形の編集（図形を選んだときだけ表示） -->
+    <div class="card hidden" data-tab="shape" data-panel="shapeEdit" id="shapePanel">
+      <h3><span class="dot"></span>図形の編集</h3>
+      <div class="field">
+        <label class="fld">色</label>
+        <div class="row">
+          <div class="colorrow"><input type="color" id="shpFill" value="#E60012"><span class="mini">塗り</span></div>
+          <div class="colorrow"><input type="color" id="shpStroke" value="#1a1a1a"><span class="mini">線</span></div>
+        </div>
+        <div class="chiprow" id="shpSwatches"></div>
+      </div>
+      <div class="field">
+        <label class="fld">線の太さ <span id="shpStrokeWVal" class="mini">0</span></label>
+        <input type="range" id="shpStrokeW" min="0" max="16" step="1" value="0">
+      </div>
+      <div class="field">
+        <label class="fld">不透明度 <span id="shpOpVal" class="mini">100%</span></label>
+        <input type="range" id="shpOp" min="0.1" max="1" step="0.05" value="1">
+      </div>
+      <div class="field" id="shpRadiusWrap" hidden>
+        <label class="fld">角丸 <span id="shpRadiusVal" class="mini">0</span></label>
+        <input type="range" id="shpRadius" min="0" max="60" step="1" value="0">
+      </div>
+      <div class="chiprow"><span class="chip" id="shpNoFill">塗りなし（線だけ）</span><span class="chip" id="shpNoStroke">線なし</span></div>
     </div>
 
     <div class="card" data-tab="arrange" data-panel="arrange">
@@ -1579,6 +1630,12 @@
         <button type="button" class="qb-btn qb-i" id="qbItalic" title="斜体"><i>I</i></button>
         <span class="qb-sep"></span>
         <button type="button" class="qb-btn qb-wide" id="qbFx" title="縁取り・影などの効果">エフェクト</button>
+      </div>
+      <div class="qb-group qb-shape">
+        <label class="qb-color" title="塗り"><input type="color" id="qbShpFill" value="#E60012" aria-label="塗り"><span class="qb-swatch" id="qbShpFillSw"></span></label>
+        <label class="qb-color" title="線の色"><input type="color" id="qbShpStroke" value="#1a1a1a" aria-label="線の色"><span class="qb-swatch qb-swatch-ring" id="qbShpStrokeSw"></span></label>
+        <span class="qb-sep"></span>
+        <button type="button" class="qb-btn qb-wide" id="qbShpEdit" title="線の太さ・不透明度・角丸">図形の編集</button>
       </div>
       <div class="qb-group qb-image">
         <button type="button" class="qb-btn qb-wide qb-ai" id="qbAiBg" title="AIが被写体を判定して背景だけを消します">AIで背景を削除</button>
@@ -1748,11 +1805,19 @@
   <button class="obj-act" id="actBack" title="背面へ"><svg viewBox="0 0 24 24"><path d="M12 11l8 5-8 5-8-5z"/><path d="M4 8l8 5 8-5-8-5z"/></svg><small>背面</small></button>
   <button class="obj-act" id="actAlignH" title="左右中央"><svg viewBox="0 0 24 24"><path d="M12 3v18M7 8h10M5 16h14"/></svg><small>水平中央</small></button>
   <button class="obj-act" id="actAlignV" title="上下中央"><svg viewBox="0 0 24 24"><path d="M3 12h18M8 7v10M16 5v14"/></svg><small>垂直中央</small></button>
+  <button class="obj-act" id="actAlign" title="整列・等間隔" hidden><svg viewBox="0 0 24 24"><path d="M4 3v18"/><rect x="7" y="6" width="13" height="4" rx="1"/><rect x="7" y="14" width="8" height="4" rx="1"/></svg><small>整列</small></button>
   <button class="obj-act" id="actGroup" title="グループ化"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg><small>グループ</small></button>
   <button class="obj-act" id="actLock" title="ロック"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg><small>ロック</small></button>
   <button class="obj-act" id="actDup" title="複製"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg><small>複製</small></button>
   <button class="obj-act danger" id="actDel" title="削除"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m-9 0v14a2 2 0 002 2h6a2 2 0 002-2V6"/></svg><small>削除</small></button>
   <span class="obj-dim" id="objDim" hidden title="選択中の要素の実寸（外接サイズ・目安）"></span>
+</div>
+
+<!-- 整列・等間隔メニュー（複数選択時） -->
+<div class="alignmenu" id="alignMenu" role="menu" aria-label="整列">
+  <div class="am-row"><button data-align="left" type="button">左揃え</button><button data-align="hcenter" type="button">左右中央</button><button data-align="right" type="button">右揃え</button></div>
+  <div class="am-row"><button data-align="top" type="button">上揃え</button><button data-align="vcenter" type="button">上下中央</button><button data-align="bottom" type="button">下揃え</button></div>
+  <div class="am-row am-dist"><button data-align="hdist" type="button">横に等間隔</button><button data-align="vdist" type="button">縦に等間隔</button></div>
 </div>
 
 <!-- Context menu -->
@@ -3134,7 +3199,9 @@ var EXTRA_PROPS = ['name','locked','curve','vertical','srcText','selectable','ev
   /* effect engine props (persisted for Undo/Redo + design-key save/load) */
   'fx','solidFill',
   /* import provenance (svg/pdf/ai/psd) — persisted for Undo/Redo + save/load */
-  'importFmt'];
+  'importFmt',
+  /* 図形の種類（角丸スライダー等の出し分けに使う） */
+  'shapeKind'];
 
 /* print-area guide (not exported) */
 var guide = new fabric.Rect({
@@ -4256,7 +4323,19 @@ document.getElementById('shapes').addEventListener('click',function(e){
   var b=e.target.closest('.shape-btn'); if(!b) return;
   var k=b.dataset.shape, u=scaleUnit(), fill='#E60012';
   var common={fill:fill, originX:'center', originY:'center'};
-  var obj, nm={circle:'丸',rect:'四角',triangle:'三角',star:'星',heart:'ハート',diamond:'ひし形',hexagon:'六角形',line:'ライン'}[k];
+  var obj, nm={circle:'丸',rect:'四角',triangle:'三角',star:'星',heart:'ハート',diamond:'ひし形',hexagon:'六角形',line:'ライン',
+    pentagon:'五角形',squircle:'角丸四角',ring:'リング',arrow:'矢印',dblarrow:'両矢印',bubble:'吹き出し',seal:'シール',ribbon:'リボン',plus:'十字',bolt:'いなずま',check:'チェック'}[k];
+  /* パス系の図形（100px 前後の座標で定義 → scaleUnit で拡縮） */
+  var PATHS={
+    arrow:'M -60 -22 L 12 -22 L 12 -50 L 62 0 L 12 50 L 12 22 L -60 22 Z',
+    dblarrow:'M -66 0 L -30 -30 L -30 -14 L 30 -14 L 30 -30 L 66 0 L 30 30 L 30 14 L -30 14 L -30 30 Z',
+    bubble:'M -60 -40 Q -60 -50 -50 -50 L 50 -50 Q 60 -50 60 -40 L 60 14 Q 60 24 50 24 L -10 24 L -32 48 L -28 24 L -50 24 Q -60 24 -60 14 Z',
+    ribbon:'M -70 -30 L 70 -30 L 56 0 L 70 30 L -70 30 L -56 0 Z',
+    plus:'M -18 -60 L 18 -60 L 18 -18 L 60 -18 L 60 18 L 18 18 L 18 60 L -18 60 L -18 18 L -60 18 L -60 -18 L -18 -18 Z',
+    bolt:'M 12 -66 L -40 10 L -4 10 L -12 66 L 40 -14 L 6 -14 Z',
+    check:'M -58 4 L -40 -14 L -18 8 L 40 -50 L 58 -32 L -18 44 Z',
+    ring:'M 0 -60 A 60 60 0 1 0 0 60 A 60 60 0 1 0 0 -60 Z M 0 -32 A 32 32 0 1 1 0 32 A 32 32 0 1 1 0 -32 Z'
+  };
   if(k==='circle') obj=new fabric.Circle(Object.assign({radius:55*u},common));
   else if(k==='rect') obj=new fabric.Rect(Object.assign({width:120*u,height:90*u,rx:6,ry:6},common));
   else if(k==='triangle') obj=new fabric.Triangle(Object.assign({width:120*u,height:110*u},common));
@@ -4265,7 +4344,11 @@ document.getElementById('shapes').addEventListener('click',function(e){
   else if(k==='diamond') obj=new fabric.Polygon(regPts(4,62*u),common);
   else if(k==='hexagon') obj=new fabric.Polygon(regPts(6,60*u),common);
   else if(k==='heart'){var p='M 0 -28 C -8 -44 -38 -42 -38 -16 C -38 6 -10 22 0 34 C 10 22 38 6 38 -16 C 38 -42 8 -44 0 -28 Z';obj=new fabric.Path(p,Object.assign({},common));obj.scale(u);}
-  if(obj) addObj(obj,nm);
+  else if(k==='pentagon') obj=new fabric.Polygon(regPts(5,62*u),common);
+  else if(k==='squircle') obj=new fabric.Rect(Object.assign({width:110*u,height:110*u,rx:28*u,ry:28*u},common));
+  else if(k==='seal') obj=new fabric.Polygon(starPts(16,62*u,52*u),common);
+  else if(PATHS[k]){ obj=new fabric.Path(PATHS[k],Object.assign({},common,{fillRule:'evenodd'})); obj.scale(u*0.9); }
+  if(obj){ obj.shapeKind=k; obj.strokeUniform=true; obj.strokeLineJoin='round'; addObj(obj,nm); }
 });
 
 /* =====================================================================
@@ -5203,18 +5286,21 @@ function buildPresets(){
 var objbar=document.getElementById('objbar');
 function refreshBars(){
   var o=canvas.getActiveObject();
-  var tp=document.getElementById('textPanel'), ip=document.getElementById('imgPanel');
+  var tp=document.getElementById('textPanel'), ip=document.getElementById('imgPanel'), sp=document.getElementById('shapePanel');
   /* F-5 / F-7: 選択中だけ浮きもの（操作バー）を主役にするためのフラグ。
      PCではステージ説明行、スマホではズームバーをこれで退避させる。 */
   document.body.classList.toggle('has-sel', !!o);
-  if(!o){ objbar.classList.remove('show'); tp.classList.add('hidden'); ip.classList.add('hidden'); renderLayers(); return; }
+  if(!o){ objbar.classList.remove('show'); tp.classList.add('hidden'); ip.classList.add('hidden'); if(sp) sp.classList.add('hidden'); renderLayers(); return; }
   objbar.classList.add('show');
   var isText=(o.type==='i-text'||o.type==='text');
   var isImg=(o.type==='image');
+  var isShape=isShapeObj(o);
   tp.classList.toggle('hidden', !isText);
   ip.classList.toggle('hidden', !isImg);
+  if(sp) sp.classList.toggle('hidden', !isShape);
   if(isText){ syncTextPanel(); }
   if(isImg){ syncImagePanel(); }
+  if(isShape){ syncShapePanel(o); }
   document.getElementById('actLock').querySelector('small').textContent = o.locked?'解除':'ロック';
   mobileFollowSelection(o);
   pcFollowSelection(o, isText, isImg);
@@ -5253,13 +5339,14 @@ function applyPcTabs(){
 var _pcFollowLast=null;
 function pcFollowSelection(o, isText, isImg){
   if(!o || isMobile()) return;
-  var card=isText?document.getElementById('textPanel'):(isImg?document.getElementById('imgPanel'):null);
+  var isShp=(!isText && !isImg && typeof isShapeObj==='function' && isShapeObj(o));
+  var card=isText?document.getElementById('textPanel'):(isImg?document.getElementById('imgPanel'):(isShp?document.getElementById('shapePanel'):null));
   if(!card){ _pcFollowLast=null; return; }
-  /* レール運用中はタブを切り替える（文字→「文字」、画像→「画像」） */
-  if(document.body.classList.contains('pc-tabs')){ var want=isText?'text':'image'; if(pcTab!==want) setPcTab(want); }
+  /* レール運用中はタブを切り替える（文字→「文字」、画像→「画像」、図形→「素材」） */
+  if(document.body.classList.contains('pc-tabs')){ var want=isText?'text':(isImg?'image':'shape'); if(pcTab!==want) setPcTab(want); }
   var tools=document.getElementById('tools'); if(!tools || !tools.contains(card)) return;
   if(card.classList.contains('collapsed') && typeof setPanel==='function') setPanel(card, true);
-  var kind=isText?'text':'image'; if(_pcFollowLast===kind){ /* 同種の要素を選び直しただけならスクロールしない */ return; }
+  var kind=isText?'text':(isImg?'image':'shape'); if(_pcFollowLast===kind){ /* 同種の要素を選び直しただけならスクロールしない */ return; }
   _pcFollowLast=kind;
   var tr=tools.getBoundingClientRect(), cr=card.getBoundingClientRect();
   var visible = cr.top>=tr.top && cr.top<=tr.bottom-140;
@@ -5271,6 +5358,81 @@ function pcFollowSelection(o, isText, isImg){
   clearTimeout(tools._followT); tools._followT=setTimeout(function(){ if(Math.abs(tools.scrollTop-target)>24) tools.scrollTop=target; }, 450);
 }
 canvas.on('selection:cleared', function(){ _pcFollowLast=null; });
+
+/* ---- 図形の編集（塗り・線・太さ・不透明度・角丸） ---- */
+function isShapeObj(o){
+  if(!o) return false;
+  return ['rect','circle','triangle','polygon','path','ellipse'].indexOf(o.type)>=0 && !o._isGuide;
+}
+function activeShape(){ var o=canvas.getActiveObject(); return isShapeObj(o)?o:null; }
+var SHAPE_SWATCHES=['#E60012','#1456c4','#1a1a1a','#ffffff','#f2cf3d','#2f6b4f','#c8a349','#8a9098','#ff8a65','#7c4dff'];
+function syncShapePanel(o){
+  var f=document.getElementById('shpFill'), st=document.getElementById('shpStroke'), sw=document.getElementById('shpStrokeW'), op=document.getElementById('shpOp'), rd=document.getElementById('shpRadius');
+  if(!f) return;
+  if(typeof o.fill==='string' && o.fill && o.fill!=='transparent'){ f.value=o.fill.slice(0,7); }
+  if(typeof o.stroke==='string' && o.stroke){ st.value=o.stroke.slice(0,7); }
+  sw.value=o.strokeWidth||0; document.getElementById('shpStrokeWVal').textContent=sw.value;
+  op.value=o.opacity!=null?o.opacity:1; document.getElementById('shpOpVal').textContent=Math.round(op.value*100)+'%';
+  var rw=document.getElementById('shpRadiusWrap'); rw.hidden=(o.type!=='rect');
+  if(o.type==='rect'){ rd.value=Math.round((o.rx||0)/scaleUnit()); document.getElementById('shpRadiusVal').textContent=rd.value; }
+  var wrap=document.getElementById('shpSwatches');
+  if(wrap && !wrap.childElementCount){
+    SHAPE_SWATCHES.forEach(function(hex){ var b=document.createElement('button'); b.type='button'; b.className='swatch'+(hex==='#ffffff'?' light':''); b.style.background=hex; b.title=hex; b.setAttribute('aria-label','塗りを'+hex+'に');
+      b.onclick=function(){ var s2=activeShape(); if(!s2) return; s2.set('fill',hex); document.getElementById('shpFill').value=hex; canvas.requestRenderAll(); commitHistory(); }; wrap.appendChild(b); });
+  }
+}
+(function(){
+  var f=document.getElementById('shpFill'); if(!f) return;
+  f.oninput=function(){ var o=activeShape(); if(o){ o.set('fill',this.value); canvas.requestRenderAll(); } }; f.onchange=commitHistory;
+  var st=document.getElementById('shpStroke');
+  st.oninput=function(){ var o=activeShape(); if(o){ o.set('stroke',this.value); if(!o.strokeWidth){ o.set('strokeWidth',3); document.getElementById('shpStrokeW').value=3; document.getElementById('shpStrokeWVal').textContent=3; } canvas.requestRenderAll(); } }; st.onchange=commitHistory;
+  var sw=document.getElementById('shpStrokeW');
+  sw.oninput=function(){ var o=activeShape(); document.getElementById('shpStrokeWVal').textContent=this.value; if(o){ o.set({strokeWidth:parseInt(this.value,10), strokeUniform:true}); if(!o.stroke && this.value>0) o.set('stroke',document.getElementById('shpStroke').value); o.setCoords(); canvas.requestRenderAll(); } }; sw.onchange=commitHistory;
+  var op=document.getElementById('shpOp');
+  op.oninput=function(){ var o=activeShape(); document.getElementById('shpOpVal').textContent=Math.round(this.value*100)+'%'; if(o){ o.set('opacity',parseFloat(this.value)); canvas.requestRenderAll(); } }; op.onchange=commitHistory;
+  var rd=document.getElementById('shpRadius');
+  rd.oninput=function(){ var o=activeShape(); document.getElementById('shpRadiusVal').textContent=this.value; if(o && o.type==='rect'){ var r=parseInt(this.value,10)*scaleUnit(); o.set({rx:r,ry:r}); canvas.requestRenderAll(); } }; rd.onchange=commitHistory;
+  document.getElementById('shpNoFill').onclick=function(){ var o=activeShape(); if(!o) return; o.set('fill','transparent'); if(!o.strokeWidth){ o.set({stroke:document.getElementById('shpStroke').value, strokeWidth:3, strokeUniform:true}); } syncShapePanel(o); canvas.requestRenderAll(); commitHistory(); };
+  document.getElementById('shpNoStroke').onclick=function(){ var o=activeShape(); if(!o) return; o.set({strokeWidth:0}); syncShapePanel(o); canvas.requestRenderAll(); commitHistory(); };
+})();
+
+/* ---- 整列・等間隔（複数選択時） ----
+   ActiveSelection の中の座標は扱いにくいので、いったん選択を解いて絶対座標で並べ直し、選び直す */
+function alignSelection(mode){
+  var sel=canvas.getActiveObject(); if(!sel || sel.type!=='activeSelection') return;
+  var objs=sel.getObjects().slice(); if(objs.length<2) return;
+  canvas.discardActiveObject();
+  var rects=objs.map(function(o){ return {o:o, r:o.getBoundingRect(true,true)}; });
+  var L=Math.min.apply(null,rects.map(function(x){return x.r.left;})), R=Math.max.apply(null,rects.map(function(x){return x.r.left+x.r.width;}));
+  var T=Math.min.apply(null,rects.map(function(x){return x.r.top;})),  B=Math.max.apply(null,rects.map(function(x){return x.r.top+x.r.height;}));
+  function moveBy(x,dx,dy){ x.o.set({left:x.o.left+dx, top:x.o.top+dy}); x.o.setCoords(); }
+  if(mode==='left')   rects.forEach(function(x){ moveBy(x, L-x.r.left, 0); });
+  if(mode==='right')  rects.forEach(function(x){ moveBy(x, R-(x.r.left+x.r.width), 0); });
+  if(mode==='hcenter'){ var cx=(L+R)/2; rects.forEach(function(x){ moveBy(x, cx-(x.r.left+x.r.width/2), 0); }); }
+  if(mode==='top')    rects.forEach(function(x){ moveBy(x, 0, T-x.r.top); });
+  if(mode==='bottom') rects.forEach(function(x){ moveBy(x, 0, B-(x.r.top+x.r.height)); });
+  if(mode==='vcenter'){ var cy=(T+B)/2; rects.forEach(function(x){ moveBy(x, 0, cy-(x.r.top+x.r.height/2)); }); }
+  if(mode==='hdist' && rects.length>=3){
+    rects.sort(function(a,b){ return a.r.left-b.r.left; });
+    var sumW=rects.reduce(function(s,x){ return s+x.r.width; },0), gap=(R-L-sumW)/(rects.length-1), cur=L;
+    rects.forEach(function(x){ moveBy(x, cur-x.r.left, 0); cur+=x.r.width+gap; });
+  }
+  if(mode==='vdist' && rects.length>=3){
+    rects.sort(function(a,b){ return a.r.top-b.r.top; });
+    var sumH=rects.reduce(function(s,x){ return s+x.r.height; },0), gapV=(B-T-sumH)/(rects.length-1), curY=T;
+    rects.forEach(function(x){ moveBy(x, 0, curY-x.r.top); curY+=x.r.height+gapV; });
+  }
+  var ns=new fabric.ActiveSelection(objs,{canvas:canvas}); canvas.setActiveObject(ns); canvas.requestRenderAll(); commitHistory(); refreshBars();
+}
+(function(){
+  var btn=document.getElementById('actAlign'), menu=document.getElementById('alignMenu'); if(!btn||!menu) return;
+  function place(){ var r=btn.getBoundingClientRect(); menu.style.left=Math.round(r.left+r.width/2)+'px'; menu.style.top=Math.round(r.top-8)+'px'; }
+  btn.onclick=function(e){ e.stopPropagation(); var open=menu.classList.toggle('show'); if(open) place(); };
+  menu.addEventListener('click', function(e){ var b=e.target.closest('[data-align]'); if(!b) return; alignSelection(b.dataset.align); menu.classList.remove('show'); });
+  document.addEventListener('click', function(e){ if(!menu.contains(e.target) && e.target!==btn) menu.classList.remove('show'); });
+  /* 複数選択のときだけ「整列」を出す（3つ以上で等間隔も） */
+  var _rb3=refreshBars; refreshBars=function(){ _rb3.apply(this,arguments); var o=canvas.getActiveObject(); var multi=!!(o && o.type==='activeSelection'); btn.hidden=!multi; menu.classList.toggle('dist-ok', !!(multi && o.getObjects().length>=3)); if(!multi) menu.classList.remove('show'); };
+})();
 
 /* ---- PC クイックバー: 選択中の要素の「よく触る操作」をキャンバス直上に（Canva の上部バー相当）。
    実体は既存の編集カードのコントロールなので、ここでは代理でクリック／値設定するだけ ---- */
@@ -5295,9 +5457,11 @@ canvas.on('selection:cleared', function(){ _pcFollowLast=null; });
   function show(){
     var o=canvas.getActiveObject();
     if(!o || isMobile()){ qb.classList.remove('show'); return; }
-    var isText=(o.type==='i-text'||o.type==='text'), isImg=(o.type==='image');
-    if(!isText && !isImg){ qb.classList.remove('show'); return; }
-    qb.dataset.kind=isText?'text':'image'; qb.classList.add('show'); sync(o);
+    var isText=(o.type==='i-text'||o.type==='text'), isImg=(o.type==='image'), isShp=(typeof isShapeObj==='function' && isShapeObj(o));
+    if(!isText && !isImg && !isShp){ qb.classList.remove('show'); return; }
+    qb.dataset.kind=isText?'text':(isImg?'image':'shape'); qb.classList.add('show'); sync(o);
+    if(isShp){ var fv=(typeof o.fill==='string' && o.fill!=='transparent')?o.fill.slice(0,7):'#ffffff'; $('qbShpFill').value=fv; $('qbShpFillSw').style.background=(o.fill==='transparent')?'repeating-linear-gradient(45deg,#ddd 0 3px,#fff 0 6px)':fv;
+      var sv=(typeof o.stroke==='string' && o.stroke)?o.stroke.slice(0,7):'#1a1a1a'; $('qbShpStroke').value=sv; $('qbShpStrokeSw').style.setProperty('--qb-stroke', o.strokeWidth?sv:'#ddd'); }
   }
   var _rb2=refreshBars; refreshBars=function(){ _rb2.apply(this,arguments); show(); };
   canvas.on('object:modified', function(){ setTimeout(show,0); });
@@ -5316,6 +5480,11 @@ canvas.on('selection:cleared', function(){ _pcFollowLast=null; });
   $('qbBold').onclick=function(){ var b=document.querySelector('#styleSeg [data-k="bold"]'); if(b) b.click(); later(); };
   $('qbItalic').onclick=function(){ var b=document.querySelector('#styleSeg [data-k="italic"]'); if(b) b.click(); later(); };
   $('qbFx').onclick=function(){ toTextTab(); var tp=$('textPanel'); if(tp && tp.classList.contains('collapsed') && typeof setPanel==='function') setPanel(tp,true); scrollToEl('fxTabs'); };
+  $('qbShpFill').oninput=function(){ var f=$('shpFill'); if(!f) return; f.value=this.value; fire(f,'input'); $('qbShpFillSw').style.background=this.value; };
+  $('qbShpFill').onchange=function(){ var f=$('shpFill'); if(f) fire(f,'change'); };
+  $('qbShpStroke').oninput=function(){ var f=$('shpStroke'); if(!f) return; f.value=this.value; fire(f,'input'); $('qbShpStrokeSw').style.setProperty('--qb-stroke', this.value); };
+  $('qbShpStroke').onchange=function(){ var f=$('shpStroke'); if(f) fire(f,'change'); };
+  $('qbShpEdit').onclick=function(){ if(document.body.classList.contains('pc-tabs') && typeof setPcTab==='function') setPcTab('shape'); var sp=$('shapePanel'); if(sp && sp.classList.contains('collapsed') && typeof setPanel==='function') setPanel(sp,true); scrollToEl('shapePanel'); };
   $('qbAiBg').onclick=function(){ toImageTab(); var b=$('bgAiRemove'); if(b) b.click(); };
   $('qbCrop').onclick=function(){ toImageTab(); var ip=$('imgPanel'); if(ip && ip.classList.contains('collapsed') && typeof setPanel==='function') setPanel(ip,true); scrollToEl('cropRatios'); };
   $('qbFilter').onclick=function(){ toImageTab(); var ip=$('imgPanel'); if(ip && ip.classList.contains('collapsed') && typeof setPanel==='function') setPanel(ip,true); scrollToEl('imgPanel'); };
@@ -6833,6 +7002,7 @@ function mobileFollowSelection(o){
   if(!isMobile()||!o) return;
   if(o.type==='i-text'||o.type==='text'){ setMobileTab('text'); }
   else if(o.type==='image'){ setMobileTab('image'); }
+  else if(typeof isShapeObj==='function' && isShapeObj(o)){ setMobileTab('shape'); }
   if(sheetSnap==='peek') snapTo('mid');
 }
 
@@ -7062,7 +7232,7 @@ function initPanels(){
   });
   /* 選択時にだけ現れるパネルは、表示された瞬間に開く */
   if(window.MutationObserver){
-    ['textPanel','imgPanel','moriConfig'].forEach(function(id){
+    ['textPanel','imgPanel','shapePanel','moriConfig'].forEach(function(id){
       var el=document.getElementById(id); if(!el) return;
       new MutationObserver(function(){
         if(el.classList.contains('hidden')) return;
