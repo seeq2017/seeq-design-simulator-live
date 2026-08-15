@@ -240,6 +240,20 @@
       radial-gradient(circle at 1px 1px,rgba(0,0,0,.05) 1px,transparent 0) 0 0/22px 22px,var(--bg-2);
   }
   .canvas-wrap{position:relative;width:100%;max-width:740px;filter:drop-shadow(0 30px 60px rgba(0,0,0,.22));}
+  /* 広いPC画面: サイドバーを広げ（商品グリッド4列）、キャンバス上限も引き上げて余白を使い切る */
+  @media (min-width:1500px){
+    .tools{flex-basis:320px;}
+    .layer-dock{flex-basis:260px;}
+    .canvas-wrap{max-width:900px;}
+    .prodgrid{grid-template-columns:repeat(4,1fr);}
+    .prodsel{grid-template-columns:repeat(4,1fr);}
+  }
+  /* 高さの低いPC（ノートPC 768px級）: ステージ余白を詰めてキャンバスを大きく */
+  @media (min-width:1024px) and (max-height:820px){
+    .stage{padding:4px;}
+    .stage-hint{margin-top:4px;font-size:11px;}
+    header{min-height:52px;}
+  }
   canvas{border-radius:4px;}
   .stage-hint{margin-top:10px;font-size:11.5px;color:var(--sub);text-align:center;line-height:1.6;transition:opacity .12s;}
   /* F-7: 要素を選ぶと操作バー(bottom:14px)がこの説明行に14px重なって読めなくなる。
@@ -3544,6 +3558,7 @@ function switchFace(face){
   applyShirt();
   loadFace(faceState[stateKey()], function(){ renderLayers(); refreshBars(); });
   commitHistory();
+  try{ window.dispatchEvent(new CustomEvent('seeq:facechange',{detail:{face:face}})); }catch(_){}
 }
 function updateFaceUI(){
   document.querySelectorAll('.facetab').forEach(function(t){
@@ -3758,6 +3773,14 @@ function fileExt(file){ var n=(file&&file.name||'').toLowerCase(), i=n.lastIndex
 /* place a finished fabric object: cap to half-canvas width, tag, add */
 function placeImport(obj, name, fmt){
   if(!obj){ toast('読み込めませんでした'); return; }
+  /* スマホ: シートが画像に被って「動かせない」と感じるので、置いたら畳んで
+     キャンバスを見せる。初回だけ操作ヒントも出す（森さんFB 2026-08-16） */
+  if(isMobile()){
+    setTimeout(function(){
+      try{ snapTo('peek'); }catch(e){}
+      if(!placeImport._hinted){ placeImport._hinted=true; toast('画像を置きました。指でドラッグして動かせます・角をつまむと大きさ変更'); }
+    }, 60);
+  }
   var max=canvas.getWidth()*0.5;
   if(obj.getScaledWidth ? obj.getScaledWidth()>max : (obj.width>max)) obj.scaleToWidth(max);
   obj.importFmt=fmt;
@@ -7583,6 +7606,38 @@ var SeeQMockup=(function(){
       return compositeFlat(tpl, env, bgMode, c);
     });
   }
+  /* ---- 衣類（線画土台）の仕上がり合成 ----
+     3D布パネル（旧「質感」）はTシャツに見えないため、キャップ同様に
+     公式線画＋デザイン＋布の粒＋やわらかい陰影の2D合成に統一する。 */
+  function renderGarment(tpl, env, bgMode){
+    var lf=tpl.lineface;
+    var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
+    var frame=get3DFrame(1400);
+    var la={ front:lf.svg, vb:lf.vb, _imgs:lf._imgs=lf._imgs||{} };
+    return lineartImage(la, frame.color).then(function(img){
+      var c=document.createElement('canvas'); c.width=W; c.height=H;
+      var x=c.getContext('2d');
+      /* アート箱: BASE(480×560)レイアウトを出力キャンバスへ写像 */
+      var aw=lf.disp.w/480*W, ah=aw*(lf.vb.h/lf.vb.w);
+      var ax=(W-aw)/2, ay=(lf.disp.cy||250)/560*H - ah/2;
+      x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+      x.drawImage(img, ax, ay, aw, ah);
+      /* デザイン: ガイド矩形（BASE比率）へそのまま貼る（平面・わずかに沈める） */
+      var g=lf.guide, dx=ax+aw*g.x, dy=ay+ah*g.y, dw=aw*g.w, dh=ah*g.h;
+      x.globalAlpha=0.94; x.drawImage(frame.canvas, dx, dy, dw, dh); x.globalAlpha=1;
+      /* 布の粒（乗算・弱め）をアート範囲全体に。線画の外は透明なので destination-in で抜く */
+      /* 粒は「線画のアルファ内」だけに乗せる（透明部に multiply すると四角い板が浮く） */
+      var n=noiseCanvas(Math.max(2,Math.round(aw/4)), Math.max(2,Math.round(ah/4)), 0.05, 5);
+      var nc=document.createElement('canvas'); nc.width=W; nc.height=H; var nx=nc.getContext('2d');
+      nx.drawImage(c,0,0); nx.globalCompositeOperation='source-in'; nx.drawImage(n, ax, ay, aw, ah);
+      x.save(); x.globalCompositeOperation='multiply'; x.globalAlpha=0.35; x.drawImage(nc,0,0); x.restore();
+      /* 上からの柔らかい光＋裾へ落ちる影 */
+      var lg=x.createLinearGradient(0, ay, 0, ay+ah);
+      lg.addColorStop(0,'rgba(255,255,255,0.10)'); lg.addColorStop(0.5,'rgba(255,255,255,0)'); lg.addColorStop(1,'rgba(0,0,0,0.08)');
+      x.save(); x.globalCompositeOperation='source-atop'; x.fillStyle=lg; x.fillRect(ax,ay,aw,ah); x.restore();
+      return compositeFlat(tpl, env, bgMode, c);
+    });
+  }
   function renderCap(tpl, env, bgMode){
     if(tpl.lineart) return renderCapLineart(tpl, env, bgMode);
     var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
@@ -7796,6 +7851,14 @@ var SeeQMockup=(function(){
       x.beginPath();
       x.ellipse(rx+rw*0.5, ry+rh*0.80+sh.dy*H, rw*0.40, rh*0.10, 0, 0, Math.PI*2);
       x.fill();
+    } else if(tpl.shape==='garment'){
+      /* 衣類: 線画のシルエットそのものを少しずらして影にする（矩形影は四角い板に見える）。
+         別キャンバスで「線画のアルファ×影色」を作ってから重ねる */
+      var sc=document.createElement('canvas'); sc.width=W; sc.height=H;
+      var sx=sc.getContext('2d');
+      sx.drawImage(src, 0, 0, W, H);
+      sx.globalCompositeOperation='source-in'; sx.fillStyle='rgba(18,26,36,1)'; sx.fillRect(0,0,W,H);
+      x.globalAlpha=sh.alpha; x.drawImage(sc, 0, sh.dy*H*1.2, W, H); x.globalAlpha=1;
     } else {
       x.fillRect(rx+rw*0.02, ry+rh*0.02+sh.dy*H, rw*0.96, rh*0.98);
     }
@@ -7814,7 +7877,7 @@ var SeeQMockup=(function(){
     var bgMode=opts.bg||'soft';
     /* 平置き・前面合成の品目（タオル／キャップ）はWebGL不要なので即返す */
     if(tpl.renderer==='flat'){
-      try{ return Promise.resolve(tpl.shape==='cap' ? renderCap(tpl, env, bgMode) : renderFlat(tpl, env, bgMode)); }
+      try{ return Promise.resolve(tpl.shape==='garment' ? renderGarment(tpl, env, bgMode) : tpl.shape==='cap' ? renderCap(tpl, env, bgMode) : renderFlat(tpl, env, bgMode)); }
       catch(e){ return Promise.reject(e); }
     }
     if(tpl.layers.base.src){
@@ -7872,8 +7935,22 @@ var SeeQMockup=(function(){
     });
   }
 
+  /* 衣類の線画面ごとに動的テンプレを用意（id: garment:<product>:<face>） */
+  function ensureGarmentTemplate(prodId, faceId){
+    var lf=(typeof lineartFace==='function') ? lineartFace(prodId, faceId) : null;
+    if(!lf) return null;
+    var id='garment:'+prodId+':'+faceId;
+    if(!MOCKUP_TEMPLATES[id]){
+      var artH=lf.disp.w*lf.vb.h/lf.vb.w;
+      MOCKUP_TEMPLATES[id]={ label:(PRODUCTS[prodId]||{}).label||prodId, renderer:'flat', shape:'garment', lineface:lf,
+        out:{ w:1200, h:1400 }, ss:1.35,
+        rect:{ x:(240-lf.disp.w/2)/480, y:((lf.disp.cy||250)-artH/2)/560, w:lf.disp.w/480, h:artH/560 },
+        params:{ shadow:{ dy:0.020, blur:0.024, spread:1.0, alpha:0.30 } } };
+    }
+    return id;
+  }
   return { templates:MOCKUP_TEMPLATES, env:MK_ENV, envOrder:MK_ENV_ORDER, bgOpts:MK_BG, render:render,
-           embroiderize:embroiderize };
+           embroiderize:embroiderize, ensureGarmentTemplate:ensureGarmentTemplate };
 })();
 
 /* =====================================================================
@@ -7893,7 +7970,14 @@ var SeeQMockup=(function(){
   var opt={ env:'studio', bg:'soft' };
   var open=false, lastCanvas=null, busy=false;
 
-  function isMockup(){ var p=curProduct(); return !!(p && p.kind==='mockup' && MOCKUP_TEMPLATES[p.mockup]); }
+  function garmentTplId(){
+    /* legacy定義（Tシャツ/パーカー/トート）は kind が無い＝アパレル扱い */
+    var p=curProduct(); if(!p) return null;
+    var k=p.kind||'apparel'; if(k!=='apparel') return null;
+    return SeeQMockup.ensureGarmentTemplate ? SeeQMockup.ensureGarmentTemplate(p.id||currentProduct, currentFace) : null;
+  }
+  function curTplId(){ var p=curProduct(); return (p && p.kind==='mockup') ? p.mockup : garmentTplId(); }
+  function isMockup(){ var p=curProduct(); if(!p) return false; if(p.kind==='mockup') return !!MOCKUP_TEMPLATES[p.mockup]; return !!garmentTplId(); }
   function setViewBtn(v){
     viewToggle && viewToggle.querySelectorAll('.vt').forEach(function(b){ b.classList.toggle('on', b.dataset.view===v); });
   }
@@ -7926,10 +8010,10 @@ var SeeQMockup=(function(){
   function refresh(){
     if(!isMockup() || busy) return;
     busy=true; setLoading(true);
-    SeeQMockup.render(curProduct().mockup, opt).then(function(c){
+    SeeQMockup.render(curTplId(), opt).then(function(c){
       setLoading(false); busy=false; lastCanvas=c;
       var img=mount.querySelector('img.mk-out');
-      if(!img){ img=document.createElement('img'); img.className='mk-out'; img.alt='缶バッジの仕上がりイメージ'; mount.appendChild(img); }
+      if(!img){ img=document.createElement('img'); img.className='mk-out'; img.alt='仕上がりイメージ'; mount.appendChild(img); }
       img.classList.toggle('alpha', opt.bg==='alpha');
       img.src=c.toDataURL('image/png');
       /* 見積モーダルのサムネにも、この仕上がりイメージを使う */
@@ -7969,6 +8053,7 @@ var SeeQMockup=(function(){
   }
   /* 商品を切り替えたらモックアップ面は閉じる（別品目の絵が残らないように） */
   window.addEventListener('seeq:productchange', function(){ if(open) exit(); syncLabel(); });
+  window.addEventListener('seeq:facechange', function(){ if(open) refresh(); });
   window.addEventListener('seeq:brandchange', function(){ if(open) exit(); syncLabel(); });
   syncLabel();
   window.SEEQ_MOCKUP={ enter:enter, exit:exit, refresh:refresh, isMockup:isMockup };
