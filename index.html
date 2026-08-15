@@ -198,6 +198,24 @@
     flex:0 0 256px;background:var(--panel);border-right:1px solid var(--line);
     overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;
   }
+  /* PC 左レール（タブ）: 押したタブのカードだけをサイドバーに出す */
+  .pc-rail{display:none;}
+  @media (min-width:821px){
+    .pc-rail{display:flex;flex-direction:column;align-items:stretch;flex:0 0 66px;background:var(--panel);
+      border-right:1px solid var(--line);padding:8px 6px;gap:2px;overflow-y:auto;}
+    .ptab{border:0;background:transparent;border-radius:10px;padding:9px 2px 7px;display:flex;flex-direction:column;
+      align-items:center;gap:4px;font-size:10.5px;font-weight:800;color:var(--sub);cursor:pointer;
+      -webkit-tap-highlight-color:transparent;letter-spacing:.02em;}
+    .ptab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:block;}
+    .ptab:hover{background:var(--bg-2);color:var(--ink);}
+    .ptab.active{background:var(--brand-soft);color:var(--accent-d);}
+    .ptab[hidden]{display:none;}
+    body.pc-tabs #tools .card{display:none;}
+    body.pc-tabs #tools .card.pc-active{display:block;}
+    body.pc-tabs #tools .card.hidden{display:none !important;}
+    body.pc-tabs .panel-tools{display:none;}     /* タブで切り替わるので一括開閉は不要 */
+    body.pc-tabs .tools{flex-basis:250px;}
+  }
   /* desktop right-hand layer dock (req PC-a): the layer card is moved here by JS
      on desktop and back into the sheet on mobile. */
   .layer-dock{flex:0 0 232px;background:var(--panel);border-left:1px solid var(--line);
@@ -375,12 +393,41 @@
   .obj-act svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;}
   .obj-act small{font-size:11px;display:block;margin-top:2px;color:var(--ink-3);}
   .compose-hint{display:none;font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.5;}
+  /* PC クイックバー（選択中だけ表示・スマホでは出さない） */
+  .quickbar{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:36;
+    background:#fff;border:1px solid var(--hair);border-radius:var(--radius-lg,8px);padding:5px 6px;
+    box-shadow:var(--shadow-card);align-items:center;gap:4px;max-width:calc(100% - 24px);}
+  .quickbar.show{display:flex;}
+  .quickbar .qb-group{display:none;align-items:center;gap:4px;}
+  .quickbar[data-kind="text"] .qb-text{display:flex;}
+  .quickbar[data-kind="image"] .qb-image{display:flex;}
+  .qb-btn{border:1px solid transparent;background:transparent;color:var(--ink);cursor:pointer;border-radius:var(--radius-md,4px);
+    min-width:32px;height:32px;padding:0 8px;font-size:13px;font-weight:700;display:grid;place-items:center;line-height:1;white-space:nowrap;}
+  .qb-btn:hover{background:var(--bg-2);}
+  .qb-btn.on{background:var(--brand-soft);color:var(--accent-d);border-color:rgba(226,35,26,.25);}
+  .qb-btn.qb-wide{padding:0 11px;font-size:12.5px;}
+  .qb-btn.qb-ai{color:var(--accent-d);}
+  .qb-font{border:1px solid var(--line);background:#fff;border-radius:var(--radius-md,4px);height:32px;padding:0 9px 0 10px;
+    display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--ink);max-width:190px;}
+  .qb-font span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .qb-font .qb-caret{color:var(--sub);font-size:11px;}
+  .qb-num{min-width:30px;text-align:center;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink);}
+  .qb-sep{width:1px;height:22px;background:var(--hair);margin:0 3px;}
+  .qb-color{position:relative;width:32px;height:32px;display:grid;place-items:center;cursor:pointer;border-radius:var(--radius-md,4px);}
+  .qb-color:hover{background:var(--bg-2);}
+  .qb-color input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+  .qb-swatch{width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--hair);pointer-events:none;background:#222;}
+  .quickbar.show ~ .ov-warn{top:58px;}
+  @media (max-width:820px){ .quickbar{display:none !important;} }
+  @media (min-width:821px){ body.has-sel .toast{top:120px;} }   /* クイックバーと重ならない位置へ */
   /* 実寸の目安 */
   .obj-dim{align-self:center;font-size:11.5px;font-weight:800;color:var(--ink);padding:0 8px 0 9px;border-left:1px solid var(--hair);margin-left:3px;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .guide-dim{position:absolute;z-index:30;pointer-events:none;font-size:11px;font-weight:700;color:var(--ink-3);
     background:rgba(255,255,255,.84);border:1px solid var(--hair-soft);border-radius:999px;padding:2px 9px;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .real-dim-row input[type=number]{width:74px;min-width:0;padding:7px 8px;border:1px solid var(--line);border-radius:var(--radius-md,4px);font-size:13px;}
   #realSizeInfo{margin-top:6px;}
+  .real-body{flex:1 1 100%;display:flex;gap:6px;margin-bottom:4px;}
+  .real-body .chip{flex:1 1 0;text-align:center;}
 
   /* context menu */
   .ctxmenu{position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;min-width:170px;}
@@ -1059,6 +1106,16 @@
 </header>
 
 <main>
+  <!-- PC: 左のアイコンレール（Canva の左レール相当）。押したタブのカードだけをサイドバーに出す。
+       スマホは従来のボトムシート＋タブ（.mtab）のまま -->
+  <nav class="pc-rail" id="pcRail" aria-label="ツール">
+    <button class="ptab active" data-ptab="product" type="button"><svg viewBox="0 0 24 24"><path d="M8 4L3.5 6.5 5.5 10 8 8.8V20h8V8.8l2.5 1.2 2-3.5L16 4l-1.7.9a3.3 3.3 0 01-4.6 0z"/></svg><span>商品</span></button>
+    <button class="ptab" data-ptab="text" type="button"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v12M9.5 18h5"/></svg><span>文字</span></button>
+    <button class="ptab" data-ptab="image" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5L5 19.5"/></svg><span>画像</span></button>
+    <button class="ptab" data-ptab="shape" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="9" height="9" rx="1.5"/><circle cx="16" cy="16" r="5"/></svg><span>素材</span></button>
+    <button class="ptab" data-ptab="arrange" type="button"><svg viewBox="0 0 24 24"><path d="M4 4v16"/><rect x="7.5" y="7" width="11" height="4" rx="1"/><rect x="7.5" y="14" width="7" height="4" rx="1"/></svg><span>配置</span></button>
+    <button class="ptab" data-ptab="layer" type="button" hidden><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span>レイヤー</span></button>
+  </nav>
   <aside class="tools" id="tools">
 
     <!-- Mobile bottom-sheet header (hidden on desktop) — drag grip + bottom-nav tabs -->
@@ -1508,6 +1565,27 @@
   </aside>
 
   <section class="stage" id="stage">
+    <!-- PC: 選択中の要素のクイックバー（Canva の上部ツールバー相当）。既存の編集カードの操作を代理で叩く -->
+    <div class="quickbar" id="quickbar" role="toolbar" aria-label="選択中の要素のクイック操作">
+      <div class="qb-group qb-text">
+        <button type="button" class="qb-font" id="qbFont" title="フォントを選ぶ"><span id="qbFontName">ゴシック</span><span class="qb-caret">▾</span></button>
+        <span class="qb-sep"></span>
+        <button type="button" class="qb-btn" id="qbMinus" title="小さく" aria-label="文字を小さく">−</button>
+        <span class="qb-num" id="qbSize">40</span>
+        <button type="button" class="qb-btn" id="qbPlus" title="大きく" aria-label="文字を大きく">＋</button>
+        <span class="qb-sep"></span>
+        <label class="qb-color" title="文字色"><input type="color" id="qbColor" value="#222222" aria-label="文字色"><span class="qb-swatch" id="qbSwatch"></span></label>
+        <button type="button" class="qb-btn qb-b" id="qbBold" title="太字"><b>B</b></button>
+        <button type="button" class="qb-btn qb-i" id="qbItalic" title="斜体"><i>I</i></button>
+        <span class="qb-sep"></span>
+        <button type="button" class="qb-btn qb-wide" id="qbFx" title="縁取り・影などの効果">エフェクト</button>
+      </div>
+      <div class="qb-group qb-image">
+        <button type="button" class="qb-btn qb-wide qb-ai" id="qbAiBg" title="AIが被写体を判定して背景だけを消します">AIで背景を削除</button>
+        <button type="button" class="qb-btn qb-wide" id="qbCrop" title="トリミング・角丸・形で切り抜く">トリミング</button>
+        <button type="button" class="qb-btn qb-wide" id="qbFilter" title="明るさ・フィルタ">補正</button>
+      </div>
+    </div>
     <!-- 実寸の目安: プリント範囲の cm 表示（枠の下に追従） -->
     <div class="guide-dim" id="guideDim" hidden></div>
     <!-- F-4: プリント枠からはみ出したまま黙って進ませない -->
@@ -3286,7 +3364,8 @@ function snapshot(){
   saveCurrentFace();
   return JSON.stringify({
     product:currentProduct, face:currentFace, color:currentColor.hex,
-    state:faceState
+    state:faceState,
+    real:(window.SeeQReal?SeeQReal.state():undefined)      /* サイズ・シルエットの選択も履歴に含める */
   }, histReplacer);
 }
 
@@ -3299,6 +3378,7 @@ function restoreSnapshot(json, cb){
   currentFace = (faces.indexOf(st.face)>=0) ? st.face : faces[0];
   var col = curColors().filter(function(c){return c.hex===st.color;})[0] || curColors()[0];
   currentColor = col;
+  try{ if(st.real && window.SeeQReal) SeeQReal.restore(st.real.sizes||{}, st.real.bodies||{}); }catch(e){}
   renderSwatches(curColors());
   renderFaceTabs();
   updateProductUI();
@@ -3766,20 +3846,30 @@ function updateOverflowWarn(){
 var SeeQReal=(function(){
   /* sizes: [表示名, 身幅cm, 身丈cm]。torso: 前面線画で身幅に相当する胴の幅（vb単位）。
      sleeveHem: 前面線画の袖口の長さ（vb単位）／ sleeveW: 袖アップ線画の袖口幅（vb単位） */
+  /* big: 同じ品目のビッグシルエット版ボディ（UA公式サイズ表）。シルエット切替で参照する */
   var CFG={
     tshirt:{ ref:'United Athle 5001-01（5.6oz）', def:'M', torso:1601, sleeveHem:579, sleeveW:696,
-      sizes:[['S',49,65],['M',52,69],['L',55,73],['XL',58,77],['XXL',63,81],['XXXL',68,84]] },
+      sizes:[['S',49,65],['M',52,69],['L',55,73],['XL',58,77],['XXL',63,81],['XXXL',68,84]],
+      big:{ ref:'United Athle 5508-01（5.6oz ビッグシルエット）', def:'M', sizes:[['S',55,66],['M',58,70],['L',61,74],['XL',64,78],['XXL',67,82]] } },
     dry:{ ref:'United Athle 5900-01（4.1oz）', def:'M', torso:1601, sleeveHem:579, sleeveW:696,
       sizes:[['S',48,65],['M',51,68],['L',54,71],['XL',57,74],['XXL',60,77],['XXXL',64,80],['XXXXL',68,83],['5XL',73,85],['6XL',77,87]] },
     longtee:{ ref:'United Athle 5010-01（5.6oz）', def:'M', torso:1343,
-      sizes:[['S',49,65],['M',52,69],['L',55,73],['XL',58,77],['XXL',63,81]] },
+      sizes:[['S',49,65],['M',52,69],['L',55,73],['XL',58,77],['XXL',63,81]],
+      big:{ ref:'United Athle 5509-01（5.6oz ビッグ L/S）', def:'M', sizes:[['S',62,71],['M',65,74],['L',68,76],['XL',71,78]] } },
     sweat:{ ref:'United Athle 5044-01（10.0oz）', def:'M', torso:1496,
-      sizes:[['S',52,63],['M',55,67],['L',58,71],['XL',63,76],['XXL',68,81],['XXXL',73,84]] },
+      sizes:[['S',52,63],['M',55,67],['L',58,71],['XL',63,76],['XXL',68,81],['XXXL',73,84]],
+      big:{ ref:'United Athle 5205-01（10.0oz ビッグ クルーネック）', def:'M', sizes:[['M',68,69],['L',71,72],['XL',75,75]] } },
     parka:{ ref:'United Athle 5214-01（10.0oz）', def:'M', torso:1427,
-      sizes:[['S',52,63],['M',55,67],['L',58,71],['XL',63,76],['XXL',68,81],['XXXL',73,84]] }
+      sizes:[['S',52,63],['M',55,67],['L',58,71],['XL',63,76],['XXL',68,81],['XXXL',73,84]],
+      big:{ ref:'United Athle 5204-01（10.0oz ビッグ プルオーバー）', def:'M', sizes:[['M',68,69],['L',71,72],['XL',75,75]] } }
   };
   var sel={};                                   /* productId → サイズ名（未選択は def） */
-  function cfg(pid){ return CFG[pid||currentProduct]||null; }
+  var bodySel={};                               /* productId → 'reg' | 'big' */
+  function bodyKey(pid){ pid=pid||currentProduct; var c=CFG[pid]; return (c && c.big && bodySel[pid]==='big') ? 'big' : 'reg'; }
+  /* 有効な設定（シルエット反映済み）: sizes/ref/def はボディに応じて差し替え、torso 等は品目共通 */
+  function cfg(pid){ pid=pid||currentProduct; var c=CFG[pid]; if(!c) return null;
+    if(bodyKey(pid)==='big'){ var b=c.big; return { ref:b.ref, def:b.def||c.def, sizes:b.sizes, torso:c.torso, sleeveHem:c.sleeveHem, sleeveW:c.sleeveW, big:c.big, isBig:true }; }
+    return c; }
   function sizeKey(pid){ var c=cfg(pid); if(!c) return null; var k=sel[pid||currentProduct]; return (k && c.sizes.some(function(s){return s[0]===k;})) ? k : c.def; }
   function sizeRow(pid){ var c=cfg(pid); if(!c) return null; var k=sizeKey(pid); return c.sizes.filter(function(s){return s[0]===k;})[0]||null; }
   /* BASE(480×560)座標での 1cm あたり px。線画のない面・対象外品目は null */
@@ -3834,10 +3924,21 @@ var SeeQReal=(function(){
     if(!wrap) return; var c=cfg();
     if(!c){ wrap.hidden=true; return; }
     wrap.hidden=false; chips.innerHTML=''; var k=sizeKey();
+    /* シルエット（レギュラー／ビッグ）: ビッグ版ボディがある品目だけ */
+    if(c.big){
+      var seg=document.createElement('div'); seg.className='real-body';
+      [['reg','レギュラー'],['big','ビッグシルエット']].forEach(function(b){
+        var bb=document.createElement('button'); bb.type='button'; bb.className='chip'+(bodyKey()===b[0]?' on':''); bb.textContent=b[1];
+        bb.setAttribute('aria-pressed', bodyKey()===b[0]?'true':'false');
+        bb.onclick=function(){ if(bodyKey()===b[0]) return; bodySel[currentProduct]=b[0]; var nc=cfg(); if(!nc.sizes.some(function(x){return x[0]===sel[currentProduct];})) delete sel[currentProduct]; renderChips(); refreshAll(); commitHistory(); };
+        seg.appendChild(bb);
+      });
+      chips.appendChild(seg);
+    }
     c.sizes.forEach(function(s){
       var b=document.createElement('button'); b.type='button'; b.className='chip'+(s[0]===k?' on':''); b.textContent=s[0];
       b.setAttribute('aria-pressed', s[0]===k?'true':'false');
-      b.onclick=function(){ sel[currentProduct]=s[0]; renderChips(); refreshAll(); };
+      b.onclick=function(){ sel[currentProduct]=s[0]; renderChips(); refreshAll(); commitHistory(); };
       chips.appendChild(b);
     });
     var row=sizeRow();
@@ -3897,7 +3998,7 @@ var SeeQReal=(function(){
   /* 見積サマリ／送信用 */
   function quoteRows(){
     var c=cfg(); if(!c) return []; var row=sizeRow(), out=[];
-    out.push(['サイズ（目安）', row[0]+'　身幅'+row[1]+'／身丈'+row[2]+'cm']);
+    out.push(['サイズ（目安）', (c.isBig?'ビッグシルエット ':'')+row[0]+'　身幅'+row[1]+'／身丈'+row[2]+'cm']);
     /* デザインのある面ごとに実寸 */
     (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d) out.push(['プリント実寸（'+(f.label||f.id)+'）', '約'+fmt(d.w)+'×'+fmt(d.h)+'cm']); });
     var g=guideCm(); if(g) out.push(['プリント範囲（'+(curFaceDef().label||currentFace)+'）', '約'+fmt(g.w)+'×'+fmt(g.h)+'cm']);
@@ -3905,7 +4006,7 @@ var SeeQReal=(function(){
   }
   function payload(){ var c=cfg(); if(!c) return {}; var g=guideCm(), parts=[];
     (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d) parts.push(f.id+':'+fmt(d.w)+'x'+fmt(d.h)); });
-    return { size:sizeKey(), sizeRef:c.ref, printCm:parts.join(';'), printAreaCm:g?(fmt(g.w)+'x'+fmt(g.h)):'' }; }
+    return { size:(c.isBig?'ビッグ ':'')+sizeKey(), sizeRef:c.ref, printCm:parts.join(';'), printAreaCm:g?(fmt(g.w)+'x'+fmt(g.h)):'' }; }
 
   /* ---- 既存フローへの接続（宣言済み関数を包む） ---- */
   var _upd=updateProductUI; updateProductUI=function(){ _upd.apply(this,arguments); refreshAll(); };
@@ -3917,7 +4018,11 @@ var SeeQReal=(function(){
   window.addEventListener('seeq:facechange', function(){ refreshAll(); });
   window.addEventListener('seeq:productchange', function(){ refreshAll(); });
   setTimeout(refreshAll, 0);
-  return { cfg:cfg, sizeKey:sizeKey, setSize:function(pid,k){ sel[pid]=k; refreshAll(); }, sizes:function(){ return sel; }, restore:function(m){ sel=Object.assign({}, m||{}); refreshAll(); },
+  return { cfg:cfg, sizeKey:sizeKey, bodyKey:bodyKey, setSize:function(pid,k){ sel[pid]=k; refreshAll(); },
+           /* 保存・履歴用の状態（サイズ名とシルエット） */
+           sizes:function(){ return sel; }, bodies:function(){ return bodySel; },
+           state:function(){ return { sizes:Object.assign({},sel), bodies:Object.assign({},bodySel) }; },
+           restore:function(m, b){ if(m && m.sizes && !Array.isArray(m)){ b=m.bodies; m=m.sizes; } sel=Object.assign({}, m||{}); bodySel=Object.assign({}, b||{}); refreshAll(); },
            ppcBase:ppcBase, guideCm:guideCm, objCm:objCm, designCm:designCm, quoteRows:quoteRows, payload:payload, refresh:refreshAll };
 })();
 
@@ -5116,6 +5221,32 @@ function refreshBars(){
   positionContextBar();
   renderLayers();
 }
+/* ---- PC 左レール（タブ）: 商品／文字／画像／素材／配置（レイヤーはドックが使えない幅のときだけ） ---- */
+var pcTab='product';
+function setPcTab(name){
+  pcTab=name;
+  document.querySelectorAll('#pcRail .ptab').forEach(function(b){ b.classList.toggle('active', b.dataset.ptab===name); b.setAttribute('aria-pressed', b.dataset.ptab===name?'true':'false'); });
+  document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.toggle('pc-active', c.dataset.tab===name); });
+  /* タブを開いたのに中身が畳まれたままだと二度手間なので、見えているカードは開く */
+  if(typeof setPanel==='function'){
+    [].forEach.call(document.querySelectorAll('#tools .card.pc-active'), function(c){ if(!c.classList.contains('hidden') && c.classList.contains('collapsed')) setPanel(c, true); });
+  }
+  var t=document.getElementById('tools'); if(t) t.scrollTop=0;
+}
+function applyPcTabs(){
+  var on=!isMobile();
+  document.body.classList.toggle('pc-tabs', on);
+  var lb=document.querySelector('#pcRail .ptab[data-ptab="layer"]');
+  if(lb) lb.hidden = !on || (typeof useLayerDock==='function' && useLayerDock());
+  if(on){ if(pcTab==='layer' && lb && lb.hidden) pcTab='product'; setPcTab(pcTab); }
+  else { document.querySelectorAll('#tools .card').forEach(function(c){ c.classList.remove('pc-active'); }); }
+}
+(function(){
+  var rail=document.getElementById('pcRail'); if(!rail) return;
+  rail.addEventListener('click', function(e){ var b=e.target.closest('.ptab'); if(!b) return; setPcTab(b.dataset.ptab); track && track('pctab',{tab:b.dataset.ptab}); });
+  window.addEventListener('resize', applyPcTabs);
+  applyPcTabs();
+})();
 /* PC: 選んだ要素の編集カード（テキストの編集／画像の編集）が畳まれていれば開き、
    サイドバーの見える範囲外なら見える位置までスクロールする（Canva の『選ぶと右手に道具が出る』感覚）。
    毎回ジャンプすると落ち着かないので、見えているときは動かさない */
@@ -5124,6 +5255,8 @@ function pcFollowSelection(o, isText, isImg){
   if(!o || isMobile()) return;
   var card=isText?document.getElementById('textPanel'):(isImg?document.getElementById('imgPanel'):null);
   if(!card){ _pcFollowLast=null; return; }
+  /* レール運用中はタブを切り替える（文字→「文字」、画像→「画像」） */
+  if(document.body.classList.contains('pc-tabs')){ var want=isText?'text':'image'; if(pcTab!==want) setPcTab(want); }
   var tools=document.getElementById('tools'); if(!tools || !tools.contains(card)) return;
   if(card.classList.contains('collapsed') && typeof setPanel==='function') setPanel(card, true);
   var kind=isText?'text':'image'; if(_pcFollowLast===kind){ /* 同種の要素を選び直しただけならスクロールしない */ return; }
@@ -5138,6 +5271,55 @@ function pcFollowSelection(o, isText, isImg){
   clearTimeout(tools._followT); tools._followT=setTimeout(function(){ if(Math.abs(tools.scrollTop-target)>24) tools.scrollTop=target; }, 450);
 }
 canvas.on('selection:cleared', function(){ _pcFollowLast=null; });
+
+/* ---- PC クイックバー: 選択中の要素の「よく触る操作」をキャンバス直上に（Canva の上部バー相当）。
+   実体は既存の編集カードのコントロールなので、ここでは代理でクリック／値設定するだけ ---- */
+(function(){
+  var qb=document.getElementById('quickbar'); if(!qb) return;
+  var $=function(id){ return document.getElementById(id); };
+  function fire(el, type){ try{ el.dispatchEvent(new Event(type,{bubbles:true})); }catch(e){} }
+  function sync(o){
+    if(!o) return;
+    var isText=(o.type==='i-text'||o.type==='text');
+    if(isText){
+      var fn=$('fontBtnName'); if(fn) $('qbFontName').textContent=fn.textContent||'フォント';
+      var sv=$('fontSizeVal'); if(sv) $('qbSize').textContent=sv.textContent||'';
+      var tf=$('textFill'); if(tf){ $('qbColor').value=tf.value; $('qbSwatch').style.background=tf.value; }
+      var segB=document.querySelector('#styleSeg [data-k="bold"]'), segI=document.querySelector('#styleSeg [data-k="italic"]');
+      $('qbBold').classList.toggle('on', !!(segB&&segB.classList.contains('on')));
+      $('qbItalic').classList.toggle('on', !!(segI&&segI.classList.contains('on')));
+      /* グラデ塗りなどは色ボタンで上書きしない方が安全なので、単色のときだけ色を出す */
+      var solid=(typeof o.fill==='string'); $('qbColor').parentNode.style.visibility=solid?'':'hidden';
+    }
+  }
+  function show(){
+    var o=canvas.getActiveObject();
+    if(!o || isMobile()){ qb.classList.remove('show'); return; }
+    var isText=(o.type==='i-text'||o.type==='text'), isImg=(o.type==='image');
+    if(!isText && !isImg){ qb.classList.remove('show'); return; }
+    qb.dataset.kind=isText?'text':'image'; qb.classList.add('show'); sync(o);
+  }
+  var _rb2=refreshBars; refreshBars=function(){ _rb2.apply(this,arguments); show(); };
+  canvas.on('object:modified', function(){ setTimeout(show,0); });
+  canvas.on('text:changed', function(){ setTimeout(show,0); });
+  window.addEventListener('resize', show);
+  function later(){ setTimeout(function(){ sync(canvas.getActiveObject()); }, 30); }
+  function toTextTab(){ if(document.body.classList.contains('pc-tabs') && typeof setPcTab==='function') setPcTab('text'); }
+  function toImageTab(){ if(document.body.classList.contains('pc-tabs') && typeof setPcTab==='function') setPcTab('image'); }
+  function scrollToEl(id){ var el=$(id); if(!el) return; var tools=$('tools'); if(!tools) return;
+    setTimeout(function(){ var tr=tools.getBoundingClientRect(), er=el.getBoundingClientRect(); tools.scrollTo({top:Math.max(0,tools.scrollTop+(er.top-tr.top)-70), behavior:'smooth'}); }, 40); }
+  $('qbFont').onclick=function(){ toTextTab(); var b=$('fontBtn'); if(b) b.click(); };
+  $('qbMinus').onclick=function(){ var b=$('fontSmaller'); if(b) b.click(); later(); };
+  $('qbPlus').onclick=function(){ var b=$('fontBigger'); if(b) b.click(); later(); };
+  $('qbColor').oninput=function(){ var tf=$('textFill'); if(!tf) return; tf.value=this.value; fire(tf,'input'); $('qbSwatch').style.background=this.value; };
+  $('qbColor').onchange=function(){ var tf=$('textFill'); if(tf) fire(tf,'change'); };
+  $('qbBold').onclick=function(){ var b=document.querySelector('#styleSeg [data-k="bold"]'); if(b) b.click(); later(); };
+  $('qbItalic').onclick=function(){ var b=document.querySelector('#styleSeg [data-k="italic"]'); if(b) b.click(); later(); };
+  $('qbFx').onclick=function(){ toTextTab(); var tp=$('textPanel'); if(tp && tp.classList.contains('collapsed') && typeof setPanel==='function') setPanel(tp,true); scrollToEl('fxTabs'); };
+  $('qbAiBg').onclick=function(){ toImageTab(); var b=$('bgAiRemove'); if(b) b.click(); };
+  $('qbCrop').onclick=function(){ toImageTab(); var ip=$('imgPanel'); if(ip && ip.classList.contains('collapsed') && typeof setPanel==='function') setPanel(ip,true); scrollToEl('cropRatios'); };
+  $('qbFilter').onclick=function(){ toImageTab(); var ip=$('imgPanel'); if(ip && ip.classList.contains('collapsed') && typeof setPanel==='function') setPanel(ip,true); scrollToEl('imgPanel'); };
+})();
 canvas.on('selection:created', refreshBars);
 canvas.on('selection:updated', refreshBars);
 canvas.on('selection:cleared', refreshBars);
@@ -6022,7 +6204,7 @@ document.getElementById('saveX').onclick=function(){ saveModal.classList.remove(
 saveModal.onclick=function(e){ if(e.target===saveModal) saveModal.classList.remove('show'); };
 function exportDesign(){
   saveCurrentFace();
-  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState, sizes:(window.SeeQReal?SeeQReal.sizes():undefined)});
+  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState, sizes:(window.SeeQReal?SeeQReal.sizes():undefined), bodies:(window.SeeQReal?SeeQReal.bodies():undefined)});
 }
 /* opts.confirm=true のときは、いま編集中のデザインが消えることを必ず確認する。
    テンプレート適用にだけ確認があって、より危険な全置換に無かった非対称の解消（P0-5）。 */
@@ -6039,7 +6221,7 @@ function importDesign(json, opts){
   var faces = curProduct().faces.map(function(f){return f.id;});
   currentFace = (faces.indexOf(st.face)>=0) ? st.face : faces[0];
   currentColor = curColors().filter(function(c){return c.hex===st.color;})[0] || curColors()[0];
-  try{ if(st.sizes && window.SeeQReal) SeeQReal.restore(st.sizes); }catch(e){}
+  try{ if((st.sizes||st.bodies) && window.SeeQReal) SeeQReal.restore(st.sizes||{}, st.bodies||{}); }catch(e){}
   renderProductSelector(); renderSwatches(curColors()); renderFaceTabs();
   updateProductUI(); updateFaceUI(); positionGuide(); applyShirt();
   loadFace(faceState[stateKey()], function(){ renderLayers(); refreshBars(); histGuard=false; commitHistory(); });
