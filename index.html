@@ -439,6 +439,9 @@
     background:rgba(255,255,255,.84);border:1px solid var(--hair-soft);border-radius:999px;padding:2px 9px;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .real-dim-row input[type=number]{width:74px;min-width:0;padding:7px 8px;border:1px solid var(--line);border-radius:var(--radius-md,4px);font-size:13px;}
   #realSizeInfo{margin-top:6px;}
+  .real-keep{display:flex;gap:8px;align-items:flex-start;margin:8px 0 2px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;line-height:1.4;}
+  .real-keep input{margin-top:2px;accent-color:var(--accent);}
+  .real-keep small{display:block;font-weight:400;color:var(--sub);font-size:11px;margin-top:2px;}
   .real-body{flex:1 1 100%;display:flex;gap:6px;margin-bottom:4px;}
   .real-body .chip{flex:1 1 0;text-align:center;}
 
@@ -1184,6 +1187,7 @@
       <div id="realSizeWrap" hidden>
         <label class="fld">サイズ <span class="fld-sub" id="realSizeSub">（実寸の目安）</span></label>
         <div class="chiprow" id="realSizes"></div>
+        <label class="real-keep"><input type="checkbox" id="realKeep"><span>サイズを変えてもプリントの実寸（cm）を保つ<small>同じ版で刷ったときの見え方の違いを確認できます</small></span></label>
         <div class="mini note" id="realSizeInfo"></div>
       </div>
       <!-- ステッカー／アクリルキーホルダーは編集ではなく「画像から作る」商品なので、
@@ -3932,6 +3936,7 @@ var SeeQReal=(function(){
   };
   var sel={};                                   /* productId → サイズ名（未選択は def） */
   var bodySel={};                               /* productId → 'reg' | 'big' */
+  var keepCm=false;                             /* サイズ切替時にプリントの実寸(cm)を保つ＝要素を拡縮する */
   function bodyKey(pid){ pid=pid||currentProduct; var c=CFG[pid]; return (c && c.big && bodySel[pid]==='big') ? 'big' : 'reg'; }
   /* 有効な設定（シルエット反映済み）: sizes/ref/def はボディに応じて差し替え、torso 等は品目共通 */
   function cfg(pid){ pid=pid||currentProduct; var c=CFG[pid]; if(!c) return null;
@@ -3997,7 +4002,7 @@ var SeeQReal=(function(){
       [['reg','レギュラー'],['big','ビッグシルエット']].forEach(function(b){
         var bb=document.createElement('button'); bb.type='button'; bb.className='chip'+(bodyKey()===b[0]?' on':''); bb.textContent=b[1];
         bb.setAttribute('aria-pressed', bodyKey()===b[0]?'true':'false');
-        bb.onclick=function(){ if(bodyKey()===b[0]) return; bodySel[currentProduct]=b[0]; var nc=cfg(); if(!nc.sizes.some(function(x){return x[0]===sel[currentProduct];})) delete sel[currentProduct]; renderChips(); refreshAll(); commitHistory(); };
+        bb.onclick=function(){ if(bodyKey()===b[0]) return; changeSize(null, b[0]); };
         seg.appendChild(bb);
       });
       chips.appendChild(seg);
@@ -4005,12 +4010,39 @@ var SeeQReal=(function(){
     c.sizes.forEach(function(s){
       var b=document.createElement('button'); b.type='button'; b.className='chip'+(s[0]===k?' on':''); b.textContent=s[0];
       b.setAttribute('aria-pressed', s[0]===k?'true':'false');
-      b.onclick=function(){ sel[currentProduct]=s[0]; renderChips(); refreshAll(); commitHistory(); };
+      b.onclick=function(){ if(s[0]===sizeKey()) return; changeSize(s[0], null); };
       chips.appendChild(b);
     });
     var row=sizeRow();
     info.textContent='身幅 '+row[1]+'cm・身丈 '+row[2]+'cm（'+c.ref+' のサイズ表を基準にした目安）';
   }
+  /* サイズ／シルエットの変更。keepCm のときは「実寸が変わらないように」全面の要素を拡縮する
+     （新しい 1cm あたり px ÷ 前の 1cm あたり px の比で、枠の上辺中央を支点に相似変換） */
+  function changeSize(newSize, newBody){
+    var pid=currentProduct, before=ppcBase(pid, 'front');
+    if(newBody){ bodySel[pid]=newBody; var nc=cfg(); if(!nc.sizes.some(function(x){return x[0]===sel[pid];})) delete sel[pid]; }
+    if(newSize) sel[pid]=newSize;
+    var after=ppcBase(pid, 'front');
+    if(keepCm && before && after && Math.abs(after/before-1)>1e-6) rescaleAll(pid, after/before);
+    renderChips(); refreshAll(); commitHistory();
+    try{ updateOverflowWarn(); }catch(e){}
+  }
+  function rescaleAll(pid, r){
+    var p=PRODUCTS[pid]; if(!p) return; var u=scaleUnit();
+    saveCurrentFace();
+    p.faces.forEach(function(f){
+      var g=f.guide; if(!g) return; var ax=(g.x+g.w/2)*u, ay=g.y*u;     /* 支点＝枠の上辺中央 */
+      if(f.id===currentFace){
+        userObjects().forEach(function(o){ o.set({ left:ax+(o.left-ax)*r, top:ay+(o.top-ay)*r, scaleX:o.scaleX*r, scaleY:o.scaleY*r }); o.setCoords(); });
+      } else {
+        (faceState[stateKey(pid, f.id)]||[]).forEach(function(j){ if(!j) return; j.left=ax+((j.left||0)-ax)*r; j.top=ay+((j.top||0)-ay)*r; j.scaleX=(j.scaleX||1)*r; j.scaleY=(j.scaleY||1)*r; });
+      }
+    });
+    canvas.requestRenderAll();
+    try{ if(typeof renderLayers==='function') renderLayers(); }catch(e){}
+  }
+  var keepEl=document.getElementById('realKeep');
+  if(keepEl) keepEl.onchange=function(){ keepCm=!!this.checked; if(keepCm) toast('サイズを切り替えると、プリントの実寸を保ったまま見え方が変わります'); };
   /* ---- UI: 枠の cm ラベル（枠の下に追従） ---- */
   var gd=document.getElementById('guideDim'), stageEl=document.getElementById('stage');
   var posTimer=0;
