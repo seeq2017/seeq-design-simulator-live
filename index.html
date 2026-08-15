@@ -626,6 +626,10 @@
   .adv-fold>summary::before{content:'▸ ';}
   .adv-fold[open]>summary::before{content:'▾ ';}
   .save-lead{font-size:12.5px;line-height:1.7;color:var(--sub);margin:0 0 12px;}
+  .code-result{background:var(--brand-soft,#fbecec);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;}
+  .code-badge{font-family:'Oswald','Bebas Neue',monospace;font-size:30px;font-weight:700;letter-spacing:.14em;color:var(--accent-d);
+    text-align:center;padding:8px 0 4px;user-select:all;-webkit-user-select:all;}
+  #codeInput.bad{border-color:var(--accent);box-shadow:0 0 0 2px rgba(226,35,26,.15);}
 
   /* P0-4：タップ目標44pxは「画面幅」ではなく「指かどうか」で決まる。タブレット
      （820pxより広いのに指で操作する）を取りこぼさないよう pointer:coarse でも
@@ -1636,7 +1640,24 @@
     <!-- C-2: 小さい端末では「閉じる」が画面外に出る。常に届く×を置く -->
     <button class="modal-x" type="button" id="saveX" aria-label="閉じる" title="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2>デザインを保存する</h2>
-    <p class="save-lead" id="saveLead">作ったデザインはページを閉じると消えてしまいます。保存しておくと、あとで続きから編集できます。</p>
+    <p class="save-lead" id="saveLead">作ったデザインはページを閉じると消えてしまいます。保存すると<strong>「保存コード」</strong>が発行され、次回そのコードを入れるだけで続きから編集できます（ログイン不要・90日間保管）。</p>
+    <!-- コード方式の保存（api.seeq-kyoto.com/designs） -->
+    <div id="codeSaveBox">
+      <button class="btn btn-primary btn-block" id="btnCodeSave" type="button">保存して保存コードをもらう</button>
+      <div class="code-result mt-s" id="codeResult" hidden>
+        <div class="save-lead">保存しました。<strong>このコードを控えてください</strong>（LINEやメールでのご相談時にもお伝えいただけます）</div>
+        <div class="code-badge" id="codeBadge">SQ-XXXXX</div>
+        <div class="row mt-s">
+          <button class="btn btn-ghost" id="codeCopy" type="button">コードをコピー</button>
+          <button class="btn btn-ghost" id="codeShare" type="button">LINEなどで送る</button>
+        </div>
+      </div>
+      <div class="row mt-m" style="align-items:center">
+        <input type="text" id="codeInput" placeholder="保存コード（例：SQ-A7K3M）" autocapitalize="characters" autocomplete="off" style="flex:1;font-family:inherit;font-size:15px;letter-spacing:.06em;padding:10px 12px;border:1px solid var(--line);border-radius:10px">
+        <button class="btn btn-primary" id="codeLoad" type="button">このコードで戻す</button>
+      </div>
+      <p class="mini" style="color:var(--sub);margin:6px 0 0">※ 保存にはインターネット接続が必要です。つながらないときは下の「ファイルに保存」をご利用ください。</p>
+    </div>
     <button class="btn btn-primary btn-block" id="btnWpSave" hidden>この内容で保存する（会員）</button>
     <p class="save-lead mt-s" id="saveGuestNote" hidden>会員ログインすると、そのまま保存して後から呼び出せます。ログインしない場合は、下の「保存用のことば」を控えてください。</p>
     <details class="adv-fold" id="keyFold">
@@ -4407,7 +4428,9 @@ function runColorKeyAuto(o, prefix){
    429・503・通信断などで失敗した場合は、従来の色キー方式（かんたん透過）へ
    自動的にフォールバックし、日本語で理由を伝える。
    ブラウザ内完結・localStorage 不使用の制約はそのまま。 */
-var BG_API='https://shohan.jp/api/bg/remove';
+/* SeeQ API（さくら新VPS）。旧 shohan.jp は並走中。?api=old で旧向き先に戻せる（切替検証用） */
+var SEEQ_API_BASE=(function(){ try{ if(new URLSearchParams(location.search).get('api')==='old') return null; }catch(e){} return 'https://api.seeq-kyoto.com'; })();
+var BG_API=SEEQ_API_BASE ? SEEQ_API_BASE+'/bg/remove' : 'https://shohan.jp/api/bg/remove';
 var BG_MAX_SIDE=2000, BG_MAX_BYTES=9*1024*1024, BG_TIMEOUT=60000;
 var _bgBusy=false;
 function setBgBusy(on,msg){
@@ -5422,6 +5445,103 @@ document.getElementById('proofMetaCopy').onclick=function(){ var t=document.getE
 document.getElementById('proofMetaDl').onclick=function(){ _dl(URL.createObjectURL(new Blob([document.getElementById('proofMeta').value],{type:'application/json'})), 'seeq-proof-meta.json', true); };
 document.getElementById('proofPreviewDl').onclick=function(){ if(proofPreview) _dl(proofPreview, 'seeq-preview-'+currentProduct+'.png'); };
 document.getElementById('btnWpSave').onclick=wpSaveDesign;
+
+/* =====================================================================
+   保存コード方式（api.seeq-kyoto.com/designs）
+   --------------------------------------------------------------------
+   ログイン不要。保存→ SQ-XXXXX を発行し、次回コード入力で復元。
+   ・localStorage 不使用のため、コードは画面表示＋コピー＋共有で本人に渡す
+   ・見積送信時は designCode を同梱（工場側で元データを引ける）
+   ・?code=SQ-XXXXX で開くと自動復元（LINE等からの再開導線）
+   ===================================================================== */
+window.SEEQ_DESIGN_CODE = window.SEEQ_DESIGN_CODE || '';
+(function(){
+  var box=document.getElementById('codeSaveBox'); if(!box) return;
+  /* DESIGNS_API はこの下の方で定義されるため、参照は実行時に行う（var 巻き上げで undefined になる） */
+  function API(){ return (typeof DESIGNS_API!=='undefined' && DESIGNS_API) ? DESIGNS_API : (window.SEEQ_API_BASE ? window.SEEQ_API_BASE+'/designs' : null); }
+  setTimeout(function(){ if(!API()) box.hidden=true; }, 0);
+  var btnSave=document.getElementById('btnCodeSave'), result=document.getElementById('codeResult'),
+      badge=document.getElementById('codeBadge'), inp=document.getElementById('codeInput'),
+      btnLoad=document.getElementById('codeLoad'), btnCopy=document.getElementById('codeCopy'), btnShare=document.getElementById('codeShare');
+  function normCode(v){
+    v=String(v||'').trim().toUpperCase().replace(/[０-９Ａ-Ｚ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).replace(/[\s_ー―－]/g,'-');
+    if(/^[A-Z2-9]{5}$/.test(v)) v='SQ-'+v;
+    v=v.replace(/^SQ-?/,'SQ-');
+    return v;
+  }
+  function showCode(code){
+    window.SEEQ_DESIGN_CODE=code;
+    badge.textContent=code; result.hidden=false;
+    inp.value=code;
+  }
+  btnSave.onclick=function(){
+    if(!hasAnyDesign()){ toast('まだデザインがありません。文字や画像を置いてから保存してください'); return; }
+    saveCurrentFace();
+    btnSave.disabled=true; btnSave.textContent='保存しています…';
+    var body={ design_json:exportDesign(), product:currentProduct, title:curProduct().label+' デザイン', thumb:designThumb() };
+    var method='POST', url=API();
+    if(window.SEEQ_DESIGN_CODE){ method='PUT'; url=API()+'/'+window.SEEQ_DESIGN_CODE; }
+    fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+      .then(function(j){
+        var code=j.code||window.SEEQ_DESIGN_CODE;
+        showCode(code);
+        toast(method==='PUT' ? '上書き保存しました（'+code+'）' : '保存しました。コード '+code);
+        track('design:save',{code:code,product:currentProduct,mode:method});
+      })
+      .catch(function(e){
+        console.warn('[designs] save failed', e);
+        toast('保存できませんでした（通信エラー）。下の「ファイルに保存」をお試しください');
+      })
+      .then(function(){ btnSave.disabled=false; btnSave.textContent= window.SEEQ_DESIGN_CODE ? '上書き保存する（'+window.SEEQ_DESIGN_CODE+'）' : '保存して保存コードをもらう'; });
+  };
+  function loadCode(code, opts){
+    code=normCode(code);
+    if(!/^SQ-[A-Z2-9]{5}$/.test(code)){ inp.classList.add('bad'); toast('コードの形式が違います（例：SQ-A7K3M）'); return; }
+    inp.classList.remove('bad');
+    btnLoad.disabled=true; btnLoad.textContent='読み込み中…';
+    fetch(API()+'/'+code).then(function(r){ if(r.status===404) throw new Error('notfound'); if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+      .then(function(j){
+        importDesign(j.design_json, {confirm: !(opts&&opts.silent) && hasAnyDesign()});
+        showCode(code);
+        btnSave.textContent='上書き保存する（'+code+'）';
+        toast('デザインを戻しました（'+code+'）');
+        track('design:load',{code:code});
+      })
+      .catch(function(e){
+        if(String(e.message)==='notfound') toast('そのコードのデザインは見つかりません（保存から90日を過ぎると削除されます）');
+        else toast('読み込めませんでした（通信エラー）');
+      })
+      .then(function(){ btnLoad.disabled=false; btnLoad.textContent='このコードで戻す'; });
+  }
+  btnLoad.onclick=function(){ loadCode(inp.value); };
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); loadCode(inp.value); } });
+  btnCopy.onclick=function(){
+    var t=window.SEEQ_DESIGN_CODE; if(!t) return;
+    (navigator.clipboard&&navigator.clipboard.writeText ? navigator.clipboard.writeText(t) : Promise.reject())
+      .then(function(){ toast('コードをコピーしました'); })
+      .catch(function(){ window.prompt('このコードを控えてください', t); });
+  };
+  btnShare.onclick=function(){
+    var t=window.SEEQ_DESIGN_CODE; if(!t) return;
+    var url=location.origin+location.pathname+'?code='+t;
+    var text='SeeQデザインシミュレーターの保存コード：'+t+'\n'+url;
+    if(navigator.share){ navigator.share({title:'SeeQ 保存コード', text:text}).catch(function(){}); }
+    else { (navigator.clipboard&&navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject())
+      .then(function(){ toast('コードとURLをコピーしました。LINEなどに貼り付けてください'); })
+      .catch(function(){ window.prompt('コピーしてお使いください', text); }); }
+  };
+  /* ?code=SQ-XXXXX で開いたら自動復元 */
+  try{
+    var q=new URLSearchParams(location.search).get('code');
+    if(q){ setTimeout(function(){ loadCode(q, {silent:true}); if(typeof ssHide==='function') ssHide(); }, 800); }
+  }catch(e){}
+  /* 見積送信が成功したら「注文済み」マーク＝永久保存に切替 */
+  window.__markDesignOrdered=function(quoteId){
+    if(!window.SEEQ_DESIGN_CODE) return;
+    fetch(API()+'/'+window.SEEQ_DESIGN_CODE+'/mark',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ordered:true,quote_id:quoteId||''})}).catch(function(){});
+  };
+})();
 document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
 
 var EXPORTERS={png:exportPNG, jpg:exportJPG, svg:exportSVG, pdf:exportPDF, proof:openProofModal};
@@ -5641,8 +5761,13 @@ function wpSaveTemplate(){
   toast('テンプレート登録リクエストを送信しました…');
 }
 function updateWpUI(){
-  var s=document.getElementById('btnWpSave'); if(s) s.hidden=!SEEQ_EMBED.embedded;
-  var g=document.getElementById('saveGuestNote'); if(g) g.hidden=!SEEQ_EMBED.embedded;
+  /* WP会員保存は「親ページ(WP)が seeq:init で応答した時」だけ出す。
+     iframe に入っているだけ（GitHub Pages を LP に埋め込んだ状態）では WP は無いので、
+     保存コード方式（codeSaveBox）を主導線にする */
+  var wpLive=!!(SEEQ_EMBED.embedded && SEEQ_EMBED.origin);
+  var s=document.getElementById('btnWpSave'); if(s) s.hidden=!wpLive;
+  var g=document.getElementById('saveGuestNote'); if(g) g.hidden=!wpLive;
+  var cb=document.getElementById('codeSaveBox'); if(cb && typeof DESIGNS_API!=='undefined' && DESIGNS_API) cb.hidden=false;
   /* F-1: テンプレート登録は運用者専用。埋め込み時の isAdmin だけでなく
      ?admin=1（単体ページ）でも判定する。 */
   var t=document.getElementById('btnSaveTpl'); if(t) t.hidden=!isAdminUI();
@@ -5734,7 +5859,8 @@ modal.onclick=function(e){ if(e.target===modal) quoteClose(); };
      info@seeq-kyoto.com へメールし、同時にサーバ側へも記録する。
    どちらの経路でも「送ったつもりで届いていない」を起こさないこと。
    ===================================================================== */
-var QUOTE_API='https://shohan.jp/api/quote';
+var QUOTE_API=SEEQ_API_BASE ? SEEQ_API_BASE+'/quote' : 'https://shohan.jp/api/quote';
+var DESIGNS_API=SEEQ_API_BASE ? SEEQ_API_BASE+'/designs' : null;
 var quoteSending=false;
 function qEl(id){ return document.getElementById(id); }
 function quoteReset(){
@@ -5781,6 +5907,7 @@ function quotePayload(){
     elements:String(n),
     designKey:key,
     preview:preview,
+    designCode:(window.SEEQ_DESIGN_CODE||''),
     pageUrl:location.href
   };
 }
@@ -5817,6 +5944,7 @@ function quotePayload(){
       if(res.body && res.body.ok){
         showQuoteDone();
         track('quote:send',{via:'api',product:currentProduct});
+        if(window.__markDesignOrdered) window.__markDesignOrdered(res.body.id||res.body.quoteId||'');
         return;
       }
       var m=(res.body&&res.body.message)||'送信できませんでした。時間をおいてもう一度お試しください。';
