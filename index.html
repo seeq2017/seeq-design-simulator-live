@@ -260,7 +260,7 @@
      選択中はバー側が主役なので説明行を退避する（選択解除で戻る）。 */
   body.has-sel .stage-hint{opacity:0;pointer-events:none;}
   /* F-4: はみ出し警告（ステージ上部・要素の邪魔をしない位置に固定） */
-  .ov-warn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:35;
+  .ov-warn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:35;pointer-events:none;
     display:flex;align-items:center;gap:7px;max-width:min(92%,520px);
     background:#fff3f4;border:1px solid rgba(230,0,18,.35);color:#a3121c;
     border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;line-height:1.4;
@@ -1531,9 +1531,19 @@
       <button class="btn btn-primary btn-xs" id="mkQuote" type="button">この仕上がりで見積へ</button>
     </div>
     <div class="s3d-panel" id="mkPanel">
+      <div class="s3d-group" id="mkTurnGrp" hidden><span class="lbl">向き</span>
+        <span class="s3d-chips">
+          <button class="chip" id="mkTurnL" type="button" title="左へ回す">◀</button>
+          <button class="chip on" id="mkTurnFront" type="button">おもて</button>
+          <button class="chip" id="mkTurnBack" type="button">うら</button>
+          <button class="chip" id="mkTurnR" type="button" title="右へ回す">▶</button>
+        </span>
+        <span class="mini" style="color:var(--sub);margin-left:6px">ドラッグでも回せます</span>
+      </div>
       <div class="s3d-group"><span class="lbl">環境光</span><span class="s3d-chips" id="mkEnv"></span></div>
       <div class="s3d-group"><span class="lbl">背景</span><span class="s3d-chips" id="mkBg"></span></div>
       <span class="spacer"></span>
+      <span class="mini" id="mkEditHint" style="color:var(--sub)">位置やサイズの変更は「2D」画面で</span>
       <button class="btn btn-ghost btn-xs" id="mkSave" type="button">画像を保存</button>
     </div>
   </div>
@@ -4970,9 +4980,15 @@ document.getElementById('actGroup').onclick=function(){ toggleGroup(); };
    Lock / group / duplicate / delete
    ===================================================================== */
 function applyLockState(o){
-  if(o.locked){ o.set({selectable:false,evented:false,lockMovementX:true,lockMovementY:true,lockScalingX:true,lockScalingY:true,lockRotation:true,hasControls:false}); }
-  else { o.set({selectable:true,evented:(o.visible!==false),lockMovementX:false,lockMovementY:false,lockScalingX:false,lockScalingY:false,lockRotation:false,hasControls:true}); }
+  /* ロック中も「触れる（選べる）」ままにする。evented:false だと押しても無反応で
+     「動かせない＝壊れた」と誤解されるため。移動・拡縮・回転だけを止め、
+     選ぶと 'ロック中' の案内を出す（下の selection ハンドラ） */
+  if(o.locked){ o.set({selectable:true,evented:(o.visible!==false),lockMovementX:true,lockMovementY:true,lockScalingX:true,lockScalingY:true,lockRotation:true,hasControls:false,hoverCursor:'not-allowed'}); }
+  else { o.set({selectable:true,evented:(o.visible!==false),lockMovementX:false,lockMovementY:false,lockScalingX:false,lockScalingY:false,lockRotation:false,hasControls:true,hoverCursor:'move'}); }
 }
+canvas.on('selection:created', function(e){
+  var o=e.selected&&e.selected[0]; if(o&&o.locked) toast('この要素はロック中です。レイヤーの鍵アイコンで解除できます');
+});
 function toggleLockActive(){
   var o=canvas.getActiveObject(); if(!o) return;
   o.locked=!o.locked; applyLockState(o);
@@ -5531,6 +5547,41 @@ function designTextureCanvas(targetPx){
   canvas.setDimensions({width:pw, height:ph});
   canvas.setViewportTransform(pvpt); canvas.renderAll();
   return out;
+}
+/* 任意の面（現在編集中でなくてもよい）のデザインテクスチャをオフスクリーンで作る。
+   仕上がりの前後回転（ターンテーブル）で、うら面・袖面のプリントも反映するために使う。 */
+function faceTexturePromise(prodId, faceId, targetPx){
+  targetPx=targetPx||1024;
+  var p=PRODUCTS[prodId]; if(!p) return Promise.resolve(null);
+  var f=p.faces.filter(function(x){return x.id===faceId;})[0]; if(!f) return Promise.resolve(null);
+  if(prodId===currentProduct && faceId===currentFace) saveCurrentFace();
+  var arr=faceState[stateKey(prodId, faceId)]||[];
+  var g=f.guide, ar=g.w/g.h;
+  var outW = ar>=1 ? targetPx : Math.round(targetPx*ar);
+  var outH = ar>=1 ? Math.round(targetPx/ar) : targetPx;
+  var el=document.createElement('canvas'); el.width=outW; el.height=outH;
+  var sc=new fabric.StaticCanvas(el, {enableRetinaScaling:false, backgroundColor:'transparent'});
+  var sX=outW/g.w, sY=outH/g.h;
+  /* 保存状態は「BASE×scaleUnit」の px 座標。現在の scaleUnit で割って BASE に戻し、出力へ写像 */
+  var u=scaleUnit();
+  sc.setViewportTransform([sX/u,0,0,sY/u,-g.x*sX,-g.y*sY]);
+  return new Promise(function(res){
+    if(!arr.length){ res(el); return; }
+    fabric.util.enlivenObjects(arr, function(objs){
+      objs.forEach(function(o){
+        if((o.type==='i-text'||o.type==='text') && !o.styles){ o.styles={}; }
+        sc.add(o);
+        try{
+          if((o.type==='i-text'||o.type==='text') && o.fx && o.fx.type && o.fx.type!=='none' && o.fx.type!=='gradient') applyTextFx(o);
+          else if((o.type==='i-text'||o.type==='text') && o.curve) applyCurve(o);
+          if(o.type==='image'){ if(o.adj || (o.filterKey && o.filterKey!=='none')) rebuildFilters(o); if(o.clipShape&&o.clipShape!=='none' || o.cornerRad) rebuildClip(o); }
+        }catch(e){}
+      });
+      sc.renderAll();
+      /* 画像フィルタ等は非同期に描き直ることがあるので1フレーム待つ */
+      setTimeout(function(){ sc.renderAll(); res(el); }, 60);
+    });
+  });
 }
 /* one frame of state the 3D module needs (texture + geometry + material) */
 function get3DFrame(targetPx){
@@ -7636,10 +7687,10 @@ var SeeQMockup=(function(){
   /* ---- 衣類（線画土台）の仕上がり合成 ----
      3D布パネル（旧「質感」）はTシャツに見えないため、キャップ同様に
      公式線画＋デザイン＋布の粒＋やわらかい陰影の2D合成に統一する。 */
-  function renderGarment(tpl, env, bgMode){
+  function renderGarment(tpl, env, bgMode, override){
     var lf=tpl.lineface;
     var W=Math.round(tpl.out.w*tpl.ss), H=Math.round(tpl.out.h*tpl.ss);
-    var frame=get3DFrame(1400);
+    var frame=override || get3DFrame(1400);
     var la={ front:lf.svg, vb:lf.vb, _imgs:lf._imgs=lf._imgs||{} };
     return lineartImage(la, frame.color).then(function(img){
       var c=document.createElement('canvas'); c.width=W; c.height=H;
@@ -7976,8 +8027,18 @@ var SeeQMockup=(function(){
     }
     return id;
   }
+  /* 指定面の仕上がり（ターンテーブル用）。デザインは faceState からオフスクリーンで起こす */
+  function renderGarmentFace(prodId, faceId, opts){
+    opts=opts||{};
+    var id=ensureGarmentTemplate(prodId, faceId); if(!id) return Promise.resolve(null);
+    var tpl=MOCKUP_TEMPLATES[id], env=MK_ENV[opts.env||'studio']||MK_ENV.studio, bgMode=opts.bg||'soft';
+    return faceTexturePromise(prodId, faceId, 1400).then(function(tex){
+      if(!tex) return null;
+      return renderGarment(tpl, env, bgMode, { canvas:tex, color: currentColor.hex });
+    });
+  }
   return { templates:MOCKUP_TEMPLATES, env:MK_ENV, envOrder:MK_ENV_ORDER, bgOpts:MK_BG, render:render,
-           embroiderize:embroiderize, ensureGarmentTemplate:ensureGarmentTemplate };
+           embroiderize:embroiderize, ensureGarmentTemplate:ensureGarmentTemplate, renderGarmentFace:renderGarmentFace };
 })();
 
 /* =====================================================================
@@ -8034,9 +8095,57 @@ var SeeQMockup=(function(){
       });
     }
   }
+  /* ---- 衣類ターンテーブル（前後2枚の仕上がりを角度で切替＋横幅を cos で縮めて回転感） ---- */
+  var turn={ angle:0, front:null, back:null, ready:false, dragging:false, x0:0, a0:0 };
+  function isGarment(){ var p=curProduct(); return !!(p && (p.kind||'apparel')==='apparel' && garmentTplId()); }
+  function turnFaceIds(){ var p=curProduct(); var ids=(p&&p.faces||[]).map(function(f){return f.id;}); return { front: ids.indexOf('front')>=0?'front':ids[0], back: ids.indexOf('back')>=0?'back':null }; }
+  function drawTurn(){
+    if(!turn.ready) return;
+    var W=turn.front.width, H=turn.front.height;
+    var out=document.createElement('canvas'); out.width=W; out.height=H;
+    var x=out.getContext('2d');
+    var a=turn.angle*Math.PI/180, c=Math.cos(a);
+    var src=(c>=0||!turn.back)?turn.front:turn.back;
+    var k=Math.max(0.06, Math.abs(c));
+    /* 背景（環境）は面の外側なので、まず素の背景を敷いてから面だけを縮める */
+    x.drawImage(src,0,0);                                        /* 全体（背景＋面）を等倍で */
+    if(k<0.999){
+      x.clearRect(0,0,W,H);
+      /* 背景: 面の外側の帯（左端の細い列）を横に引き伸ばす＝環境グラデだけが敷かれる。
+         中央列を使うと商品のふちが縞になるので、必ず商品の無い端の列を使う */
+      x.drawImage(src, 2, 0, 4, H, 0, 0, W, H);
+      x.save(); x.translate(W/2,0); x.scale(k,1); x.translate(-W/2,0);
+      x.drawImage(src,0,0); x.restore();
+      /* 側面の陰（回るほど暗く） */
+      var sh=x.createLinearGradient(W/2 - W*k/2, 0, W/2 + W*k/2, 0);
+      var d=(1-k)*0.35; if(Math.sin(a)>0){ sh.addColorStop(0,'rgba(0,0,0,'+d+')'); sh.addColorStop(1,'rgba(0,0,0,0)'); } else { sh.addColorStop(0,'rgba(0,0,0,0)'); sh.addColorStop(1,'rgba(0,0,0,'+d+')'); }
+      x.save(); x.globalCompositeOperation='multiply'; x.fillStyle=sh; x.fillRect(W/2 - W*k/2, 0, W*k, H); x.restore();
+    }
+    var img=mount.querySelector('img.mk-out');
+    if(!img){ img=document.createElement('img'); img.className='mk-out'; img.alt='仕上がりイメージ'; mount.appendChild(img); }
+    img.classList.toggle('alpha', opt.bg==='alpha');
+    img.src=out.toDataURL('image/png'); lastCanvas=out;
+    try{ window.SEEQ_3D_THUMB=img.src; }catch(_){}
+    var f=document.getElementById('mkTurnFront'), b=document.getElementById('mkTurnBack');
+    if(f) f.classList.toggle('on', c>=0); if(b) b.classList.toggle('on', c<0);
+  }
+  function setAngle(a){ turn.angle=((a%360)+360)%360; drawTurn(); }
   function refresh(){
     if(!isMockup() || busy) return;
     busy=true; setLoading(true);
+    var tg=document.getElementById('mkTurnGrp');
+    if(isGarment()){
+      var ids=turnFaceIds(), pid=curProduct().id||currentProduct;
+      if(tg) tg.hidden=!ids.back;
+      Promise.all([ SeeQMockup.renderGarmentFace(pid, ids.front, opt), ids.back?SeeQMockup.renderGarmentFace(pid, ids.back, opt):Promise.resolve(null) ])
+        .then(function(r){ setLoading(false); busy=false; turn.front=r[0]; turn.back=r[1]; turn.ready=!!r[0];
+          /* 編集中の面が『うら』ならうらから見せる */
+          if(currentFace==='back' && turn.back) turn.angle=180; else if(currentFace==='front') turn.angle=0;
+          drawTurn(); })
+        .catch(function(e){ busy=false; setLoading(false); showFail(); console.error(e); });
+      return;
+    }
+    if(tg) tg.hidden=true; turn.ready=false;
     SeeQMockup.render(curTplId(), opt).then(function(c){
       setLoading(false); busy=false; lastCanvas=c;
       var img=mount.querySelector('img.mk-out');
@@ -8047,6 +8156,19 @@ var SeeQMockup=(function(){
       try{ window.SEEQ_3D_THUMB=img.src; }catch(_){}
     }).catch(function(e){ busy=false; setLoading(false); showFail(); console.error(e); });
   }
+  /* 回転操作: ボタン＋ドラッグ／スワイプ */
+  (function(){
+    var L=document.getElementById('mkTurnL'), R=document.getElementById('mkTurnR'), F=document.getElementById('mkTurnFront'), B=document.getElementById('mkTurnBack');
+    if(L) L.onclick=function(){ setAngle(turn.angle-45); };
+    if(R) R.onclick=function(){ setAngle(turn.angle+45); };
+    if(F) F.onclick=function(){ setAngle(0); };
+    if(B) B.onclick=function(){ setAngle(180); };
+    function down(e){ if(!turn.ready) return; var t=e.touches?e.touches[0]:e; turn.dragging=true; turn.x0=t.clientX; turn.a0=turn.angle; }
+    function move(e){ if(!turn.dragging) return; var t=e.touches?e.touches[0]:e; setAngle(turn.a0 + (t.clientX-turn.x0)*0.6); if(e.cancelable) e.preventDefault(); }
+    function up(){ if(!turn.dragging) return; turn.dragging=false; /* 近い面にスナップ */ var a=turn.angle, c=Math.cos(a*Math.PI/180); setAngle(c>=0?0:180); }
+    mount.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    mount.addEventListener('touchstart',down,{passive:true}); mount.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+  })();
   function enter(){
     open=true; setViewBtn('3d'); stage.classList.add('show'); stage.setAttribute('aria-hidden','false');
     try{ window.SeeQ && window.SeeQ.snapTo && window.SeeQ.snapTo('peek'); }catch(_){}
