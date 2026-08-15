@@ -3649,6 +3649,33 @@ function addObj(obj, name){
   obj.name = name || obj.name || ('レイヤー'+(++nameCounter));
   canvas.add(obj);
   fitIntoGuide(obj);
+  /* 既に中央に要素があるときは丸ごと重ねない。まず「既存の一番下の要素の下」に置き、
+     入らなければ中心を右下へ 12% ずらす（完全に同位置で見えなくなるのを防ぐ） */
+  try{
+    var g=guideBox && guideBox();
+    var others=userObjects().filter(function(o){ return o!==obj && o.visible!==false; });
+    if(others.length && g){
+      var b=obj.getBoundingRect(true,true);
+      var maxBottom=Math.max.apply(null, others.map(function(o){ var r=o.getBoundingRect(true,true); return r.top+r.height; }));
+      var gap=Math.max(6, g.height*0.03);
+      if(maxBottom+gap+b.height <= g.top+g.height){
+        obj.set({top: maxBottom+gap+b.height/2});          /* 下に空きがある → 下へ */
+      } else {
+        /* 空きが無い → 少し縮めて下に入るなら下へ、それでも無理なら右下へ大きめにずらす */
+        var room=(g.top+g.height)-(maxBottom+gap);
+        if(room >= b.height*0.6){
+          var k=room/b.height; obj.scaleX*=k; obj.scaleY*=k; obj.setCoords();
+          var b2=obj.getBoundingRect(true,true);
+          obj.set({top: maxBottom+gap+b2.height/2});
+        } else {
+          var dx=g.width*0.22, dy=g.height*0.22;
+          var nl=Math.min(obj.left+dx, g.left+g.width-b.width/2), nt=Math.min(obj.top+dy, g.top+g.height-b.height/2);
+          obj.set({left:nl, top:nt});
+        }
+      }
+      obj.setCoords();
+    }
+  }catch(e){}
   canvas.setActiveObject(obj);
   canvas.requestRenderAll();
   updateOverflowWarn();
