@@ -6405,7 +6405,8 @@ document.getElementById('saveX').onclick=function(){ saveModal.classList.remove(
 saveModal.onclick=function(e){ if(e.target===saveModal) saveModal.classList.remove('show'); };
 function exportDesign(){
   saveCurrentFace();
-  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState, sizes:(window.SeeQReal?SeeQReal.sizes():undefined), bodies:(window.SeeQReal?SeeQReal.bodies():undefined)});
+  /* summary: プリント実寸・部位のサマリ（D1 案件連携用・契約03 §13）。SHO-HAN側は design_json.summary を読むだけでよい */
+  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState, sizes:(window.SeeQReal?SeeQReal.sizes():undefined), bodies:(window.SeeQReal?SeeQReal.bodies():undefined), summary:(window.SeeQReal?SeeQReal.payload():undefined)});
 }
 /* opts.confirm=true のときは、いま編集中のデザインが消えることを必ず確認する。
    テンプレート適用にだけ確認があって、より危険な全置換に無かった非対称の解消（P0-5）。 */
