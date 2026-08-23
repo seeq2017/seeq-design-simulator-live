@@ -490,6 +490,12 @@
   .quote-done{text-align:center;}
   .quote-done h3{margin:0 0 8px;font-size:17px;}
   .quote-done p{margin:0 0 16px;color:var(--sub);font-size:13.5px;line-height:1.7;}
+  .qd-code{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line,#ddd);border-radius:10px;background:var(--panel,#fafafa);text-align:left;}
+  .qd-code .qd-lbl{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  .qd-code .qd-val{display:flex;align-items:center;gap:10px;}
+  .qd-code code{font-size:20px;font-weight:700;letter-spacing:.06em;}
+  .qd-code .qd-copy{font-size:12px;padding:4px 10px;border:1px solid var(--line,#ccc);border-radius:6px;background:#fff;cursor:pointer;}
+  .qd-code .qd-hint{margin:8px 0 0;font-size:12px;color:var(--sub);line-height:1.6;}
   .modal .ic.ok{background:#e8f6ec;}
   .modal .ic.ok svg{stroke:#1f8a44;}
   .btn[disabled]{opacity:.55;cursor:not-allowed;}
@@ -1975,6 +1981,12 @@
       <div class="ic ok"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
       <h3>送信しました</h3>
       <p>ご依頼ありがとうございます。担当者が内容を確認のうえ、いただいたご連絡先へご返信いたします。</p>
+      <div class="qd-code" id="qDoneCode" hidden>
+        <span class="qd-lbl">このデザインの保存コード</span>
+        <div class="qd-val"><code id="qDoneCodeVal">SQ-XXXXX</code><button type="button" class="qd-copy" id="qDoneCopy">コピー</button></div>
+        <p class="qd-hint">お問い合わせの際にこのコードをお伝えいただくと、デザインをそのまま引き継げます。</p>
+        <a class="btn btn-ghost btn-block mt-s" id="qDoneLine" href="#" target="_blank" rel="noopener">LINEでコードを送る</a>
+      </div>
       <button class="btn btn-primary btn-block" type="button" id="quoteDoneClose">閉じる</button>
     </div>
   </div>
@@ -6778,7 +6790,9 @@ function quotePayload(){
       return r.json().catch(function(){ return {ok:r.ok}; }).then(function(j){ return {status:r.status, body:j}; });
     }).then(function(res){
       if(res.body && res.body.ok){
-        showQuoteDone();
+        /* サーバが自動発行した保存コード（未保存のまま送った場合）を引き継ぐ */
+        if(res.body.designCode && /^SQ-[A-Z2-9]{5}$/.test(res.body.designCode)) window.SEEQ_DESIGN_CODE=res.body.designCode;
+        showQuoteDone(window.SEEQ_DESIGN_CODE||'');
         track('quote:send',{via:'api',product:currentProduct});
         if(window.__markDesignOrdered) window.__markDesignOrdered(res.body.id||res.body.quoteId||'');
         return;
@@ -6792,10 +6806,21 @@ function quotePayload(){
     });
   });
 })();
-function showQuoteDone(){
-  var f=qEl('quoteForm'), d=qEl('quoteDone');
+var SEEQ_LINE_OA='@034sqjua'; /* 公式LINE（lin.ee/Rm0GMnmM） */
+function showQuoteDone(code){
+  var f=qEl('quoteForm'), d=qEl('quoteDone'), box=qEl('qDoneCode');
   if(f) f.hidden=true;
   if(d) d.hidden=false;
+  if(!box) return;
+  if(!code){ box.hidden=true; return; }
+  box.hidden=false;
+  var v=qEl('qDoneCodeVal'); if(v) v.textContent=code;
+  var a=qEl('qDoneLine'); if(a) a.href='https://line.me/R/oaMessage/'+encodeURIComponent(SEEQ_LINE_OA)+'/?'+encodeURIComponent(code);
+  var c=qEl('qDoneCopy'); if(c) c.onclick=function(){
+    var done=function(){ c.textContent='コピーしました'; setTimeout(function(){ c.textContent='コピー'; },1500); };
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(code).then(done,function(){}); }
+    else { try{ var r=document.createRange(); r.selectNodeContents(v); var sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('copy'); done(); }catch(e){} }
+  };
 }
 var toastTimer;
 /* toast(メッセージ) / toast(メッセージ, {action:'元に戻す', onAction:fn, ms:4000})
