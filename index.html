@@ -521,6 +521,8 @@
   .nowmaking{flex-wrap:wrap;}
   .nowmaking .nm-txt{flex:1 1 120px;}
   .nm-txt b{overflow-wrap:anywhere;}
+  .obj-warn{color:#b45309;font-weight:700;}
+  #faceColorNote:empty{display:none;}
   .pos-std{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line,#e5e5e5);}
   .pos-std-h{margin-bottom:4px;}
   .pos-tag{font-style:normal;font-size:10px;line-height:1;padding:2px 5px;border-radius:999px;margin-left:4px;vertical-align:middle;}
@@ -1625,6 +1627,19 @@
         </div>
         <div class="mini note" id="realDimNote"></div>
       </div>
+      <div class="field" id="angleWrap" hidden>
+        <label class="fld">角度 <span class="fld-sub">（°・中心を軸に回転。, と . キーでも回せます）</span></label>
+        <div class="row real-dim-row">
+          <input type="number" id="angleIn" step="1" min="-360" max="360" inputmode="decimal" placeholder="0" aria-label="角度（度）"><span class="mini">°</span>
+          <button class="btn btn-ghost" id="angleApply" type="button">適用</button>
+          <button class="btn btn-ghost" id="angleZero" type="button" title="0°に戻す">0°</button>
+        </div>
+      </div>
+      <div class="field" id="copyFaceWrap" hidden>
+        <label class="fld">別の面にコピー <span class="fld-sub">（選択中の要素を同じ位置関係で）</span></label>
+        <div class="presets" id="copyFaceBtns"></div>
+      </div>
+      <div class="mini note" id="faceColorNote" title="この面で使っている色の数（文字・図形のベタ色。写真・グラデはフルカラー扱い）。シルクスクリーンは色数で版代が変わります"></div>
     </div>
 
     <div class="card" data-tab="layer" data-panel="layer">
@@ -1671,7 +1686,7 @@
       <span>破線の枠からはみ出しています。この部分は印刷されません。</span>
     </div>
     <div class="canvas-wrap"><canvas id="c"></canvas></div>
-    <div class="stage-hint" id="stageHint">プリント面：おもて　／　破線の枠内がプリント可能エリアの目安です　·　Ctrl／Alt＋ホイールで拡大縮小</div>
+    <div class="stage-hint" id="stageHint">プリント面：おもて　／　破線の枠内がプリント可能エリアの目安です　·　<kbd>?</kbd> キーで操作一覧　·　Ctrl／Alt＋ホイールで拡大縮小</div>
     <div class="zoombar">
       <button id="zOut" title="縮小">－</button>
       <div class="zlabel" id="zLabel">100%</div>
@@ -6004,6 +6019,113 @@ ctx.addEventListener('click', function(e){
 });
 
 /* =====================================================================
+   UX補強（2026-08-24 競合調査より）: 角度の数値入力／別の面へコピー／色数カウンタ／
+   生地色との低コントラスト警告／ , . 回転・Ctrl+矢印リサイズ
+   ===================================================================== */
+var SeeQUX=(function(){
+  var angleWrap=document.getElementById('angleWrap'), angleIn=document.getElementById('angleIn');
+  var cfWrap=document.getElementById('copyFaceWrap'), cfBtns=document.getElementById('copyFaceBtns');
+  var colorNote=document.getElementById('faceColorNote');
+  function norm(a){ a=a%360; if(a>180)a-=360; if(a<-180)a+=360; return a; }
+  function setAngle(o, a){
+    if(!o||o.locked) return; var c=o.getCenterPoint();
+    o.set({angle:a}); o.setPositionByOrigin(c,'center','center'); o.setCoords();
+    canvas.requestRenderAll(); commitHistory(); try{ updateOverflowWarn(); refreshObjDim(); }catch(e){}
+  }
+  function applyAngle(){ var o=canvas.getActiveObject(); if(!o){ toast('要素を選択してください'); return; } var v=parseFloat(angleIn.value); if(!isFinite(v)) return; setAngle(o, norm(v)); }
+  if(angleIn){ angleIn.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); applyAngle(); } }); }
+  var ab=document.getElementById('angleApply'); if(ab) ab.onclick=applyAngle;
+  var az=document.getElementById('angleZero'); if(az) az.onclick=function(){ var o=canvas.getActiveObject(); if(o){ angleIn.value='0'; setAngle(o,0); } };
+  function syncAngle(){ var o=canvas.getActiveObject(); if(!angleWrap) return; angleWrap.hidden=!o; if(o && document.activeElement!==angleIn) angleIn.value=String(Math.round(norm(o.angle||0))); }
+
+  /* ---- 別の面へコピー: ガイド枠（プリント範囲）に対する相対位置・相対サイズを保って写す ---- */
+  function rel(o, g, u){ var b=o.getBoundingRect(true,true); return { x:((b.left+b.width/2)-g.x*u)/(g.w*u), y:(b.top-g.y*u)/(g.h*u), w:b.width/(g.w*u) }; }
+  function copyToFace(faceId){
+    var o=canvas.getActiveObject(); if(!o){ toast('要素を選択してください'); return; }
+    var src=curFaceDef(), dst=faceDef(currentProduct, faceId); if(!src||!dst||!src.guide||!dst.guide){ toast('この面にはコピーできません'); return; }
+    var u=scaleUnit(), gs=src.guide, gd=dst.guide;
+    var items=(o.type==='activeSelection')?o.getObjects():[o];
+    var jsons=[]; var kx=(gd.w/gs.w); /* 幅比で相似（袖など枠が小さい面では縮む） */
+    items.forEach(function(it){
+      var r=rel(it, gs, u);
+      var j=it.toObject(EXTRA_PROPS);
+      /* activeSelection 内の座標はグループ相対なので絶対座標に直す */
+      if(o.type==='activeSelection'){ var m=it.calcTransformMatrix(); var pt=fabric.util.transformPoint(new fabric.Point(0,0), m); var ox=it.originX, oy=it.originY; var tl=it.translateToOriginPoint? it.translateToOriginPoint(pt, ox||'left', oy||'top') : null; }
+      var b=it.getBoundingRect(true,true);
+      var newW=r.w*gd.w*u, sc=newW/Math.max(b.width,1e-6);
+      j.scaleX=(it.scaleX||1)*sc; j.scaleY=(it.scaleY||1)*sc;
+      /* 外接矩形の左上→ガイド相対で配置（origin を left/top に正規化して書く） */
+      var cx=gd.x*u+r.x*gd.w*u, top=gd.y*u+r.y*gd.h*u, w=b.width*sc, h=b.height*sc;
+      j.originX='left'; j.originY='top'; j.left=cx-w/2; j.top=top;
+      /* 回転要素は外接≠本体なので中心基準で置き直す */
+      if(it.angle){ j.originX='center'; j.originY='center'; j.left=cx; j.top=top+h/2; }
+      j.name=(it.name||'レイヤー');
+      jsons.push(j);
+    });
+    var key=stateKey(currentProduct, faceId);
+    faceState[key]=(faceState[key]||[]).concat(jsons);
+    var label=(dst.label||LINEART_FACE_LABELS[faceId]||faceId);
+    toast(label+' にコピーしました', {action:label+'を見る', onAction:function(){ try{ switchFace(faceId); }catch(e){} }});
+    commitHistory();
+  }
+  function renderCopyBtns(){
+    if(!cfWrap) return; var o=canvas.getActiveObject(); var faces=(curProduct().faces||[]);
+    cfBtns.innerHTML='';
+    var others=faces.filter(function(f){ return f.id!==currentFace && f.guide; });
+    cfWrap.hidden=!(o && others.length);
+    others.forEach(function(f){ var b=document.createElement('button'); b.type='button'; b.className='preset-btn'; b.textContent=(f.label||LINEART_FACE_LABELS[f.id]||f.id)+' へ'; b.onclick=function(){ copyToFace(f.id); }; cfBtns.appendChild(b); });
+  }
+
+  /* ---- 色数カウンタ（この面）: 文字・図形のベタ色を数える。写真・グラデ・パターンはフルカラー ---- */
+  function colorKey(c){ if(!c) return null; if(typeof c!=='string') return 'FULL'; c=c.trim().toLowerCase(); if(c==='transparent'||c==='none'||c==='') return null; try{ var col=new fabric.Color(c); if(col.getAlpha()===0) return null; return col.toHex(); }catch(e){ return c; } }
+  function faceColors(){
+    var set={}, full=0, n=0;
+    function addObj(o){
+      if(o.visible===false) return;
+      if(o.type==='group'||o.type==='activeSelection'){ o.forEachObject(addObj); return; }
+      n++;
+      if(o.type==='image'){ full++; return; }
+      var f=colorKey(o.fill), st=(o.strokeWidth>0)?colorKey(o.stroke):null;
+      if(f==='FULL'||st==='FULL'){ full++; return; }
+      if(f) set[f]=1; if(st) set[st]=1;
+      try{ if(o.shadow && o.shadow.color){ var sk=colorKey(o.shadow.color); if(sk&&sk!=='FULL') set[sk]=1; } }catch(e){}
+    }
+    userObjects().forEach(addObj);
+    return { colors:Object.keys(set), full:full, count:n };
+  }
+  function renderColorNote(){
+    if(!colorNote) return; var r=faceColors();
+    if(!r.count){ colorNote.textContent=''; return; }
+    var t='この面の使用色: '+(r.colors.length?r.colors.length+'色':'')+(r.full?(r.colors.length?'＋':'')+'フルカラー'+r.full+'点':'');
+    if(r.colors.length && !r.full) t+='（シルクスクリーンなら'+r.colors.length+'版。濃色ボディは白版が加わることがあります）';
+    colorNote.textContent=t;
+  }
+
+  /* ---- 低コントラスト警告: 文字・図形の色が生地色に近い ---- */
+  function lum(hex){ try{ var c=new fabric.Color(hex).getSource(); var f=function(v){ v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }; return 0.2126*f(c[0])+0.7152*f(c[1])+0.0722*f(c[2]); }catch(e){ return null; } }
+  function contrast(a,b){ var la=lum(a), lb=lum(b); if(la==null||lb==null) return null; var hi=Math.max(la,lb), lo=Math.min(la,lb); return (hi+0.05)/(lo+0.05); }
+  var warnEl=null;
+  function checkContrast(){
+    var od=document.getElementById('objDim'); if(!od) return;
+    if(!warnEl){ warnEl=document.createElement('span'); warnEl.className='obj-dim obj-warn'; warnEl.id='contrastWarn'; warnEl.hidden=true; od.parentNode.insertBefore(warnEl, od.nextSibling); }
+    var o=canvas.getActiveObject(); warnEl.hidden=true;
+    if(!o || o.type==='image' || o.type==='activeSelection' || o.type==='group') return;
+    var f=colorKey(o.fill); if(!f||f==='FULL') return;
+    var body=currentColor && currentColor.hex; if(!body) return;
+    var cr=contrast(f, body); if(cr==null) return;
+    var hasStroke = o.strokeWidth>0 && colorKey(o.stroke) && colorKey(o.stroke)!==f;
+    if(cr<1.6 && !hasStroke){ warnEl.textContent='⚠ 生地色と近い色（見えにくい）'; warnEl.title='文字・図形の色が商品カラーに近く、仕上がりで目立ちません。色を変えるか、縁取り（エフェクト）を足してください'; warnEl.hidden=false; }
+  }
+
+  /* ---- 既存フローへ接続 ---- */
+  var _rb=refreshBars; refreshBars=function(){ _rb.apply(this,arguments); try{ syncAngle(); renderCopyBtns(); checkContrast(); renderColorNote(); }catch(e){} };
+  canvas.on('object:rotating', syncAngle); canvas.on('object:modified', function(){ syncAngle(); renderColorNote(); checkContrast(); });
+  canvas.on('object:added', renderColorNote); canvas.on('object:removed', renderColorNote);
+  window.addEventListener('seeq:facechange', function(){ renderColorNote(); renderCopyBtns(); });
+  return { setAngle:setAngle, copyToFace:copyToFace, faceColors:faceColors, contrast:contrast, refresh:function(){ syncAngle(); renderCopyBtns(); checkContrast(); renderColorNote(); } };
+})();
+
+/* =====================================================================
    Keyboard shortcuts
    ===================================================================== */
 document.addEventListener('keydown', function(e){
@@ -6024,6 +6146,12 @@ document.addEventListener('keydown', function(e){
   if(mod && e.key===']'){ e.preventDefault(); if(o){o.bringToFront();canvas.sendToBack(guide);canvas.requestRenderAll();renderLayers();commitHistory();} return; }
   if(mod && e.key==='['){ e.preventDefault(); if(o){o.sendToBack();canvas.sendToBack(guide);canvas.requestRenderAll();renderLayers();commitHistory();} return; }
   if(e.key==='Delete'||e.key==='Backspace'){ if(o){ e.preventDefault(); deleteActive(); } return; }
+  if(o && !mod && (e.key===','||e.key==='.')){ e.preventDefault(); var d=(e.shiftKey?15:1)*(e.key===','?-1:1); try{ SeeQUX.setAngle(o, ((o.angle||0)+d)); }catch(err){} return; }
+  if(o && mod && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key)>=0){
+    e.preventDefault(); if(o.locked) return; var k=(e.key==='ArrowUp'||e.key==='ArrowRight')?(e.shiftKey?1.10:1.02):(e.shiftKey?1/1.10:1/1.02);
+    var c=o.getCenterPoint(); o.set({scaleX:o.scaleX*k, scaleY:o.scaleY*k}); o.setPositionByOrigin(c,'center','center'); o.setCoords(); canvas.requestRenderAll(); commitHistory(); try{ updateOverflowWarn(); refreshObjDim(); }catch(err){} return;
+  }
+  if(!mod && (e.key==='?' || (e.shiftKey && e.key==='/'))){ e.preventDefault(); toast('ショートカット: Ctrl+Z/Y 戻す・やり直し ／ Ctrl+C/V/D コピー・貼付・複製 ／ Ctrl+[ ] 重ね順 ／ 矢印 移動(Shiftで10px) ／ , . 回転(Shiftで15°) ／ Ctrl+矢印 拡大縮小 ／ Delete 削除'); return; }
   if(o && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key)>=0){
     e.preventDefault(); var step=e.shiftKey?10:1;
     if(e.key==='ArrowUp')o.top-=step; if(e.key==='ArrowDown')o.top+=step;
