@@ -485,6 +485,11 @@
   .qf-input.bad{border-color:var(--accent);background:#fff7f8;}
   .qf-area{height:80px;resize:vertical;font-family:inherit;font-size:14px;line-height:1.6;}
   .qf-note{text-align:left;font-size:11.5px;color:var(--sub);margin:10px 0 0;line-height:1.6;}
+  .qf-est{margin:10px 0 0;padding:10px 12px;border:1px solid var(--line,#ddd);border-radius:10px;background:var(--panel,#fafafa);text-align:left;}
+  .qf-est .qe-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+  .qf-est .qe-k{font-size:12px;color:var(--sub);}
+  .qf-est .qe-v{font-size:18px;letter-spacing:.02em;}
+  .qf-est .qe-note{margin:6px 0 0;font-size:11px;color:var(--sub);line-height:1.6;}
   .qf-error{text-align:left;font-size:12.5px;font-weight:700;color:var(--accent-d);background:var(--brand-soft);
     border-radius:6px;padding:9px 11px;margin:10px 0 0;line-height:1.6;white-space:pre-line;}
   .quote-done{text-align:center;}
@@ -1970,6 +1975,15 @@
       <input class="qf-input" id="qContact" name="contact" type="text" autocomplete="email" maxlength="200" placeholder="例）taro@example.com">
       <label class="qf-label" for="qQty">ご希望数</label>
       <input class="qf-input" id="qQty" name="qty" type="text" inputmode="numeric" maxlength="40" placeholder="例）30枚">
+      <!-- 概算（目安）: /quote/pricing の published が true のときだけ表示（?est=1 で強制表示） -->
+      <div id="qEstWrap" hidden>
+        <label class="qf-label" for="qMethod">加工方法（概算用）</label>
+        <select class="qf-input" id="qMethod" name="method"></select>
+        <div class="qf-est" id="qEst" hidden>
+          <div class="qe-row"><span class="qe-k">概算（目安）</span><b class="qe-v" id="qEstVal">—</b></div>
+          <p class="qe-note" id="qEstNote"></p>
+        </div>
+      </div>
       <label class="qf-label" for="qMsg">ご要望・ご質問</label>
       <textarea class="qf-input qf-area" id="qMsg" name="message" maxlength="2000" placeholder="納期のご希望、プリント方法のご相談など"></textarea>
       <p class="qf-note" id="qAttachNote"></p>
@@ -6756,9 +6770,75 @@ function quotePayload(){
     designCode:(window.SEEQ_DESIGN_CODE||''),
     pageUrl:location.href,
     /* 実寸の目安（サイズ表ベース）。quote-server 側でメール本文に載せる */
-    realSize:rp.size||'', realSizeRef:rp.sizeRef||'', realPrintCm:rp.printCm||'', realPrintAreaCm:rp.printAreaCm||''
+    realSize:rp.size||'', realSizeRef:rp.sizeRef||'', realPrintCm:rp.printCm||'', realPrintAreaCm:rp.printAreaCm||'',
+    /* 概算（目安）。表示していない時は null */
+    estimate:(function(){ try{ return window.SeeQEst?SeeQEst.current():null; }catch(e){ return null; } })()
   };
 }
+/* =====================================================================
+   概算（目安）— /quote/pricing（価格マスターv0.5＋WEAR MART素体＋実績穴埋め）
+   式: (素体 + Σ面ごとの加工[サイズ段][数量帯]) × 枚数 + シルク版代×面 。送料・データ費は別。
+   published:false の間は非表示（URL ?est=1 で確認可）。確定金額は人が出す。
+   ===================================================================== */
+var SeeQEst=(function(){
+  var P=null, loading=null;
+  var force=/[?&]est=1/.test(location.search);
+  var METHODS=[['inkjet_light','インクジェット（淡色ボディ）'],['inkjet_dark','インクジェット（濃色ボディ）'],['color_transfer','カラー転写'],['heat_transfer','熱転写（単色）'],['silk_print','シルクスクリーン（1色）'],['embroidery','刺繍']];
+  function load(){
+    if(P) return Promise.resolve(P);
+    if(!loading){
+      loading=fetch(QUOTE_API.replace(/\/$/,'')+'/pricing',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){ P=j; return j; }).catch(function(){ loading=null; return null; });
+    }
+    return loading;
+  }
+  function qtyNum(){ var s=(qEl('qQty')&&qEl('qQty').value||'').replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-65248);}); var m=/\d+/.exec(s); return m?parseInt(m[0],10):0; }
+  function band(q){ return q<=1?'1':q<=4?'2-4':q<=9?'5-9':q<=29?'10-29':q<=49?'30-49':q<=99?'50-99':'100+'; }
+  function sizeKey(cm2){ var S=P.size_bands_cm2, ks=Object.keys(S); for(var i=0;i<ks.length;i++){ if(S[ks[i]]==null||cm2<=S[ks[i]]) return ks[i]; } return ks[ks.length-1]; }
+  function faces(){ var rp={}; try{ rp=window.SeeQReal?SeeQReal.payload():{}; }catch(e){} var out=[];
+    (rp.printCm||'').split(';').forEach(function(p){ var m=/^([^:]+):([\d.]+)x([\d.]+)$/.exec(p); if(m) out.push({id:m[1],w:+m[2],h:+m[3],cm2:+m[2]*+m[3]}); });
+    return { list:out, big:/^ビッグ/.test(rp.size||'') };
+  }
+  function blank(){ var f=faces(); var k=currentProduct+(f.big?'.big':''); return P.blanks[k]||P.blanks[currentProduct]||null; }
+  function isDark(){ try{ var h=(currentColor.hex||'#fff').replace('#',''); if(h.length===3) h=h.replace(/(.)/g,'$1$1'); var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return (0.299*r+0.587*g+0.114*b)<140; }catch(e){ return false; } }
+  function calc(method, qty){
+    var b=blank(); if(!b||!b.typ||!qty) return null;
+    var fs=faces().list; if(!fs.length) return null;
+    var proc=P.processing[method]; if(!proc) return null;
+    var qb=band(qty), per=0, plates=0, unknown=false;
+    fs.forEach(function(f){
+      var v=null;
+      if(proc.grid){ var row=proc.grid[sizeKey(f.cm2)]; v=row?row[qb]:null; }
+      else if(proc.by_qty){ v=proc.by_qty[qb]; if(method==='silk_print') plates+=(proc.plate_per_color||0); }
+      if(typeof v==='number') per+=v; else unknown=true;
+    });
+    if(unknown) return {unknown:true};
+    var low=((b.from||b.typ)+per)*qty+plates, high=((b.to||b.typ)+per)*qty+plates;
+    return {low:low, high:high, per:per, qty:qty, faces:fs.length, plates:plates, band:qb, blank:b.code};
+  }
+  function yen(n){ return '¥'+Math.round(n).toLocaleString('ja-JP'); }
+  function render(){
+    var wrap=qEl('qEstWrap'), box=qEl('qEst'), val=qEl('qEstVal'), note=qEl('qEstNote'), sel=qEl('qMethod');
+    if(!wrap||!P) return;
+    var b=blank();
+    var show=(P.published||force) && !!b && (P.no_estimate_products||[]).indexOf(currentProduct)<0;
+    wrap.hidden=!show; if(!show){ box.hidden=true; return; }
+    if(!sel.options.length){ METHODS.forEach(function(m){ if(P.processing[m[0]]){ var o=document.createElement('option'); o.value=m[0]; o.textContent=m[1]; sel.appendChild(o); } });
+      sel.value=isDark()?'inkjet_dark':'inkjet_light'; }
+    var q=qtyNum(); var r=calc(sel.value,q);
+    if(!q){ box.hidden=false; val.textContent='枚数を入れると表示されます'; note.textContent=''; return; }
+    if(!r){ box.hidden=false; val.textContent='—'; note.textContent='デザインを配置すると表示されます'; return; }
+    if(r.unknown){ box.hidden=false; val.textContent='都度お見積り'; note.textContent='このサイズ・枚数は自動概算の対象外です。送信後に担当がご案内します'; return; }
+    box.hidden=false;
+    val.textContent=(r.low===r.high?yen(r.low):yen(r.low)+'〜'+yen(r.high))+'（税込）';
+    note.textContent='ボディ'+(b.code?'('+b.code+')':'')+'＋'+sel.options[sel.selectedIndex].textContent+'×'+r.faces+'面×'+r.qty+'枚'+(r.plates?'＋版代':'')+'。送料・データ制作費は別。確定金額は担当がご案内します';
+  }
+  function refresh(){ load().then(function(){ render(); }); }
+  ['qQty','qMethod'].forEach(function(id){ var el=qEl(id); if(el){ el.addEventListener('input',render); el.addEventListener('change',render); } });
+  var bq=document.getElementById('btnQuote'); if(bq) bq.addEventListener('click', function(){ setTimeout(refresh,0); });
+  function current(){ if(!P) return null; var sel=qEl('qMethod'); var wrap=qEl('qEstWrap'); if(!sel||!wrap||wrap.hidden) return null; var r=calc(sel.value, qtyNum()); if(!r||r.unknown) return null;
+    return { method:sel.value, low:Math.round(r.low), high:Math.round(r.high), qty:r.qty, faces:r.faces, band:r.band, blank:r.blank, version:P.version }; }
+  return { refresh:refresh, current:current };
+})();
 (function(){
   var form=qEl('quoteForm'); if(!form) return;
   form.addEventListener('submit', function(e){
