@@ -521,6 +521,11 @@
   .nowmaking{flex-wrap:wrap;}
   .nowmaking .nm-txt{flex:1 1 120px;}
   .nm-txt b{overflow-wrap:anywhere;}
+  .pos-std{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line,#e5e5e5);}
+  .pos-std-h{margin-bottom:4px;}
+  .pos-tag{font-style:normal;font-size:10px;line-height:1;padding:2px 5px;border-radius:999px;margin-left:4px;vertical-align:middle;}
+  .pos-ok{background:#e6f6ea;color:#1f7a3a;border:1px solid #b9e3c5;}
+  .pos-approx{background:#fff4e0;color:#9a5b00;border:1px solid #f1d9a6;}
   .prodpicker{margin-top:6px;}
   .nowmaking{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;
     background:var(--brand-soft,#FDECEA);margin-bottom:12px;}
@@ -3985,6 +3990,11 @@ var SeeQReal=(function(){
   }
   function ppcCanvas(pid, faceId){ var b=ppcBase(pid, faceId); return b ? b*scaleUnit() : null; }
   function fmt(v){ return (Math.round(v*10)/10).toFixed(1); }
+  /* 寸法の表示用: 5cm未満は mm（例 42mm）、以上は cm（例 8.5cm） */
+  /* 大きさの段（価格マスター v0.5 のサイズ区分と同じ境界。金額は出さない・語だけ） */
+  var SIZE_TIERS=[[100,'10cm角まで'],[300,'20×15cmまで'],[624,'A4まで'],[1248,'A3まで'],[null,'A3超']];
+  function sizeTier(w,h){ var a=w*h; for(var i=0;i<SIZE_TIERS.length;i++){ if(SIZE_TIERS[i][0]==null||a<=SIZE_TIERS[i][0]) return SIZE_TIERS[i][1]; } return SIZE_TIERS[SIZE_TIERS.length-1][1]; }
+  function fmtLen(w,h){ if(w<5 && h<5) return Math.round(w*10)+'×'+Math.round(h*10)+'mm'; return fmt(w)+'×'+fmt(h)+'cm'; }
   /* プリント範囲（枠）の cm */
   function guideCm(){
     var p=ppcBase(); if(!p) return null; var g=curFaceDef().guide; if(!g) return null;
@@ -4016,6 +4026,44 @@ var SeeQReal=(function(){
     if(r<=l) return null; return { w:(r-l)/p, h:(b-t)/p };
   }
 
+  /* ---- 襟下・中心からの距離（位置ツール基準表と同じ定義） ----
+     COLLAR: 線画 viewBox 高さに対する「襟下（リブ下端／フード付け根）」の比。2026-08-24 画素解析で実測。
+     H = 襟下からデザイン上端まで / W = 体の中心からデザインの内側の端まで（左胸） */
+  var COLLAR={ tshirt:{front:0.1459,back:0.0659}, dry:{front:0.1459,back:0.0659}, longtee:{front:0.1609,back:0.0724},
+               sweat:{front:0.1232,back:0.0642}, parka:{front:0.2593,back:0.2602} };
+  function collarBase(pid, faceId){
+    pid=pid||currentProduct; faceId=faceId||currentFace;
+    var cf=COLLAR[pid]; if(!cf || cf[faceId]==null) return null;
+    var lf=(typeof lineartFace==='function') ? lineartFace(pid, faceId) : null; if(!lf) return null;
+    var L=lineartLayout(lf);
+    return { y:L.y0+L.H*cf[faceId], cx:L.x0+L.W/2 };
+  }
+  /* 選択要素の 襟下H / 中心からW（cm）。左胸判定は中心より左側に全体があるとき */
+  function posCm(o){
+    var p=ppcCanvas(); var c=collarBase(); if(!p||!c||!o) return null;
+    try{
+      var b=o.getBoundingRect(true,true), u=scaleUnit();
+      var cy=c.y*u, cx=c.cx*u;
+      var H=(b.top-cy)/p;
+      var left=b.left, right=b.left+b.width;
+      var side = right<=cx+1 ? 'L' : (left>=cx-1 ? 'R' : 'C');
+      var W = side==='L' ? (cx-right)/p : side==='R' ? (left-cx)/p : ((left+right)/2-cx)/p;
+      return { H:H, W:W, side:side };
+    }catch(e){ return null; }
+  }
+  function facePos(faceId){
+    if(faceId!==currentFace) return '';
+    var objs=userObjects().filter(function(o){return o.visible!==false;}); if(!objs.length) return '';
+    var p=ppcCanvas(), c=collarBase(); if(!p||!c) return '';
+    var u=scaleUnit(), l=1e9,t=1e9,r=-1e9;
+    objs.forEach(function(o){ try{ var b=o.getBoundingRect(true,true); l=Math.min(l,b.left); t=Math.min(t,b.top); r=Math.max(r,b.left+b.width); }catch(e){} });
+    if(r<=l) return '';
+    var cx=c.cx*u, H=(t-c.y*u)/p; if(H<-0.05) return '';
+    var s='襟下 '+fmt(Math.max(0,H))+'cm';
+    if(r<=cx+1) s+='・中心から左 W'+fmt((cx-r)/p)+'cm'; else if(l>=cx-1) s+='・中心から右 W'+fmt((l-cx)/p)+'cm';
+    else { var off=((l+r)/2-cx)/p; s+= Math.abs(off)<0.3 ? '・中心' : '・中心より'+(off<0?'左':'右')+' '+fmt(Math.abs(off))+'cm'; }
+    return s;
+  }
   /* ---- UI: サイズチップ ---- */
   var wrap=document.getElementById('realSizeWrap'), chips=document.getElementById('realSizes'), info=document.getElementById('realSizeInfo');
   function renderChips(){
@@ -4040,7 +4088,7 @@ var SeeQReal=(function(){
       chips.appendChild(b);
     });
     var row=sizeRow();
-    info.textContent='身幅 '+row[1]+'cm・身丈 '+row[2]+'cm（'+c.ref+' のサイズ表を基準にした目安）';
+    info.textContent='身幅 '+row[1]+'cm・身丈 '+row[2]+'cm（'+c.ref+' のサイズ表を基準にした目安）。表示は '+k+' 基準・サイズで枠の実寸が変わります';
   }
   /* サイズ／シルエットの変更。keepCm のときは「実寸が変わらないように」全面の要素を拡縮する
      （新しい 1cm あたり px ÷ 前の 1cm あたり px の比で、枠の上辺中央を支点に相似変換） */
@@ -4077,6 +4125,7 @@ var SeeQReal=(function(){
     var g=guideCm();
     if(!g || !guideVisibleFor(curProduct()) || !guide.visible){ gd.hidden=true; return; }
     gd.textContent='プリント範囲 約'+fmt(g.w)+'×'+fmt(g.h)+'cm（'+sizeKey()+'）';
+    gd.title='表示は '+sizeKey()+' サイズ基準。サイズを切り替えると枠の実寸が変わります（実寸は身幅から換算した目安）';
     var gb=guideBox(); if(!gb){ gd.hidden=true; return; }
     var cr=canvas.upperCanvasEl.getBoundingClientRect(), sr=stageEl.getBoundingClientRect();
     gd.hidden=false;
@@ -4091,7 +4140,17 @@ var SeeQReal=(function(){
   function refreshObjDim(){
     if(!od) return; var o=canvas.getActiveObject(); var d=o?objCm(o):null;
     if(!d){ od.hidden=true; od.textContent=''; return; }
-    od.hidden=false; od.textContent=fmt(d.w)+'×'+fmt(d.h)+'cm';
+    od.hidden=false; od.textContent=fmtLen(d.w,d.h);
+    /* 襟下○cm・中心から○cm（位置ツール基準表と同じ測り方） */
+    var pc=posCm(o);
+    if(pc && pc.H>-0.05){
+      var t=' ／ 襟下 '+fmt(Math.max(0,pc.H))+'cm';
+      if(pc.side==='L') t+='・中心から左 '+fmt(pc.W)+'cm'; else if(pc.side==='R') t+='・中心から右 '+fmt(pc.W)+'cm';
+      else if(Math.abs(pc.W)>=0.3) t+='・中心より'+(pc.W<0?'左':'右')+' '+fmt(Math.abs(pc.W))+'cm';
+      od.textContent+=t;
+    }
+    od.textContent+=' ／ '+sizeTier(d.w,d.h);
+    od.title='選択中の要素の実寸（外接サイズ・目安）／襟下・中心からの距離は位置決め基準表と同じ測り方／大きさの段は加工料金の区分（10cm角・20×15cm・A4・A3）';
     /* 配置カードの入力欄にも現在値を入れておく */
     if(rw && document.activeElement!==rw && document.activeElement!==rh){ rw.value=fmt(d.w); rh.value=fmt(d.h); }
     if(dimWrap) dimWrap.hidden=false;
@@ -4127,11 +4186,13 @@ var SeeQReal=(function(){
     /* デザインのある面ごとに実寸 */
     (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d) out.push(['プリント実寸（'+(f.label||f.id)+'）', '約'+fmt(d.w)+'×'+fmt(d.h)+'cm']); });
     var g=guideCm(); if(g) out.push(['プリント範囲（'+(curFaceDef().label||currentFace)+'）', '約'+fmt(g.w)+'×'+fmt(g.h)+'cm']);
+    var pp=facePos(currentFace); if(pp) out.push(['位置（'+(curFaceDef().label||currentFace)+'）', pp]);
+    out.push(['仕上がりについて', '実寸・位置は目安です。縫い目・襟下を基準に合わせますが、±1cm程度の差が出ることがあります']);
     return out;
   }
   function payload(){ var c=cfg(); if(!c) return {}; var g=guideCm(), parts=[];
     (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d) parts.push(f.id+':'+fmt(d.w)+'x'+fmt(d.h)); });
-    return { size:(c.isBig?'ビッグ ':'')+sizeKey(), sizeRef:c.ref, printCm:parts.join(';'), printAreaCm:g?(fmt(g.w)+'x'+fmt(g.h)):'' }; }
+    return { size:(c.isBig?'ビッグ ':'')+sizeKey(), sizeRef:c.ref, printCm:parts.join(';'), printAreaCm:g?(fmt(g.w)+'x'+fmt(g.h)):'', printPos:(currentFace+':'+(facePos(currentFace)||'')) }; }
 
   /* ---- 既存フローへの接続（宣言済み関数を包む） ---- */
   var _upd=updateProductUI; updateProductUI=function(){ _upd.apply(this,arguments); refreshAll(); };
@@ -4139,6 +4200,7 @@ var SeeQReal=(function(){
   var _rb=refreshBars; refreshBars=function(){ _rb.apply(this,arguments); refreshObjDim(); };
   canvas.on('after:render', schedulePlace);
   canvas.on('object:scaling', refreshObjDim); canvas.on('object:modified', refreshObjDim); canvas.on('object:rotating', refreshObjDim);
+  canvas.on('object:moving', refreshObjDim);
   window.addEventListener('resize', schedulePlace);
   window.addEventListener('seeq:facechange', function(){ refreshAll(); });
   window.addEventListener('seeq:productchange', function(){ refreshAll(); });
@@ -4148,7 +4210,7 @@ var SeeQReal=(function(){
            sizes:function(){ return sel; }, bodies:function(){ return bodySel; },
            state:function(){ return { sizes:Object.assign({},sel), bodies:Object.assign({},bodySel) }; },
            restore:function(m, b){ if(m && m.sizes && !Array.isArray(m)){ b=m.bodies; m=m.sizes; } sel=Object.assign({}, m||{}); bodySel=Object.assign({}, b||{}); refreshAll(); },
-           ppcBase:ppcBase, guideCm:guideCm, objCm:objCm, designCm:designCm, quoteRows:quoteRows, payload:payload, refresh:refreshAll };
+           ppcBase:ppcBase, guideCm:guideCm, objCm:objCm, posCm:posCm, collarBase:collarBase, sizeTier:sizeTier, designCm:designCm, quoteRows:quoteRows, payload:payload, refresh:refreshAll };
 })();
 
 /* text */
@@ -5336,7 +5398,124 @@ function buildPresets(){
     };
     wrap.appendChild(b);
   });
+  try{ if(window.SeeQPos) SeeQPos.render(wrap); }catch(e){}
 }
+
+/* =====================================================================
+   基準表プリセット（SeeQPos）— 位置決め基準表（正本=Excel→position_rules.json）を
+   シミュレーターから直接使う。「左胸」「胸中央」「背中」を、選んだサイズ×デザイン寸法で
+   襟下 Hcm／中心から Wcm の位置に置く（測り方は現場の位置ツールと同一）。
+   要素の大きさは変えない（位置だけ合わせる）。JSON は api.seeq-kyoto.com/position/ から取得。
+   ===================================================================== */
+var SeeQPos=(function(){
+  var URL_='https://api.seeq-kyoto.com/position/position_rules.json';
+  var R=null, loading=null, wrapRef=null;
+  function load(){
+    if(R) return Promise.resolve(R);
+    if(!loading){
+      loading=fetch(URL_,{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){ R=j; try{ if(wrapRef) render(wrapRef); }catch(e){} return j; }).catch(function(){ loading=null; return null; });
+    }
+    return loading;
+  }
+  /* サイズ名の正規化: SeeQReal(S,M,L,XL,XXL,XXXL) → 基準表(XS,S,M,L,XL,2XL,3XL) */
+  function normSize(k){ return ({XXL:'2XL',XXXL:'3XL',XXXXL:'3XL','5XL':'3XL','6XL':'3XL'})[k]||k; }
+  function rowVal(sec, rowKey, sizeName){
+    var row=sec.rows[rowKey]; if(!row) return null; var i=sec.sizes.indexOf(sizeName); if(i<0) return null;
+    var v=row.v[i]; if(v==null) return null; return { v:v, status:row.status||sec.status||'', label:row.label||rowKey };
+  }
+  function ctx(){
+    var o=canvas.getActiveObject(); if(!o) return null;
+    var d=SeeQReal.objCm(o), c=SeeQReal.collarBase(), p=SeeQReal.ppcBase(); if(!d||!c||!p) return null;
+    return { o:o, d:d, c:c, p:p*scaleUnit(), u:scaleUnit(), size:normSize(SeeQReal.sizeKey()), big:SeeQReal.bodyKey()==='big', pid:currentProduct, face:currentFace };
+  }
+  /* 要素の外接矩形を (top, right|left|cx) に移動。大きさは変えない */
+  function moveTo(o, opts){
+    var b=o.getBoundingRect(true,true);
+    var dx=0, dy=0;
+    if(opts.top!=null) dy=opts.top-b.top;
+    if(opts.right!=null) dx=opts.right-(b.left+b.width);
+    else if(opts.left!=null) dx=opts.left-b.left;
+    else if(opts.cx!=null) dx=opts.cx-(b.left+b.width/2);
+    o.set({ left:o.left+dx, top:o.top+dy }); o.setCoords();
+    canvas.requestRenderAll(); commitHistory();
+    try{ SeeQReal.refresh(); updateOverflowWarn(); }catch(e){}
+  }
+  /* 左胸: 形状(A丸/B四角/C縦長/D横長)×クラス(4/6/8/10cm) で W/H を引く */
+  function leftChest(k){
+    var lc=R.left_chest, o=k.o, w=k.d.w, h=k.d.h;
+    var ratio=h/Math.max(w,0.01);
+    var shape = ratio>=1.3 ? 'C' : ratio<=0.77 ? 'D' : ((o.type==='circle'||o.type==='i-text'||o.type==='text')?'A':'B');
+    var longSide=Math.max(w,h), cls = longSide<=4.5?'1': longSide<=6.5?'2': longSide<=8.5?'3':'4';
+    var sz=k.size; if(sz==='XS') sz='S'; if(sz==='3XL') sz='2XL';
+    var i=lc.sizes.indexOf(sz); if(i<0) i=1;
+    var t=lc.table[shape+cls]; if(!t) return null;
+    return { W:t.W[i], H:t.H[i], cls:shape+cls, status:lc.status||'', over:longSide>10.5 };
+  }
+  function frontH(k){
+    var sec=R.front, sz=k.size, rk;
+    if(k.pid==='parka') rk='hoodie';
+    else if(k.big) rk='big';
+    else if(k.d.h<=6) rk='tshirt_small';
+    else if(k.d.w>=25) rk='tshirt_large';
+    else rk='tshirt';
+    return rowVal(sec,rk,sz) || rowVal(sec,'tshirt',sz);
+  }
+  function backH(k){
+    var sec=R.back, sz=k.size, rk;
+    if(k.pid==='parka') rk='hoodie';
+    else if(k.pid==='sweat') rk='sweat';
+    else if(k.big) rk='big';
+    else if(k.d.h<=8) rk='tshirt_small';
+    else rk='tshirt';
+    return rowVal(sec,rk,sz) || rowVal(sec,'tshirt',sz);
+  }
+  function tag(st){ return st==='正' ? '<i class="pos-tag pos-ok">正</i>' : '<i class="pos-tag pos-approx">目安</i>'; }
+  function items(){
+    if(!R) return [];
+    var c=SeeQReal.collarBase(); if(!c) return [];
+    var out=[];
+    if(currentFace==='front'){
+      out.push({ label:'左胸', hint:'基準表の W/H（形状×大きさ×サイズ）', status:R.left_chest.status, run:function(){
+        var k=ctx(); if(!k){ toast('要素を選択してください'); return; }
+        var v=leftChest(k); if(!v){ toast('この大きさは基準表の範囲外です'); return; }
+        moveTo(k.o,{ top:k.c.y*k.u+v.H*k.p, right:k.c.cx*k.u-v.W*k.p });
+        toast('左胸 '+v.cls+'：襟下 '+v.H+'cm・中心から '+v.W+'cm（'+k.size+'）'+(v.over?' ※10cm超は目安':''));
+      }});
+      out.push({ label:'胸中央', hint:'襟下 Hcm・左右中央', status:R.front.status, run:function(){
+        var k=ctx(); if(!k){ toast('要素を選択してください'); return; }
+        var r=frontH(k); if(!r){ toast('このサイズの基準値がありません'); return; }
+        moveTo(k.o,{ top:k.c.y*k.u+r.v*k.p, cx:k.c.cx*k.u });
+        toast('胸中央：襟下 '+r.v+'cm（'+r.label+'・'+k.size+'）');
+      }});
+    } else if(currentFace==='back'){
+      out.push({ label:'背中', hint:'襟下 Hcm・左右中央', status:R.back.status, run:function(){
+        var k=ctx(); if(!k){ toast('要素を選択してください'); return; }
+        var r=backH(k); if(!r){ toast('このサイズの基準値がありません'); return; }
+        moveTo(k.o,{ top:k.c.y*k.u+r.v*k.p, cx:k.c.cx*k.u });
+        toast('背中：襟下 '+r.v+'cm（'+r.label+'・'+k.size+'）');
+      }});
+    }
+    return out;
+  }
+  function render(wrap){
+    wrapRef=wrap;
+    var old=wrap.querySelector('.pos-std'); if(old) old.remove();
+    if(!SeeQReal.collarBase()) return;          /* 対象外品目（トート・キャップ等）は出さない */
+    var box=document.createElement('div'); box.className='pos-std';
+    var h=document.createElement('div'); h.className='mini note pos-std-h';
+    h.innerHTML='基準表の位置に合わせる <span class="fld-sub">（SeeQ位置決め基準表 v'+(R&&R.meta&&R.meta.version||'–')+'・襟下／中心からの距離で配置）</span>';
+    box.appendChild(h);
+    if(!R){ load(); var w=document.createElement('div'); w.className='mini note'; w.textContent='基準表を読み込み中…'; box.appendChild(w); wrap.appendChild(box); return; }
+    var row=document.createElement('div'); row.className='presets';
+    items().forEach(function(it){
+      var b=document.createElement('button'); b.className='preset-btn pos-btn'; b.type='button';
+      b.innerHTML=it.label+' '+tag(it.status); b.title=it.hint; b.onclick=it.run; row.appendChild(b);
+    });
+    box.appendChild(row); wrap.appendChild(box);
+  }
+  load();
+  return { load:load, render:render, rules:function(){ return R; }, leftChest:leftChest, frontH:frontH, backH:backH, ctx:ctx };
+})();
 
 /* =====================================================================
    Selection bars / panels visibility
@@ -6770,7 +6949,7 @@ function quotePayload(){
     designCode:(window.SEEQ_DESIGN_CODE||''),
     pageUrl:location.href,
     /* 実寸の目安（サイズ表ベース）。quote-server 側でメール本文に載せる */
-    realSize:rp.size||'', realSizeRef:rp.sizeRef||'', realPrintCm:rp.printCm||'', realPrintAreaCm:rp.printAreaCm||'',
+    realSize:rp.size||'', realSizeRef:rp.sizeRef||'', realPrintCm:rp.printCm||'', realPrintAreaCm:rp.printAreaCm||'', realPrintPos:rp.printPos||'',
     /* 概算（目安）。表示していない時は null */
     estimate:(function(){ try{ return window.SeeQEst?SeeQEst.current():null; }catch(e){ return null; } })()
   };
