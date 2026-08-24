@@ -6587,10 +6587,11 @@ function _outlinePathData(T, font){
   return p.toPathData(3);
 }
 function _isComplexText(o){ return !!(o.curve) || (o.fx && (o.fx.type==='d3'||o.fx.type==='reflect'||o.fx.type==='curve')); }
-/* raster a single object into a fabric.Image placed exactly over it */
-function _rasterSwap(o){
+/* raster a single object into a fabric.Image placed exactly over it.
+   minMult: 入稿用は高めに（300dpi相当を確保） */
+function _rasterSwap(o, minMult){
   var br=o.getBoundingRect(true,true);
-  var mult=Math.max(2, (BASE_W/canvas.getWidth())*3);
+  var mult=Math.max(minMult||2, (BASE_W/canvas.getWidth())*3);
   var el=o.toCanvasElement({multiplier:mult});
   return new Promise(function(res){
     fabric.Image.fromURL(el.toDataURL(), function(img){
@@ -6602,7 +6603,7 @@ function _rasterSwap(o){
 }
 /* 文字→パス置換のスワップ一覧を作る（適用はしない）。buildOutlinedSVG と
    入稿SVGアップロード（__uploadPrintData）が共用する */
-function _computeOutlineSwaps(){
+function _computeOutlineSwaps(rasterMult){
   return _loadOutlineLibs().then(function(){
     var texts=userObjects().filter(function(o){ return (o.type==='i-text'||o.type==='text') && o.visible!==false; });
     /* gather subset fonts for the simple (outline-able) text objects */
@@ -6644,14 +6645,14 @@ function _computeOutlineSwaps(){
         }
       }
       /* fallback: raster this object */
-      pending.push(_rasterSwap(o).then(function(img){ swaps.push({orig:o, repl:img, idx:canvas.getObjects().indexOf(o)}); }));
+      pending.push(_rasterSwap(o, rasterMult).then(function(img){ swaps.push({orig:o, repl:img, idx:canvas.getObjects().indexOf(o)}); }));
     });
     return Promise.all(pending).then(function(){ return swaps; });
   });
 }
 /* スワップを適用 → renderFn() で描画 → 必ず元に戻す */
-function _withOutlinedText(renderFn){
-  return _computeOutlineSwaps().then(function(swaps){
+function _withOutlinedText(renderFn, rasterMult){
+  return _computeOutlineSwaps(rasterMult).then(function(swaps){
     /* apply swaps (replace text with path/image at same z-index) */
     swaps.forEach(function(s){ var i=canvas.getObjects().indexOf(s.orig); if(i<0)i=s.idx;
       canvas.remove(s.orig); canvas.insertAt(s.repl, i, false); });
@@ -6853,7 +6854,7 @@ function generateProofBundle(opts){
       var info=proofGeometry(f);
       var png=renderProofCurrent({svg:false});
       var svgP = opts.outline
-        ? _withOutlinedText(function(){ return renderProofCurrent({svg:true}); })
+        ? _withOutlinedText(function(){ return renderProofCurrent({svg:true}); }, 10)
         : Promise.resolve(renderProofCurrent({svg:true}));
       return svgP.then(function(svg){
         proofAssets[f.id]={ png:png, svg:svg, label:f.label,
@@ -6908,14 +6909,20 @@ window.__uploadPrintData=function(code){
     var jobs=Object.keys(b.assets).map(function(face){
       var a=b.assets[face];
       var svg=_svgRootMM(a.svg, a.mm.w, a.mm.h);
-      /* プリント範囲（塗り足し込み）の目印枠を先頭に注入 → イラレ取り込み時に範囲が分かり、
-         グループ外形＝範囲になるので配置基準も安定する */
+      /* ① 範囲外の要素を実体ごと隠すクリップマスク（イラレで開いても枠ピッタリ）
+         ② プリント範囲（塗り足し込み）のマゼンタ破線枠
+         → 取り込んだグループの外形＝範囲＝実寸mm が常に一致する */
       svg=svg.replace(/(<svg[^>]*viewBox="([\d.\- ]+)"[^>]*>)/, function(m, tag, vb){
         var v=vb.split(/\s+/).map(Number);
         if(v.length!==4) return m;
         var sw=(v[2]/ (a.mm.w||1))*0.35;   /* 見た目0.35mm相当の線幅 */
-        return tag+'\n<rect x="'+v[0]+'" y="'+v[1]+'" width="'+v[2]+'" height="'+v[3]+'" fill="none" stroke="#EC008C" stroke-width="'+sw+'" stroke-dasharray="'+(sw*8)+' '+(sw*4)+'"/>';
+        var rc='x="'+v[0]+'" y="'+v[1]+'" width="'+v[2]+'" height="'+v[3]+'"';
+        return tag+
+          '\n<defs><clipPath id="seeqPrintClip"><rect '+rc+'/></clipPath></defs>'+
+          '\n<g clip-path="url(#seeqPrintClip)">'+
+          '\n<rect '+rc+' fill="none" stroke="#EC008C" stroke-width="'+sw+'" stroke-dasharray="'+(sw*8)+' '+(sw*4)+'"/>';
       });
+      svg=svg.replace(/<\/svg>\s*$/, '</g>\n</svg>');
       return post('print-'+face+'.svg', 'data:image/svg+xml;base64,'+_b64utf8(svg));
     });
     jobs.push(post('print-meta.json', 'data:application/json;base64,'+_b64utf8(JSON.stringify(meta,null,1))));
