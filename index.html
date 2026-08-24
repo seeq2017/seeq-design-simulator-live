@@ -522,6 +522,16 @@
   .nowmaking .nm-txt{flex:1 1 120px;}
   .nm-txt b{overflow-wrap:anywhere;}
   .obj-warn{color:#b45309;font-weight:700;}
+  .nn-entry{margin-top:8px;padding-top:8px;border-top:1px dashed var(--hair,#e5e5e5);}
+  .nn-box{max-width:520px;}
+  .nn-tablewrap{max-height:40vh;overflow:auto;margin:8px 0;border:1px solid var(--hair,#e5e5e5);border-radius:8px;}
+  .nn-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .nn-table th{position:sticky;top:0;background:var(--panel,#fff);font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid var(--hair,#e5e5e5);}
+  .nn-table td{padding:2px 4px;border-bottom:1px solid var(--hair,#f0f0f0);}
+  .nn-table input{width:100%;border:none;background:transparent;padding:6px 4px;font:inherit;}
+  .nn-table input:focus{outline:2px solid var(--brand,#E60012);border-radius:4px;}
+  .nn-del{border:none;background:none;color:var(--sub,#888);cursor:pointer;font-size:15px;padding:4px;}
+  #nnPasteArea{width:100%;margin-top:6px;}
   #faceColorNote:empty{display:none;}
   .pos-std{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line,#e5e5e5);}
   .pos-std-h{margin-bottom:4px;}
@@ -1227,6 +1237,10 @@
       <textarea id="txtInput" rows="2" placeholder="ここに文字を入力"></textarea>
       <button class="btn btn-primary btn-block" id="btnAddText">＋ テキストを追加</button>
       <p class="compose-hint">入力したら「テキストを追加」をタップ。追加後はそのまま書体・効果を選べます。</p>
+      <div class="nn-entry">
+        <button class="btn btn-ghost btn-block" id="btnNames" type="button">🏷 背番号・ネーム（一括）</button>
+        <p class="mini note">チームウェア向け。番号と名前のリストを渡すと、1枚ずつ入れ替えてお作りします</p>
+      </div>
     </div>
 
     <!-- Text editing panel (appears when a text object is selected) -->
@@ -1833,6 +1847,38 @@
     </div>
   </div>
 </main>
+
+<!-- Names & Numbers（背番号・ネーム一括） -->
+<div class="modal-bg" id="nnModal" role="dialog" aria-modal="true" aria-label="背番号・ネームの一括指定">
+  <div class="modal nn-box">
+    <h3>背番号・ネーム（一括）</h3>
+    <p class="mini note">1行＝1枚。番号・名前は1枚ずつ入れ替えてプリントします（切替のデザイン費はかかりません。詳細は見積でご案内）。<br>キャンバスには<b>見本（1行目）</b>を配置します。Excelからの貼り付けもOK（タブ・カンマ区切り）。</p>
+    <div class="nn-tablewrap">
+      <table class="nn-table" id="nnTable">
+        <thead><tr><th style="width:4.5em">サイズ</th><th style="width:5em">番号</th><th>名前（ローマ字・かな可）</th><th style="width:2em"></th></tr></thead>
+        <tbody id="nnRows"></tbody>
+      </table>
+    </div>
+    <div class="chiprow">
+      <span class="chip" id="nnAddRow">＋ 行を追加</span>
+      <span class="chip" id="nnPaste">📋 まとめて貼り付け</span>
+      <span class="chip" id="nnClear">全部消す</span>
+    </div>
+    <textarea id="nnPasteArea" rows="4" hidden placeholder="例）&#10;M	10	YAMADA&#10;L	7	SATO&#10;（Excelの3列＝サイズ・番号・名前をそのまま貼り付け）"></textarea>
+    <div class="field">
+      <label class="fld">見本の配置</label>
+      <div class="chiprow">
+        <span class="chip" id="nnPlaceBack">背中に配置（番号 大＋名前）</span>
+        <span class="chip" id="nnPlaceSleeve" hidden>袖に番号</span>
+      </div>
+      <p class="mini note" id="nnCount"></p>
+    </div>
+    <div class="row" style="justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost" id="nnClose" type="button">閉じる</button>
+      <button class="btn btn-primary" id="nnSave" type="button">この内容で保持する</button>
+    </div>
+  </div>
+</div>
 
 <!-- Selected object toolbar (floating context toolbar — follows the selection) -->
 <div class="objbar" id="objbar">
@@ -6019,6 +6065,121 @@ ctx.addEventListener('click', function(e){
 });
 
 /* =====================================================================
+   背番号・ネーム一括（SeeQNames）— 森さんGO 2026-08-24（R-119 U-03）
+   リストは design JSON（v3.names）・見積依頼（namesList）に同梱。
+   キャンバスには1行目を「見本」として配置（名前に nn マーク）。
+   ===================================================================== */
+var SeeQNames=(function(){
+  var list=[];                      /* {size,no,name} */
+  var modal=document.getElementById('nnModal');
+  var rowsEl=document.getElementById('nnRows'), cnt=document.getElementById('nnCount');
+  function esc(v){ return String(v==null?'':v).replace(/[<>&"]/g,''); }
+  function render(){
+    rowsEl.innerHTML='';
+    var data=list.length?list:[{size:'',no:'',name:''}];
+    data.forEach(function(r,i){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td><input data-k="size" data-i="'+i+'" value="'+esc(r.size)+'" placeholder="M"></td>'+
+        '<td><input data-k="no" data-i="'+i+'" inputmode="numeric" value="'+esc(r.no)+'" placeholder="10"></td>'+
+        '<td><input data-k="name" data-i="'+i+'" value="'+esc(r.name)+'" placeholder="YAMADA"></td>'+
+        '<td><button type="button" class="nn-del" data-i="'+i+'" title="この行を削除">×</button></td>';
+      rowsEl.appendChild(tr);
+    });
+    if(!list.length) list=[{size:'',no:'',name:''}];
+    cnt.textContent=count()?('現在 '+count()+' 枚分のリスト'):'';
+  }
+  function count(){ return list.filter(function(r){ return (r.no&&String(r.no).trim())||(r.name&&r.name.trim()); }).length; }
+  rowsEl.addEventListener('input', function(e){ var t=e.target; if(t.dataset.k){ list[+t.dataset.i][t.dataset.k]=t.value; cnt.textContent=count()?('現在 '+count()+' 枚分のリスト'):''; } });
+  rowsEl.addEventListener('click', function(e){ var d=e.target.closest('.nn-del'); if(d){ list.splice(+d.dataset.i,1); render(); } });
+  document.getElementById('nnAddRow').onclick=function(){ list.push({size:'',no:'',name:''}); render(); rowsEl.querySelector('tr:last-child input') && rowsEl.querySelector('tr:last-child input').focus(); };
+  document.getElementById('nnClear').onclick=function(){ if(count() && !confirm('リストを全部消しますか？')) return; list=[]; render(); };
+  var pa=document.getElementById('nnPasteArea');
+  document.getElementById('nnPaste').onclick=function(){
+    if(pa.hidden){ pa.hidden=false; pa.focus(); toast('Excelの列（サイズ・番号・名前）をそのまま貼り付けて、もう一度このボタンを押してください'); return; }
+    var txt=pa.value.trim(); if(!txt){ pa.hidden=true; return; }
+    txt.split(/\r?\n/).forEach(function(line){
+      if(!line.trim()) return;
+      var c=line.split(/\t|,|、/).map(function(x){return x.trim();});
+      if(c.length===1) c=['', '', c[0]];
+      else if(c.length===2) c=['', c[0], c[1]];
+      list.push({size:c[0]||'', no:c[1]||'', name:c[2]||''});
+    });
+    pa.value=''; pa.hidden=true; render();
+  };
+  function placeBack(){
+    var r=list.filter(function(x){ return (x.no&&String(x.no).trim())||(x.name&&x.name.trim()); })[0];
+    if(!r){ toast('先に番号か名前を1行入れてください'); return; }
+    if(currentFace!=='back' && (curProduct().faces||[]).some(function(f){return f.id==='back';})) switchFace('back');
+    setTimeout(function(){
+      var u=scaleUnit(), g=curFaceDef().guide, cx=(g.x+g.w/2)*u;
+      var fill=currentColor.dark?'#ffffff':'#1a1a1a';
+      if(r.no){
+        var no=new fabric.IText(String(r.no),{fontFamily:"'Anton',sans-serif",fontSize:scaled(150),fill:fill,fontWeight:400,textAlign:'center',srcText:String(r.no),originX:'center',originY:'top',left:cx,top:(g.y+g.h*0.30)*u});
+        no.name='背番号（見本）'; no.nn='no'; canvas.add(no); loadFontAndRender("'Anton',sans-serif");
+      }
+      if(r.name){
+        var nm=new fabric.IText(String(r.name).toUpperCase(),{fontFamily:"'Anton',sans-serif",fontSize:scaled(44),fill:fill,fontWeight:400,textAlign:'center',charSpacing:120,srcText:String(r.name),originX:'center',originY:'top',left:cx,top:(g.y+g.h*0.18)*u});
+        nm.name='ネーム（見本）'; nm.nn='name'; canvas.add(nm);
+      }
+      canvas.requestRenderAll(); renderLayers(); commitHistory();
+      close();
+      toast('見本を配置しました（'+count()+'枚分は見積依頼に同梱されます）。大きさ・位置は自由に調整OK');
+    }, 150);
+  }
+  document.getElementById('nnPlaceBack').onclick=placeBack;
+  document.getElementById('nnSave').onclick=function(){ close(); if(count()) toast(count()+'枚分のリストを保持しました。見積もり依頼に同梱されます'); };
+  function close(){ modal.classList.remove('show'); }
+  document.getElementById('nnClose').onclick=close;
+  modal.addEventListener('click', function(e){ if(e.target===modal) close(); });
+  document.getElementById('btnNames').onclick=function(){ render(); modal.classList.add('show'); };
+  return {
+    get:function(){ return list.filter(function(r){ return (r.no&&String(r.no).trim())||(r.name&&r.name.trim()); }).map(function(r){ return {size:esc(r.size).slice(0,10), no:esc(r.no).slice(0,10), name:esc(r.name).slice(0,40)}; }); },
+    set:function(arr){ list=Array.isArray(arr)?arr.map(function(r){return {size:r.size||'',no:r.no||'',name:r.name||''};}):[]; },
+    count:count
+  };
+})();
+
+/* =====================================================================
+   自動保存・続きから（森さん解禁 2026-08-24・R-119 U-01）
+   localStorage に exportDesign() を保存（端末内のみ・14日で期限切れ）。
+   ?code= 読込・親ページ復元があるときは出しゃばらない。
+   ===================================================================== */
+var SeeQAutosave=(function(){
+  var KEY='seeqSimAutosave.v1', T=null, enabled=true, EXPIRE=14*24*3600*1000;
+  function save(){
+    if(!enabled) return;
+    try{
+      if(!hasAnyDesign()){ return; }
+      localStorage.setItem(KEY, JSON.stringify({t:Date.now(), data:exportDesign()}));
+    }catch(e){ enabled=false; }
+  }
+  function schedule(){ if(T) return; T=setTimeout(function(){ T=0; save(); }, 1200); }
+  function load(){
+    try{ var j=JSON.parse(localStorage.getItem(KEY)||'null'); if(!j||!j.data) return null;
+      if(Date.now()-j.t>EXPIRE){ localStorage.removeItem(KEY); return null; } return j;
+    }catch(e){ return null; }
+  }
+  function clear(){ try{ localStorage.removeItem(KEY); }catch(e){} }
+  function ago(t){ var m=Math.round((Date.now()-t)/60000); if(m<1) return 'さっき'; if(m<60) return m+'分前'; var h=Math.round(m/60); if(h<24) return h+'時間前'; return Math.round(h/24)+'日前'; }
+  function offer(){
+    var q=null; try{ q=new URLSearchParams(location.search); }catch(e){}
+    if(q && (q.get('code')||q.get('start')==='1')) return;      /* コード読込・強制スタートを優先 */
+    if(hasAnyDesign()) return;                                   /* 親ページ復元済み */
+    var j=load(); if(!j) return;
+    toast('前回のデザインがあります（'+ago(j.t)+'）', {action:'続きから', onAction:function(){
+      importDesign(j.data, {});
+      try{ if(typeof ssHide==='function') ssHide(); }catch(e){}
+      try{ document.getElementById('startScreen') && document.getElementById('startScreen').classList.remove('show'); }catch(e){}
+    }});
+  }
+  /* 履歴確定のたびにデバウンス保存 */
+  var _ch=commitHistory; commitHistory=function(){ _ch.apply(this,arguments); schedule(); };
+  window.addEventListener('pagehide', save);
+  setTimeout(offer, 900);
+  return { save:save, load:load, clear:clear };
+})();
+
+/* =====================================================================
    UX補強（2026-08-24 競合調査より）: 角度の数値入力／別の面へコピー／色数カウンタ／
    生地色との低コントラスト警告／ , . 回転・Ctrl+矢印リサイズ
    ===================================================================== */
@@ -6739,7 +6900,7 @@ saveModal.onclick=function(e){ if(e.target===saveModal) saveModal.classList.remo
 function exportDesign(){
   saveCurrentFace();
   /* summary: プリント実寸・部位のサマリ（D1 案件連携用・契約03 §13）。SHO-HAN側は design_json.summary を読むだけでよい */
-  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, state:faceState, sizes:(window.SeeQReal?SeeQReal.sizes():undefined), bodies:(window.SeeQReal?SeeQReal.bodies():undefined), summary:(window.SeeQReal?SeeQReal.payload():undefined)});
+  return JSON.stringify({v:3, product:currentProduct, face:currentFace, color:currentColor.hex, names:(window.SeeQNames?SeeQNames.get():undefined), state:faceState, sizes:(window.SeeQReal?SeeQReal.sizes():undefined), bodies:(window.SeeQReal?SeeQReal.bodies():undefined), summary:(window.SeeQReal?SeeQReal.payload():undefined)});
 }
 /* opts.confirm=true のときは、いま編集中のデザインが消えることを必ず確認する。
    テンプレート適用にだけ確認があって、より危険な全置換に無かった非対称の解消（P0-5）。 */
@@ -6757,6 +6918,7 @@ function importDesign(json, opts){
   currentFace = (faces.indexOf(st.face)>=0) ? st.face : faces[0];
   currentColor = curColors().filter(function(c){return c.hex===st.color;})[0] || curColors()[0];
   try{ if((st.sizes||st.bodies) && window.SeeQReal) SeeQReal.restore(st.sizes||{}, st.bodies||{}); }catch(e){}
+  try{ if(window.SeeQNames) SeeQNames.set(st.names||[]); }catch(e){}
   renderProductSelector(); renderSwatches(curColors()); renderFaceTabs();
   updateProductUI(); updateFaceUI(); positionGuide(); applyShirt();
   loadFace(faceState[stateKey()], function(){ renderLayers(); refreshBars(); histGuard=false; commitHistory(); });
@@ -7079,7 +7241,9 @@ function quotePayload(){
     /* 実寸の目安（サイズ表ベース）。quote-server 側でメール本文に載せる */
     realSize:rp.size||'', realSizeRef:rp.sizeRef||'', realPrintCm:rp.printCm||'', realPrintAreaCm:rp.printAreaCm||'', realPrintPos:rp.printPos||'',
     /* 概算（目安）。表示していない時は null */
-    estimate:(function(){ try{ return window.SeeQEst?SeeQEst.current():null; }catch(e){ return null; } })()
+    estimate:(function(){ try{ return window.SeeQEst?SeeQEst.current():null; }catch(e){ return null; } })(),
+    /* 背番号・ネームの一括リスト */
+    namesList:(function(){ try{ return window.SeeQNames?SeeQNames.get():[]; }catch(e){ return []; } })()
   };
 }
 /* =====================================================================
