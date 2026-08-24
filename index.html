@@ -4306,9 +4306,13 @@ var SeeQReal=(function(){
     out.push(['仕上がりについて', '実寸・位置は目安です。縫い目・襟下を基準に合わせますが、±1cm程度の差が出ることがあります']);
     return out;
   }
-  function payload(){ var c=cfg(); if(!c) return {}; var g=guideCm(), parts=[];
-    (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d) parts.push(f.id+':'+fmt(d.w)+'x'+fmt(d.h)); });
-    return { size:(c.isBig?'ビッグ ':'')+sizeKey(), sizeRef:c.ref, printCm:parts.join(';'), printAreaCm:g?(fmt(g.w)+'x'+fmt(g.h)):'', printPos:(currentFace+':'+(facePos(currentFace)||'')) }; }
+  function payload(){ var c=cfg(); if(!c) return {}; var g=guideCm(), parts=[], prints=[];
+    (curProduct().faces||[]).forEach(function(f){ var d=designCm(f.id); if(d){
+      parts.push(f.id+':'+fmt(d.w)+'x'+fmt(d.h));
+      /* 構造化版（SHO-HAN case-brief / illustbrief0825 のパーサ向け・mm単位） */
+      prints.push({ pos:f.id, w_mm:Math.round(d.w*10), h_mm:Math.round(d.h*10), place:(f.id===currentFace?(facePos(f.id)||''):'') });
+    } });
+    return { size:(c.isBig?'ビッグ ':'')+sizeKey(), sizeRef:c.ref, printCm:parts.join(';'), printAreaCm:g?(fmt(g.w)+'x'+fmt(g.h)):'', printPos:(currentFace+':'+(facePos(currentFace)||'')), prints:prints }; }
 
   /* ---- 既存フローへの接続（宣言済み関数を包む） ---- */
   var _upd=updateProductUI; updateProductUI=function(){ _upd.apply(this,arguments); refreshAll(); };
