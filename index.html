@@ -7118,7 +7118,8 @@ document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
    「このアイテムで作る」で枠相対の相似変換でデザインを載せ替えて商品を切り替える。
    ===================================================================== */
 (function(){
-  var XITEMS=['tshirt','dry','longtee','sweat','parka','tote'];
+  /* ドライTは綿Tとシルエットがほぼ同じため横展開の候補からは外す（森さん 2026-08-25） */
+  var XITEMS=['tshirt','longtee','sweat','parka','tote'];
   var modal=document.getElementById('xitemModal'), grid=document.getElementById('xitemGrid');
   var btn=document.getElementById('btnXitem');
   if(!modal||!grid||!btn) return;
@@ -7177,7 +7178,11 @@ document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
     saveCurrentFace();
     var tex=designTextureCanvas(768);
     grid.innerHTML='';
-    var list=XITEMS.filter(function(id){ return id!==currentProduct && PRODUCTS[id] && frontFace(id); });
+    var list=XITEMS.filter(function(id){
+      if(id===currentProduct) return false;
+      if(id==='tshirt' && currentProduct==='dry') return false;   /* ドライT作業中も綿Tは出さない（同シルエット） */
+      return PRODUCTS[id] && frontFace(id);
+    });
     list.forEach(function(pid){
       var p=PRODUCTS[pid];
       var card=document.createElement('div'); card.className='xitem-card';
