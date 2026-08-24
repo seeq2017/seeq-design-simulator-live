@@ -6908,6 +6908,14 @@ window.__uploadPrintData=function(code){
     var jobs=Object.keys(b.assets).map(function(face){
       var a=b.assets[face];
       var svg=_svgRootMM(a.svg, a.mm.w, a.mm.h);
+      /* プリント範囲（塗り足し込み）の目印枠を先頭に注入 → イラレ取り込み時に範囲が分かり、
+         グループ外形＝範囲になるので配置基準も安定する */
+      svg=svg.replace(/(<svg[^>]*viewBox="([\d.\- ]+)"[^>]*>)/, function(m, tag, vb){
+        var v=vb.split(/\s+/).map(Number);
+        if(v.length!==4) return m;
+        var sw=(v[2]/ (a.mm.w||1))*0.35;   /* 見た目0.35mm相当の線幅 */
+        return tag+'\n<rect x="'+v[0]+'" y="'+v[1]+'" width="'+v[2]+'" height="'+v[3]+'" fill="none" stroke="#EC008C" stroke-width="'+sw+'" stroke-dasharray="'+(sw*8)+' '+(sw*4)+'"/>';
+      });
       return post('print-'+face+'.svg', 'data:image/svg+xml;base64,'+_b64utf8(svg));
     });
     jobs.push(post('print-meta.json', 'data:application/json;base64,'+_b64utf8(JSON.stringify(meta,null,1))));
