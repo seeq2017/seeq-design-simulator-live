@@ -435,6 +435,10 @@
   @media (min-width:821px){ body.has-sel .toast{top:120px;} }   /* クイックバーと重ならない位置へ */
   /* 実寸の目安 */
   .obj-dim{align-self:center;font-size:11.5px;font-weight:800;color:var(--ink);padding:0 8px 0 9px;border-left:1px solid var(--hair);margin-left:3px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .dpi-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:800;vertical-align:1px;}
+  .dpi-good{background:#e3f4e8;color:#1e7c3c;}
+  .dpi-mid{background:#fdf3d7;color:#9a6d00;}
+  .dpi-low{background:#fde3e3;color:#c0303a;}
   .guide-dim{position:absolute;z-index:30;pointer-events:none;font-size:11px;font-weight:700;color:var(--ink-3);
     background:rgba(255,255,255,.84);border:1px solid var(--hair-soft);border-radius:999px;padding:2px 9px;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .real-dim-row input[type=number]{width:74px;min-width:0;padding:7px 8px;border:1px solid var(--line);border-radius:var(--radius-md,4px);font-size:13px;}
@@ -4237,6 +4241,17 @@ var SeeQReal=(function(){
     }
     od.textContent+=' ／ '+sizeTier(d.w,d.h);
     od.title='選択中の要素の実寸（外接サイズ・目安）／襟下・中心からの距離は位置決め基準表と同じ測り方／大きさの段は加工料金の区分（10cm角・20×15cm・A4・A3）';
+    /* 実効DPIバッジ（写真のみ・T8/P3-2）: この実寸で印刷した時の解像度の目安 */
+    if(o.type==='image' && o.width && d.w>0.1){
+      var dpi=Math.round(o.width/(d.w/2.54));
+      var b=document.createElement('span');
+      b.className='dpi-badge '+(dpi>=200?'dpi-good':(dpi>=120?'dpi-mid':'dpi-low'));
+      b.textContent=(dpi>=200?'画質OK ':(dpi>=120?'やや粗い ':'粗い '))+dpi+'dpi';
+      b.title=dpi>=200?'この大きさなら十分きれいに印刷できます（200dpi以上）'
+        :(dpi>=120?'少し粗く印刷される可能性があります。小さくするか、大きい画像に差し替えると改善します（推奨200dpi以上）'
+        :'このままだと粗く印刷されます。プリントを小さくするか、解像度の高い画像をお使いください（推奨200dpi以上）');
+      od.appendChild(b);
+    }
     /* 配置カードの入力欄にも現在値を入れておく */
     if(rw && document.activeElement!==rw && document.activeElement!==rh){ rw.value=fmt(d.w); rh.value=fmt(d.h); }
     if(dimWrap) dimWrap.hidden=false;
