@@ -521,6 +521,7 @@
   .nowmaking{flex-wrap:wrap;}
   .nowmaking .nm-txt{flex:1 1 120px;}
   .nm-txt b{overflow-wrap:anywhere;}
+  .stamps .stamp-btn svg path{fill:currentColor !important;stroke:none !important;}
   .obj-warn{color:#b45309;font-weight:700;}
   .obj-warn.obj-ok{color:#1f7a3a;}
   .nn-entry{margin-top:8px;padding-top:8px;border-top:1px dashed var(--hair,#e5e5e5);}
@@ -1601,6 +1602,9 @@
         <button class="shape-btn" data-shape="check"    title="チェック"><svg viewBox="0 0 24 24"><path d="M3.5 12.5l2.8-2.8 4 4L18.2 3.8 21 6.6 10.3 17.3z"/></svg></button>
       </div>
       <p class="mini note">図形は置いたあと、色・線・不透明度を「図形の編集」で変えられます。</p>
+      <label class="fld mt-m">スタンプ <span class="fld-sub">（ジャンルで絞り込み。色はあとから変えられます）</span></label>
+      <div class="tpl-cats" id="stampCats"></div>
+      <div class="shapes stamps" id="stampGrid"></div>
     </div>
 
     <!-- 図形の編集（図形を選んだときだけ表示） -->
@@ -4554,6 +4558,41 @@ document.getElementById('shapes').addEventListener('click',function(e){
 });
 
 /* =====================================================================
+   スタンプライブラリ（SeeQ 自作パスピクトグラム・2026-08-24 森さんGO）
+   正本はこの配列（±60座標系・fill-rule付き）。追加はここに1行足すだけ。
+   ===================================================================== */
+var SEEQ_STAMPS=[{"genre":"star","id":"star5","label":"星","path":"M 0.0 -60.0 L 14.11 -19.42 L 57.06 -18.54 L 22.83 7.42 L 35.27 48.54 L 0.0 24.0 L -35.27 48.54 L -22.83 7.42 L -57.06 -18.54 L -14.11 -19.42 Z","rule":"evenodd"},{"genre":"star","id":"star5-line","label":"星（線）","path":"M 0.0 -60.0 L 14.11 -19.42 L 57.06 -18.54 L 22.83 7.42 L 35.27 48.54 L 0.0 24.0 L -35.27 48.54 L -22.83 7.42 L -57.06 -18.54 L -14.11 -19.42 Z M 0.0 -46.0 L 10.58 -14.56 L 43.75 -14.21 L 17.12 5.56 L 27.04 37.21 L 0.0 18.0 L -27.04 37.21 L -17.12 5.56 L -43.75 -14.21 L -10.58 -14.56 Z","rule":"evenodd"},{"genre":"star","id":"burst","label":"バースト","path":"M 0.0 -60.0 L 9.84 -36.71 L 30.0 -51.96 L 26.87 -26.87 L 51.96 -30.0 L 36.71 -9.84 L 60.0 0.0 L 36.71 9.84 L 51.96 30.0 L 26.87 26.87 L 30.0 51.96 L 9.84 36.71 L 0.0 60.0 L -9.84 36.71 L -30.0 51.96 L -26.87 26.87 L -51.96 30.0 L -36.71 9.84 L -60.0 0.0 L -36.71 -9.84 L -51.96 -30.0 L -26.87 -26.87 L -30.0 -51.96 L -9.84 -36.71 Z","rule":"evenodd"},{"genre":"star","id":"burst2","label":"バースト二重","path":"M 0.0 -60.0 L 9.84 -36.71 L 30.0 -51.96 L 26.87 -26.87 L 51.96 -30.0 L 36.71 -9.84 L 60.0 0.0 L 36.71 9.84 L 51.96 30.0 L 26.87 26.87 L 30.0 51.96 L 9.84 36.71 L 0.0 60.0 L -9.84 36.71 L -30.0 51.96 L -26.87 26.87 L -51.96 30.0 L -36.71 9.84 L -60.0 0.0 L -36.71 -9.84 L -51.96 -30.0 L -26.87 -26.87 L -30.0 -51.96 L -9.84 -36.71 Z M 0.0 -46.0 L 7.51 -28.01 L 23.0 -39.84 L 20.51 -20.51 L 39.84 -23.0 L 28.01 -7.51 L 46.0 0.0 L 28.01 7.51 L 39.84 23.0 L 20.51 20.51 L 23.0 39.84 L 7.51 28.01 L 0.0 46.0 L -7.51 28.01 L -23.0 39.84 L -20.51 20.51 L -39.84 23.0 L -28.01 7.51 L -46.0 0.0 L -28.01 -7.51 L -39.84 -23.0 L -20.51 -20.51 L -23.0 -39.84 L -7.51 -28.01 Z","rule":"evenodd"},{"genre":"star","id":"sparkle","label":"キラキラ","path":"M -8 -44 Q 2.4 -2.4 44 8 Q 2.4 18.4 -8 60 Q -18.4 18.4 -60 8 Q -18.4 -2.4 -8 -44 Z M 42 -60 Q 45.6 -45.6 60 -42 Q 45.6 -38.4 42 -24 Q 38.4 -38.4 24 -42 Q 38.4 -45.6 42 -60 Z","rule":"evenodd"},{"genre":"star","id":"sparkle2","label":"キラキラ2つ","path":"M -18 -24 Q -10.0 8.0 22 16 Q -10.0 24.0 -18 56 Q -26.0 24.0 -58 16 Q -26.0 8.0 -18 -24 Z M 34 -46 Q 38.8 -26.8 58 -22 Q 38.8 -17.2 34 2 Q 29.2 -17.2 10 -22 Q 29.2 -26.8 34 -46 Z M 8 -60 Q 10.4 -50.4 20 -48 Q 10.4 -45.6 8 -36 Q 5.6 -45.6 -4 -48 Q 5.6 -50.4 8 -60 Z","rule":"evenodd"},{"genre":"star","id":"shooting","label":"流れ星","path":"M 30 -42 L 37.05 -27.72 L 52.81 -25.43 L 41.4 -14.31 L 44.1 1.38 L 30 -6.03 L 15.9 1.38 L 18.6 -14.31 L 7.19 -25.43 L 22.95 -27.72 Z M -58 -26 L 2 -22 L 2 -18 L -58 -22 Z M -52 -6 L 8 -4 L 8 0 L -52 -2 Z M -44 14 L 10 12 L 10 16 L -44 18 Z","rule":"evenodd"},{"genre":"heart","id":"heart","label":"ハート","path":"M 0 -22 C -9 -46 -56 -40 -56 -8 C -56 20 -14 40 0 54 C 14 40 56 20 56 -8 C 56 -40 9 -46 0 -22 Z","rule":"evenodd"},{"genre":"heart","id":"heart-line","label":"ハート（線）","path":"M 0 -22 C -9 -46 -56 -40 -56 -8 C -56 20 -14 40 0 54 C 14 40 56 20 56 -8 C 56 -40 9 -46 0 -22 Z M 0 -12 C -7 -32 -44 -28 -44 -6 C -44 14 -12 30 0 42 C 12 30 44 14 44 -6 C 44 -28 7 -32 0 -12 Z","rule":"evenodd"},{"genre":"heart","id":"heart-sketch","label":"ハート（手書き）","path":"M 2 -18 C -6 -44 -54 -36 -52 -6 C -50 20 -12 38 1 52 C 12 36 54 22 54 -10 C 54 -38 10 -44 2 -18 Z M 1 -8 C -5 -30 -42 -26 -41 -4 C -40 16 -10 30 1 42 C 10 28 42 16 43 -8 C 43 -30 7 -28 1 -8 Z","rule":"evenodd"},{"genre":"royal","id":"crown","label":"王冠","path":"M -54 34 L -60 -22 L -30 0 L 0 -40 L 30 0 L 60 -22 L 54 34 Z M -54 42 L 54 42 L 54 52 L -54 52 Z","rule":"evenodd"},{"genre":"royal","id":"crown2","label":"王冠（丸）","path":"M -52 30 L -56 -14 C -46 -2 -34 -2 -28 -12 C -24 -28 -8 -34 0 -34 C 8 -34 24 -28 28 -12 C 34 -2 46 -2 56 -14 L 52 30 Z M -52 38 L 52 38 L 52 48 L -52 48 Z M 0 -56 A 8 8 0 1 1 0 -40 A 8 8 0 1 1 0 -56 Z","rule":"evenodd"},{"genre":"royal","id":"flame","label":"炎","path":"M 0 -56 C 12 -34 30 -24 30 4 C 30 22 22 34 12 42 C 16 30 14 20 4 12 C 8 26 0 36 -4 44 C -8 36 -18 28 -14 12 C -22 20 -26 30 -22 42 C -30 32 -30 22 -30 4 C -30 -24 -12 -34 0 -56 Z","rule":"evenodd"},{"genre":"royal","id":"bolt2","label":"稲妻（太）","path":"M 16 -58 L -34 6 L -6 6 L -18 58 L 34 -12 L 4 -12 Z","rule":"evenodd"},{"genre":"royal","id":"diamond-gem","label":"宝石","path":"M -36 -28 L 36 -28 L 56 0 L 0 52 L -56 0 Z M -20 -20 L 20 -20 L 0 24 Z","rule":"evenodd"},{"genre":"emblem","id":"wings","label":"翼","path":"M 4 -10 C 16 -26 36 -32 62 -30 C 58 -24 52 -20 44 -18 L 58 -14 C 52 -8 44 -5 37 -4 L 48 2 C 42 7 34 9 28 9 L 36 16 C 28 20 20 20 14 17 C 8 12 4 2 4 -10 Z M -4 -10 C -16 -26 -36 -32 -62 -30 C -58 -24 -52 -20 -44 -18 L -58 -14 C -52 -8 -44 -5 -37 -4 L -48 2 C -42 7 -34 9 -28 9 L -36 16 C -28 20 -20 20 -14 17 C -8 12 -4 2 -4 -10 Z","rule":"evenodd"},{"genre":"emblem","id":"laurel","label":"月桂樹","path":"M 2 54 C 30 48 46 26 46 -4 C 46 -20 42 -32 34 -42 C 38 -30 41 -20 41 -4 C 41 22 27 42 1 49 Z M 12.22 51.49 Q 28.23 55.06 35.78 40.51 Q 19.77 36.94 12.22 51.49 Z M 27.3 41.66 Q 43.43 38.69 44.7 22.34 Q 28.57 25.31 27.3 41.66 Z M 39.55 27.22 Q 53.4 18.42 48.45 2.78 Q 34.6 11.58 39.55 27.22 Z M 46.0 9.0 Q 56.0 -4.0 46.0 -17.0 Q 36.0 -4.0 46.0 9.0 Z M 47.87 -10.95 Q 52.27 -26.75 38.13 -35.05 Q 33.73 -19.25 47.87 -10.95 Z M 43.7 -28.34 Q 42.43 -44.69 26.3 -47.66 Q 27.57 -31.31 43.7 -28.34 Z M -2 54 C -30 48 -46 26 -46 -4 C -46 -20 -42 -32 -34 -42 C -38 -30 -41 -20 -41 -4 C -41 22 -27 42 -1 49 Z M -12.22 51.49 Q -28.23 55.06 -35.78 40.51 Q -19.77 36.94 -12.22 51.49 Z M -27.3 41.66 Q -43.43 38.69 -44.7 22.34 Q -28.57 25.31 -27.3 41.66 Z M -39.55 27.22 Q -53.4 18.42 -48.45 2.78 Q -34.6 11.58 -39.55 27.22 Z M -46.0 9.0 Q -56.0 -4.0 -46.0 -17.0 Q -36.0 -4.0 -46.0 9.0 Z M -47.87 -10.95 Q -52.27 -26.75 -38.13 -35.05 Q -33.73 -19.25 -47.87 -10.95 Z M -43.7 -28.34 Q -42.43 -44.69 -26.3 -47.66 Q -27.57 -31.31 -43.7 -28.34 Z","rule":"evenodd"},{"genre":"emblem","id":"shield","label":"シールド","path":"M 0 -54 C 16 -46 34 -42 50 -42 C 50 -6 44 28 0 54 C -44 28 -50 -6 -50 -42 C -34 -42 -16 -46 0 -54 Z M 0 -42 C 12 -36 26 -33 38 -32 C 38 -4 33 22 0 42 C -33 22 -38 -4 -38 -32 C -26 -33 -12 -36 0 -42 Z","rule":"evenodd"},{"genre":"emblem","id":"circle-emblem","label":"丸エンブレム","path":"M 0 -58 A 58 58 0 1 1 0 58 A 58 58 0 1 1 0 -58 Z M 0 -50 A 50 50 0 1 0 0 50 A 50 50 0 1 0 0 -50 Z M 0 -44 A 44 44 0 1 1 0 44 A 44 44 0 1 1 0 -44 Z M 0 -40 A 40 40 0 1 0 0 40 A 40 40 0 1 0 0 -40 Z","rule":"evenodd"},{"genre":"emblem","id":"hex-badge","label":"六角バッジ","path":"M 0.0 -60.0 L 51.96 -30.0 L 51.96 30.0 L 0.0 60.0 L -51.96 30.0 L -51.96 -30.0 Z M 0.0 -48.0 L 41.57 -24.0 L 41.57 24.0 L 0.0 48.0 L -41.57 24.0 L -41.57 -24.0 Z","rule":"evenodd"},{"genre":"emblem","id":"banner","label":"バナーリボン","path":"M -42 -18 L 42 -18 L 42 18 L -42 18 Z M -42 -12 L -62 -12 L -54 2 L -62 16 L -42 16 Z M -42 16 L -42 24 L -50 16 Z M 42 -12 L 62 -12 L 54 2 L 62 16 L 42 16 Z M 42 16 L 42 24 L 50 16 Z","rule":"evenodd"},{"genre":"sports","id":"soccer","label":"サッカー","path":"M 0 -56 A 56 56 0 1 1 0 56 A 56 56 0 1 1 0 -56 Z M 0 -50 A 50 50 0 1 0 0 50 A 50 50 0 1 0 0 -50 Z M 0.0 -18.0 L 17.12 -5.56 L 10.58 14.56 L -10.58 14.56 L -17.12 -5.56 Z M 7.05 -47.71 L 11.41 -34.29 L 0.0 -26.0 L -11.41 -34.29 L -7.05 -47.71 Z M 47.55 -8.03 L 36.14 0.26 L 24.73 -8.03 L 29.09 -21.45 L 43.19 -21.45 Z M 22.34 42.74 L 10.92 34.45 L 15.28 21.03 L 29.39 21.03 L 33.75 34.45 Z M -33.75 34.45 L -29.39 21.03 L -15.28 21.03 L -10.92 34.45 L -22.34 42.74 Z M -43.19 -21.45 L -29.09 -21.45 L -24.73 -8.03 L -36.14 0.26 L -47.55 -8.03 Z","rule":"evenodd"},{"genre":"sports","id":"basket","label":"バスケ","path":"M 0 -56 A 56 56 0 1 1 0 56 A 56 56 0 1 1 0 -56 Z M 0 -50 A 50 50 0 1 0 0 50 A 50 50 0 1 0 0 -50 Z M -3 -50 L 3 -50 L 3 50 L -3 50 Z M -50 -3 L 50 -3 L 50 3 L -50 3 Z M -46 -34 C -22 -14 -22 14 -46 34 L -42 38 C -16 16 -16 -16 -42 -38 Z M 46 -34 C 22 -14 22 14 46 34 L 42 38 C 16 16 16 -16 42 -38 Z","rule":"evenodd"},{"genre":"sports","id":"baseball","label":"野球","path":"M 0 -56 A 56 56 0 1 1 0 56 A 56 56 0 1 1 0 -56 Z M 0 -50 A 50 50 0 1 0 0 50 A 50 50 0 1 0 0 -50 Z M 34 -44 C 16 -20 16 20 34 44 L 40 40 C 24 18 24 -18 40 -40 Z M -34 -44 C -16 -20 -16 20 -34 44 L -40 40 C -24 18 -24 -18 -40 -40 Z","rule":"evenodd"},{"genre":"sports","id":"trophy","label":"トロフィー","path":"M -34 -52 L 34 -52 L 34 -20 C 34 0 20 12 8 14 L 8 26 L 22 34 L 22 42 L -22 42 L -22 34 L -8 26 L -8 14 C -20 12 -34 0 -34 -20 Z M -34 -44 L -50 -44 C -52 -22 -44 -10 -32 -8 L -32 -18 C -40 -20 -44 -28 -43 -36 L -34 -36 Z M 34 -44 L 50 -44 C 52 -22 44 -10 32 -8 L 32 -18 C 40 -20 44 -28 43 -36 L 34 -36 Z M -26 50 L 26 50 L 26 58 L -26 58 Z","rule":"evenodd"},{"genre":"sports","id":"megaphone","label":"メガホン","path":"M 52 -54 C 30 -40 6 -32 -20 -30 L -48 -30 C -56 -30 -60 -20 -60 -8 C -60 4 -56 14 -48 14 L -38 14 L -28 46 C -26 52 -20 54 -14 52 L -6 49 C 0 47 2 41 0 35 L -6 16 C 4 18 30 26 52 38 Z M 52 -54 L 60 -54 L 60 38 L 52 38 Z","rule":"evenodd"},{"genre":"music","id":"note","label":"音符","path":"M 12 -54 L 52 -62 L 52 18 C 52 28 44 36 34 36 C 26 36 22 30 22 24 C 22 16 30 10 38 10 C 40 10 42 10 44 11 L 44 -36 L 20 -31 L 20 30 C 20 40 12 48 2 48 C -6 48 -10 42 -10 36 C -10 28 -2 22 6 22 C 8 22 10 22 12 23 Z","rule":"evenodd"},{"genre":"music","id":"headphone","label":"ヘッドホン","path":"M 0 -50 C -30 -50 -52 -28 -52 2 L -52 30 L -44 30 L -44 2 C -44 -24 -25 -42 0 -42 C 25 -42 44 -24 44 2 L 44 30 L 52 30 L 52 2 C 52 -28 30 -50 0 -50 Z M -52 6 C -40 6 -32 12 -32 24 C -32 36 -40 46 -52 46 Z M 52 6 C 40 6 32 12 32 24 C 32 36 40 46 52 46 Z","rule":"evenodd"},{"genre":"music","id":"mic","label":"マイク","path":"M 0 -58 C 13 -58 23 -48 23 -35 L 23 -6 C 23 7 13 17 0 17 C -13 17 -23 7 -23 -6 L -23 -35 C -23 -48 -13 -58 0 -58 Z M -35 -8 L -27 -8 L -27 -6 C -27 9 -15 21 0 21 C 15 21 27 9 27 -6 L 27 -8 L 35 -8 L 35 -6 C 35 12 22 26 4 28 L 4 42 L 20 42 L 20 50 L -20 50 L -20 42 L -4 42 L -4 28 C -22 26 -35 12 -35 -6 Z","rule":"evenodd"},{"genre":"wa","id":"sakura","label":"桜","path":"M -8.0 -0.0 C -22.0 30.0 -52.0 26.0 -56.0 6.0 L -47.0 -0.0 L -56.0 -6.0 C -52.0 -26.0 -22.0 -30.0 -8.0 -0.0 Z M -2.47 -7.61 C -35.33 -11.65 -40.8 -41.42 -23.01 -51.41 L -14.52 -44.7 L -11.6 -55.11 C 8.66 -57.49 21.73 -30.19 -2.47 -7.61 Z M 6.47 -4.7 C 0.16 -37.2 26.79 -51.6 41.78 -37.77 L 38.02 -27.63 L 48.83 -28.06 C 57.35 -9.53 35.43 11.34 6.47 -4.7 Z M 6.47 4.7 C 35.43 -11.34 57.35 9.53 48.83 28.06 L 38.02 27.63 L 41.78 37.77 C 26.79 51.6 0.16 37.2 6.47 4.7 Z M -2.47 7.61 C 21.73 30.19 8.66 57.49 -11.6 55.11 L -14.52 44.7 L -23.01 51.41 C -40.8 41.42 -35.33 11.65 -2.47 7.61 Z","rule":"evenodd"},{"genre":"wa","id":"rakkan","label":"落款印","path":"M -44 -44 L 44 -44 L 44 44 L -44 44 Z M -36 -36 L 36 -36 L 36 36 L -36 36 Z","rule":"evenodd"},{"genre":"wa","id":"seigaiha","label":"扇","path":"M -72.5 -18.64 A 92 92 0 0 1 72.5 -18.64 L 23.64 19.53 A 30 30 0 0 0 -23.64 19.53 Z M -49.66 -31.0 L -47.03 -32.82 L -20.3 5.84 L -22.93 7.66 Z M -26.85 -42.66 L -23.8 -43.62 L -9.79 1.25 L -12.85 2.2 Z M -1.6 -47.0 L 1.6 -47.0 L 1.6 0.0 L -1.6 0.0 Z M 23.8 -43.62 L 26.85 -42.66 L 12.85 2.2 L 9.79 1.25 Z M 47.03 -32.82 L 49.66 -31.0 L 22.93 7.66 L 20.3 5.84 Z M 0 46 A 6 6 0 1 1 0 58 A 6 6 0 1 1 0 46 Z","rule":"evenodd"},{"genre":"wa","id":"fuji","label":"富士山","path":"M 0 -36 C 8 -36 14 -32 22 -18 L 58 42 L -58 42 L -22 -18 C -14 -32 -8 -36 0 -36 Z M -19 -14 C -14 -4 -10 -2 -5 -9 C -1 -3 3 -3 7 -9 C 11 -3 15 -5 19 -14 C 13 -26 9 -28 0 -28 C -9 -28 -13 -26 -19 -14 Z","rule":"evenodd"},{"genre":"doodle","id":"underline","label":"アンダーライン","path":"M -58 -4 C -30 -10 30 -10 58 -6 L 58 0 C 30 -4 -30 -4 -58 2 Z M -50 8 C -20 4 20 4 50 6 L 50 12 C 20 10 -20 10 -50 14 Z","rule":"evenodd"},{"genre":"doodle","id":"circle-sketch","label":"手書き丸","path":"M 2 -46 C 30 -48 54 -30 54 -2 C 54 26 30 44 0 44 C -30 44 -54 28 -54 0 C -54 -28 -28 -44 6 -46 C -20 -40 -46 -26 -46 0 C -46 24 -26 38 0 38 C 26 38 46 24 46 -2 C 46 -26 26 -40 2 -40 Z","rule":"evenodd"},{"genre":"doodle","id":"bubble-sketch","label":"吹き出し（手書き）","path":"M -40 -40 C -10 -46 20 -46 44 -38 C 56 -32 58 -18 54 -4 C 50 10 38 18 16 20 L -6 36 L -2 20 C -24 20 -44 14 -50 0 C -56 -14 -52 -32 -40 -40 Z M -36 -32 C -12 -38 18 -38 40 -31 C 48 -27 50 -18 47 -7 C 44 4 34 11 14 12 L 2 22 L 4 12 C -18 12 -38 8 -43 -2 C -47 -12 -45 -26 -36 -32 Z","rule":"evenodd"},{"genre":"doodle","id":"arrow-sketch","label":"手書き矢印","path":"M -56 20 C -20 8 10 0 40 -14 L 34 -22 L 58 -26 L 50 -2 L 44 -8 C 14 6 -18 14 -54 26 Z","rule":"evenodd"},{"genre":"doodle","id":"asterisk","label":"手書きアスタリスク","path":"M -4 -56 L 5 -55 L 2 -10 L -3 -10 Z M -46 -34 L -40 -41 L -5 -7 L -9 -3 Z M 40 -42 L 46 -35 L 9 -4 L 5 -8 Z M -56 10 L -55 2 L -8 2 L -8 8 Z M 55 0 L 57 8 L 8 8 L 8 2 Z M -30 48 L -37 44 L -7 8 L -2 12 Z M 36 45 L 29 49 L 2 12 L 7 8 Z","rule":"evenodd"},{"genre":"oshi","id":"penlight","label":"ペンライト","path":"M -10 -58 C -4 -62 4 -62 10 -58 L 14 -6 L -14 -6 Z M -16 -2 L 16 -2 L 16 6 L -16 6 Z M -13 10 L 13 10 L 13 52 C 13 56 9 58 0 58 C -9 58 -13 56 -13 52 Z M -6 16 L -3 16 L -3 44 L -6 44 Z","rule":"evenodd"},{"genre":"oshi","id":"uchiwa","label":"うちわ","path":"M 0 -56 A 42 42 0 1 1 0 28 A 42 42 0 1 1 0 -56 Z M 0 -26 C -4 -35 -20 -33 -20 -21 C -20 -11 -6 -4 0 2 C 6 -4 20 -11 20 -21 C 20 -33 4 -35 0 -26 Z M -7 26 L 7 26 L 7 56 C 7 60 4 62 0 62 C -4 62 -7 60 -7 56 Z","rule":"evenodd"},{"genre":"oshi","id":"heart-hands","label":"ハート小物","path":"M 0 -8 C -5 -20 -28 -17 -28 -1 C -28 12 -7 22 0 29 C 7 22 28 12 28 -1 C 28 -17 5 -20 0 -8 Z M -34 -34 C -37 -40 -46 -39 -46 -32 C -46 -27 -38 -22 -34 -19 C -30 -22 -22 -27 -22 -32 C -22 -39 -31 -40 -34 -34 Z M 34 -34 C 31 -40 22 -39 22 -32 C 22 -27 30 -22 34 -19 C 38 -22 46 -27 46 -32 C 46 -39 37 -40 34 -34 Z","rule":"evenodd"},{"genre":"oshi","id":"ribbon2","label":"リボン","path":"M -9 -9 L 9 -9 L 9 9 L -9 9 Z M -12 -6 C -20 -18 -38 -24 -48 -18 C -56 -13 -56 13 -48 18 C -38 24 -20 18 -12 6 Z M -44 -12 C -38 -16 -26 -12 -19 -4 L -19 4 C -26 12 -38 16 -44 12 C -49 8 -49 -8 -44 -12 Z M 12 -6 C 20 -18 38 -24 48 -18 C 56 -13 56 13 48 18 C 38 24 20 18 12 6 Z M 44 -12 C 38 -16 26 -12 19 -4 L 19 4 C 26 12 38 16 44 12 C 49 8 49 -8 44 -12 Z M -8 11 L -20 42 L -10 42 L -1 14 Z M 8 11 L 20 42 L 10 42 L 1 14 Z","rule":"evenodd"},{"genre":"animal","id":"eagle","label":"ウサギ","path":"M -14 -56 C -22 -56 -26 -40 -24 -18 C -32 -12 -36 -2 -36 8 C -36 34 -20 50 0 50 C 20 50 36 34 36 8 C 36 -2 32 -12 24 -18 C 26 -40 22 -56 14 -56 C 8 -56 6 -42 6 -24 C 4 -25 2 -25 0 -25 C -2 -25 -4 -25 -6 -24 C -6 -42 -8 -56 -14 -56 Z M -14 4 A 4.5 4.5 0 1 1 -5 4 A 4.5 4.5 0 1 1 -14 4 Z M 5 4 A 4.5 4.5 0 1 1 14 4 A 4.5 4.5 0 1 1 5 4 Z M -4 16 L 4 16 L 0 22 Z","rule":"evenodd"},{"genre":"animal","id":"cat","label":"ネコ","path":"M 0 58 C -26 58 -44 42 -44 16 C -44 2 -38 -10 -30 -18 L -36 -50 L -14 -34 C -10 -36 -5 -37 0 -37 C 5 -37 10 -36 14 -34 L 36 -50 L 30 -18 C 38 -10 44 2 44 16 C 44 42 26 58 0 58 Z M -18 6 A 5 5 0 1 1 -8 6 A 5 5 0 1 1 -18 6 Z M 8 6 A 5 5 0 1 1 18 6 A 5 5 0 1 1 8 6 Z M -4 20 L 4 20 L 0 27 Z","rule":"evenodd"},{"genre":"animal","id":"paw","label":"肉球","path":"M 0 -6 A 24 24 0 1 1 0 42 A 24 24 0 1 1 0 -6 Z M -34 -17 A 11 11 0 1 1 -34 5 A 11 11 0 1 1 -34 -17 Z M -13 -33 A 11 11 0 1 1 -13 -11 A 11 11 0 1 1 -13 -33 Z M 13 -33 A 11 11 0 1 1 13 -11 A 11 11 0 1 1 13 -33 Z M 34 -17 A 11 11 0 1 1 34 5 A 11 11 0 1 1 34 -17 Z","rule":"evenodd"}];
+var STAMP_GENRES={ star:'星・キラキラ', heart:'ハート', royal:'王冠・炎', emblem:'エンブレム', sports:'スポーツ', music:'音楽', wa:'和', doodle:'手書き風', oshi:'推し活', animal:'動物' };
+(function(){
+  var cats=document.getElementById('stampCats'), grid=document.getElementById('stampGrid');
+  if(!cats||!grid) return;
+  var cur='all';
+  function chips(){
+    cats.innerHTML='';
+    var mk=function(id,label){ var c=document.createElement('span'); c.className='chip'+(cur===id?' on':''); c.textContent=label; c.onclick=function(){ cur=id; chips(); render(); }; cats.appendChild(c); };
+    mk('all','すべて');
+    Object.keys(STAMP_GENRES).forEach(function(g){ mk(g, STAMP_GENRES[g]); });
+  }
+  function render(){
+    grid.innerHTML='';
+    SEEQ_STAMPS.forEach(function(st){
+      if(cur!=='all' && st.genre!==cur) return;
+      var b=document.createElement('button'); b.className='shape-btn stamp-btn'; b.type='button'; b.title=st.label;
+      b.innerHTML='<svg viewBox="-70 -70 140 140"><path d="'+st.path+'" fill="currentColor" fill-rule="'+(st.rule||'evenodd')+'" stroke="none"/></svg>';
+      b.onclick=function(){
+        var u=scaleUnit();
+        var fill = (currentColor && currentColor.dark) ? '#ffffff' : '#1f2a30';
+        var obj=new fabric.Path(st.path, {fill:fill, originX:'center', originY:'center', fillRule:(st.rule||'evenodd')});
+        obj.scale(u*0.9); obj.shapeKind='stamp:'+st.id; obj.strokeUniform=true; obj.strokeLineJoin='round';
+        addObj(obj, st.label);
+      };
+      grid.appendChild(b);
+    });
+  }
+  chips(); render();
+})();
+
+/* =====================================================================
    Curved / arched text  (uses native Fabric text-on-path)
    ===================================================================== */
 function applyCurve(t){
@@ -7052,21 +7091,100 @@ function tplText(o){
 function dkey(state){ return {v:3, product:'tshirt', face:'front', color:'#ffffff', state:state}; }
 
 /* built-in demo templates (authored at BASE_W) — replaceable by SeeQ */
+function stPath(id){ for(var i=0;i<SEEQ_STAMPS.length;i++){ if(SEEQ_STAMPS[i].id===id) return SEEQ_STAMPS[i]; } return null; }
+function tplStamp(id, o){
+  var st=stPath(id)||{path:'M -10 -10 L 10 -10 L 10 10 L -10 10 Z'};
+  return Object.assign({ type:'path', path:st.path, fillRule:(st.rule||'evenodd'), fill:'#1f2a30',
+    originX:'center', originY:'center', scaleX:0.9, scaleY:0.9, name:st.label||id }, o);
+}
+/* テンプレ（2026-08-24 全面刷新・調査②の12本）。座標は BASE 480×560、Tシャツ枠 x154-325 / y155-375 / cx240 */
 var BUILTIN_TEMPLATES=[
-  { id:'simple-logo', name:'シンプルロゴ', category:'ロゴ', product:'tshirt', baseW:BASE_W,
-    design: dkey({'tshirt.front':[
-      tplText({text:'ORIGINAL', srcText:'ORIGINAL', left:240, top:250, fontSize:52, fontFamily:"'Anton',sans-serif", fill:'#1f2a30'}),
-      tplText({text:'SINCE 2026', srcText:'SINCE 2026', left:240, top:300, fontSize:18, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#E60012', charSpacing:300})
-    ]}) },
-  { id:'two-line', name:'タイトル＋サブ', category:'メッセージ', product:'tshirt', baseW:BASE_W,
-    design: dkey({'tshirt.front':[
-      tplText({text:'こんにちは', srcText:'こんにちは', left:240, top:235, fontSize:46, fontFamily:"'Noto Sans JP',sans-serif", fill:'#1E40AF'}),
-      tplText({text:'世界', srcText:'世界', left:240, top:295, fontSize:64, fontFamily:"'Noto Serif JP',serif", fill:'#1f2a30'})
-    ]}) },
-  { id:'tate-wabun', name:'縦書き和文', category:'和', product:'tshirt', baseW:BASE_W,
-    design: dkey({'tshirt.front':[
-      tplText({vertical:true, srcText:'夏祭り', text:verticalDisplay('夏祭り'), left:240, top:255, fontSize:60, fontFamily:"'Noto Serif JP',serif", fill:'#1f2a30', lineHeight:1.05})
-    ]}) }
+  { id:'uni-basket', name:'ユニフォーム風（背番号）', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{'tshirt.front':[
+      tplText({text:'VICTORY', srcText:'VICTORY', left:240, top:196, fontSize:42, fontFamily:"'Anton',sans-serif", fill:'#ffffff', charSpacing:80, curve:28}),
+      tplText({text:'23', srcText:'23', left:240, top:294, fontSize:132, fontFamily:"'Anton',sans-serif", fill:'#E60012', stroke:'#ffffff', strokeWidth:4, paintFirst:'stroke'}),
+      tplStamp('star5',{left:163, top:180, scaleX:0.12, scaleY:0.12, fill:'#E60012'}),
+      tplStamp('star5',{left:317, top:180, scaleX:0.12, scaleY:0.12, fill:'#E60012'})
+    ]}} },
+  { id:'uni-soccer', name:'ゲームシャツ風', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#274690', state:{'tshirt.front':[
+      tplText({text:'SEEQ F.C.', srcText:'SEEQ F.C.', left:240, top:198, fontSize:34, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:180}),
+      tplText({text:'10', srcText:'10', left:240, top:288, fontSize:120, fontFamily:"'Teko',sans-serif", fill:'#f2cf3d'}),
+      tplText({text:'EST. 2026', srcText:'EST. 2026', left:240, top:352, fontSize:16, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:320})
+    ]}} },
+  { id:'college', name:'カレッジロゴ', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#1f3047', state:{'tshirt.front':[
+      tplText({text:'KYOTO CITY', srcText:'KYOTO CITY', left:240, top:200, fontSize:22, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#f2cf3d', charSpacing:260, curve:24}),
+      tplText({text:'SEEQ', srcText:'SEEQ', left:240, top:258, fontSize:74, fontFamily:"'Alfa Slab One',serif", fill:'#ffffff'}),
+      tplText({text:'ATHLETIC CLUB', srcText:'ATHLETIC CLUB', left:240, top:318, fontSize:17, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#f2cf3d', charSpacing:300}),
+      tplStamp('underline',{left:240, top:338, scaleX:0.7, scaleY:0.4, fill:'#f2cf3d'})
+    ]}} },
+  { id:'emblem', name:'エンブレム', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
+      tplStamp('shield',{left:240, top:250, scaleX:1.0, scaleY:1.0, fill:'#1f3047'}),
+      tplStamp('star5',{left:240, top:240, scaleX:0.26, scaleY:0.26, fill:'#1f3047'}),
+      tplStamp('banner',{left:240, top:322, scaleX:0.92, scaleY:0.55, fill:'#c0303a'}),
+      tplText({text:'SEEQ CLUB', srcText:'SEEQ CLUB', left:240, top:321, fontSize:12, fontWeight:700, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:60}),
+      tplText({text:'EST. 2026', srcText:'EST. 2026', left:240, top:352, fontSize:12, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#1f3047', charSpacing:300})
+    ]}} },
+  { id:'i-love', name:'I ♥ ○○', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
+      tplText({text:'I', srcText:'I', left:208, top:236, fontSize:88, fontFamily:"'Anton',sans-serif", fill:'#1f2a30'}),
+      tplStamp('heart',{left:268, top:243, scaleX:0.40, scaleY:0.40, fill:'#E60012'}),
+      tplText({text:'KYOTO', srcText:'KYOTO', left:240, top:322, fontSize:56, fontFamily:"'Anton',sans-serif", fill:'#1f2a30'})
+    ]}} },
+  { id:'senum', name:'背ネーム・背番号', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'back', color:'#ffffff', state:{'tshirt.back':[
+      tplText({text:'YAMADA', srcText:'YAMADA', left:240, top:160, fontSize:36, fontFamily:"'Anton',sans-serif", fill:'#1f2a30', charSpacing:120, curve:22}),
+      tplText({text:'7', srcText:'7', left:240, top:272, fontSize:150, fontFamily:"'Anton',sans-serif", fill:'#1f2a30'})
+    ]}} },
+  { id:'wafude', name:'縦書き筆文字', category:'和・記念', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{'tshirt.front':[
+      tplText({vertical:true, srcText:'一致団結', text:verticalDisplay('一致団結'), left:240, top:262, fontSize:52, fontFamily:"'Yuji Syuku',serif", fill:'#ffffff', lineHeight:1.04}),
+      tplStamp('rakkan',{left:298, top:348, scaleX:0.19, scaleY:0.19, fill:'#E60012'})
+    ]}} },
+  { id:'staff', name:'お店のスタッフT', category:'お店・イベント', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{
+      'tshirt.front':[
+        tplText({text:'YOUR SHOP', srcText:'YOUR SHOP', left:196, top:196, fontSize:16, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:300}),
+        tplStamp('underline',{left:196, top:210, scaleX:0.32, scaleY:0.3, fill:'#E60012'})
+      ],
+      'tshirt.back':[
+        tplText({text:'STAFF', srcText:'STAFF', left:240, top:200, fontSize:64, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:200})
+      ]}} },
+  { id:'y2k', name:'レトロポップ', category:'お店・イベント', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
+      tplStamp('burst',{left:240, top:256, scaleX:1.62, scaleY:1.62, fill:'#f2cf3d'}),
+      tplText({text:'PARTY!!', srcText:'PARTY!!', left:240, top:252, fontSize:38, fontFamily:"'Mochiy Pop One',sans-serif", fill:'#E60012', stroke:'#1f2a30', strokeWidth:2, paintFirst:'stroke'}),
+      tplStamp('sparkle2',{left:318, top:180, scaleX:0.3, scaleY:0.3, fill:'#274690'}),
+      tplStamp('sparkle',{left:166, top:330, scaleX:0.22, scaleY:0.22, fill:'#274690'})
+    ]}} },
+  { id:'doodle', name:'手書き寄せ書き風', category:'お店・イベント', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
+      tplStamp('circle-sketch',{left:240, top:246, scaleX:1.28, scaleY:0.78, fill:'#1f2a30'}),
+      tplText({text:'ありがとう', srcText:'ありがとう', left:240, top:244, fontSize:33, fontFamily:"'Yusei Magic',sans-serif", fill:'#E60012'}),
+      tplStamp('arrow-sketch',{left:310, top:318, scaleX:0.3, scaleY:0.3, fill:'#1f2a30'}),
+      tplStamp('asterisk',{left:172, top:186, scaleX:0.18, scaleY:0.18, fill:'#f2cf3d'}),
+      tplStamp('heart-sketch',{left:306, top:182, scaleX:0.2, scaleY:0.2, fill:'#E60012'})
+    ]}} },
+  { id:'anniv', name:'記念日・お祝い', category:'和・記念', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
+      tplText({text:'HAPPY 60th', srcText:'HAPPY 60th', left:240, top:188, fontSize:32, fontFamily:"'Bebas Neue',sans-serif", fill:'#c0303a', charSpacing:140, curve:24}),
+      tplStamp('laurel',{left:240, top:282, scaleX:0.88, scaleY:0.88, fill:'#c0303a'}),
+      tplText({text:'感謝', srcText:'感謝', left:240, top:276, fontSize:44, fontFamily:"'Zen Old Mincho',serif", fill:'#1f2a30'}),
+      tplText({text:'2026.10.10', srcText:'2026.10.10', left:240, top:352, fontSize:14, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#1f2a30', charSpacing:300})
+    ]}} },
+  { id:'oshi-tour', name:'推し活・ツアーT風', category:'推し活', product:'tshirt', baseW:BASE_W,
+    design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{
+      'tshirt.front':[
+        tplStamp('penlight',{left:184, top:206, scaleX:0.17, scaleY:0.17, fill:'#ffffff'}),
+        tplText({text:'FAN CLUB', srcText:'FAN CLUB', left:262, top:206, fontSize:18, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:300})
+      ],
+      'tshirt.back':[
+        tplText({text:'OSHI TOUR 2026', srcText:'OSHI TOUR 2026', left:240, top:186, fontSize:26, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:160}),
+        tplText({text:'04.05  KYOTO\n05.17  OSAKA\n07.20  TOKYO\n09.23  NAGOYA', srcText:'04.05  KYOTO\n05.17  OSAKA\n07.20  TOKYO\n09.23  NAGOYA', left:240, top:272, fontSize:20, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#ffffff', charSpacing:120, lineHeight:1.5}),
+        tplStamp('heart',{left:240, top:352, scaleX:0.12, scaleY:0.12, fill:'#E60012'})
+      ]}} }
 ];
 
 var tplGridEl=document.getElementById('tplGrid'),
