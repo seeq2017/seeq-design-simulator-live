@@ -6248,6 +6248,25 @@ var SeeQNames=(function(){
     });
     pa.value=''; pa.hidden=true; render();
   };
+  /* 枠内自動リサイズ（P3-4・Customily方式）: nn付きテキストが枠幅を超えたら長体（幅詰め）にする。
+     現場の背ネーム運用と同じ「高さ固定・長い名前は横に潰す」。編集で名前を打ち替えた時も効く */
+  function nnAutoFit(target){
+    try{
+      var u=scaleUnit(), g=curFaceDef().guide; if(!g) return;
+      var maxW=g.w*u*0.92;
+      var objs=target?[target]:canvas.getObjects().filter(function(o){ return o.nn && (o.type==='i-text'||o.type==='text'); });
+      objs.forEach(function(o){
+        if(!o.nn) return;
+        o.set({scaleX:1});
+        o.initDimensions();
+        var w=o.width;
+        if(w>maxW){ o.set({scaleX:maxW/w}); o.setCoords(); o._nnCondensed=true; }
+        else if(o._nnCondensed){ o._nnCondensed=false; }
+      });
+    }catch(e){}
+  }
+  canvas.on('text:changed', function(e){ if(e.target&&e.target.nn){ nnAutoFit(e.target); } });
+
   function placeBack(){
     var r=list.filter(function(x){ return (x.no&&String(x.no).trim())||(x.name&&x.name.trim()); })[0];
     if(!r){ toast('先に番号か名前を1行入れてください'); return; }
@@ -6263,9 +6282,12 @@ var SeeQNames=(function(){
         var nm=new fabric.IText(String(r.name).toUpperCase(),{fontFamily:"'Anton',sans-serif",fontSize:scaled(44),fill:fill,fontWeight:400,textAlign:'center',charSpacing:120,srcText:String(r.name),originX:'center',originY:'top',left:cx,top:(g.y+g.h*0.18)*u});
         nm.name='ネーム（見本）'; nm.nn='name'; canvas.add(nm);
       }
+      nnAutoFit();
+      /* Antonの読み込み完了後に幅が変わるので、もう一度フィットし直す */
+      setTimeout(function(){ nnAutoFit(); canvas.requestRenderAll(); }, 900);
       canvas.requestRenderAll(); renderLayers(); commitHistory();
       close();
-      toast('見本を配置しました（'+count()+'枚分は見積依頼に同梱されます）。大きさ・位置は自由に調整OK');
+      toast('見本を配置しました（'+count()+'枚分は見積依頼に同梱されます）。長い名前は自動で幅詰めになります');
     }, 150);
   }
   document.getElementById('nnPlaceBack').onclick=placeBack;
@@ -7118,15 +7140,25 @@ document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
    「このアイテムで作る」で枠相対の相似変換でデザインを載せ替えて商品を切り替える。
    ===================================================================== */
 (function(){
-  /* ドライTは綿Tとシルエットがほぼ同じため横展開の候補からは外す（森さん 2026-08-25） */
-  var XITEMS=['tshirt','longtee','sweat','parka','tote'];
+  /* ドライTは綿Tとシルエットがほぼ同じため横展開の候補からは外す（森さん 2026-08-25）。
+     ビッグシルエット3種はUAボディ（5508-01/5205-01/5204-01）の実寸でSeeQRealと連動（森さん 2026-08-25） */
+  var XITEMS=[
+    {pid:'tshirt'},
+    {pid:'tshirt', big:true, label:'ビッグシルエットT'},
+    {pid:'longtee'},
+    {pid:'sweat'},
+    {pid:'sweat', big:true, label:'ビッグスウェット'},
+    {pid:'parka'},
+    {pid:'parka', big:true, label:'ビッグパーカー'},
+    {pid:'tote'}
+  ];
   var modal=document.getElementById('xitemModal'), grid=document.getElementById('xitemGrid');
   var btn=document.getElementById('btnXitem');
   if(!modal||!grid||!btn) return;
 
   function frontFace(pid){ var p=PRODUCTS[pid]; return p&&p.faces&&p.faces[0]&&p.faces[0].guide?p.faces[0]:null; }
 
-  function previewFor(pid, tex){
+  function previewFor(pid, tex, big){
     return new Promise(function(res){
       var p=PRODUCTS[pid], f=frontFace(pid);
       if(!p||!f){ res(null); return; }
@@ -7139,7 +7171,14 @@ document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
       img.onload=function(){
         var off=document.createElement('canvas'); off.width=480; off.height=560;
         var ctx=off.getContext('2d');
-        ctx.drawImage(img,0,0,480,560);
+        if(big){
+          /* ビッグシルエットの当たり: ボディを少し幅広・寸胴に描く（実寸換算はSeeQRealが担当） */
+          ctx.save(); ctx.translate(240,0); ctx.scale(1.12,1.02); ctx.translate(-240,0);
+          ctx.drawImage(img,0,0,480,560);
+          ctx.restore();
+        }else{
+          ctx.drawImage(img,0,0,480,560);
+        }
         var g=f.guide;
         var tw=g.w, th=tw*(tex.height/Math.max(tex.width,1));
         if(th>g.h){ th=g.h; tw=th*(tex.width/Math.max(tex.height,1)); }
@@ -7151,9 +7190,26 @@ document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
     });
   }
 
-  function adopt(pid){
+  function curBody(pid){ try{ return (SeeQReal.state().bodies||{})[pid]||'reg'; }catch(e){ return 'reg'; } }
+  function setBody(pid, big){
+    try{
+      var st=SeeQReal.state();
+      st.bodies[pid]=big?'big':'reg';
+      SeeQReal.restore(st.sizes, st.bodies);
+    }catch(e){}
+  }
+
+  function adopt(pid, big){
     var f=frontFace(pid); if(!f){ toast('このアイテムには載せ替えできません'); return; }
     saveCurrentFace();
+    if(pid===currentProduct){
+      /* 同じ品目のシルエット違い（例: Tシャツ→ビッグT）はボディ切替だけ */
+      modal.classList.remove('show');
+      setBody(pid, !!big);
+      toast(big?'ビッグシルエットに切り替えました（実寸の目安もビッグ基準になります）':'レギュラーに切り替えました');
+      try{ track('xitem:adopt',{to:pid,big:!!big}); }catch(e){}
+      return;
+    }
     var src=faceState[stateKey(currentProduct,currentFace)]||[];
     if(!src.length){ toast('デザインがありません'); return; }
     var u=scaleUnit(), gs=curFaceDef().guide, gd=f.guide;
@@ -7169,8 +7225,9 @@ document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
     faceState[key]=(faceState[key]||[]).concat(mapped);
     modal.classList.remove('show');
     switchProduct(pid);
+    setBody(pid, !!big);
     toast('デザインを載せ替えました。位置と大きさを確認してください（元のアイテムのデザインも残っています）');
-    try{ track('xitem:adopt',{to:pid}); }catch(e){}
+    try{ track('xitem:adopt',{to:pid,big:!!big}); }catch(e){}
   }
 
   function openXitem(){
@@ -7178,21 +7235,22 @@ document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
     saveCurrentFace();
     var tex=designTextureCanvas(768);
     grid.innerHTML='';
-    var list=XITEMS.filter(function(id){
-      if(id===currentProduct) return false;
-      if(id==='tshirt' && currentProduct==='dry') return false;   /* ドライT作業中も綿Tは出さない（同シルエット） */
-      return PRODUCTS[id] && frontFace(id);
+    var list=XITEMS.filter(function(it){
+      var isBigNow=curBody(currentProduct)==='big';
+      if(it.pid===currentProduct && !!it.big===isBigNow) return false;   /* いまの姿そのものは出さない */
+      if(it.pid==='tshirt' && !it.big && currentProduct==='dry') return false; /* ドライT作業中も綿Tは出さない（同シルエット） */
+      return PRODUCTS[it.pid] && frontFace(it.pid);
     });
-    list.forEach(function(pid){
-      var p=PRODUCTS[pid];
+    list.forEach(function(it){
+      var p=PRODUCTS[it.pid];
       var card=document.createElement('div'); card.className='xitem-card';
       var cv=document.createElement('div'); cv.className='xi-cv';
-      var nm=document.createElement('div'); nm.className='xi-name'; nm.textContent=p.short||p.label||pid;
+      var nm=document.createElement('div'); nm.className='xi-name'; nm.textContent=it.label||p.short||p.label||it.pid;
       var bb=document.createElement('button'); bb.type='button'; bb.className='btn btn-ghost btn-xs'; bb.textContent='このアイテムで作る';
-      bb.onclick=function(){ adopt(pid); };
+      bb.onclick=function(){ adopt(it.pid, it.big); };
       card.appendChild(cv); card.appendChild(nm); card.appendChild(bb);
       grid.appendChild(card);
-      previewFor(pid, tex).then(function(c){ if(c) cv.appendChild(c); else cv.textContent='プレビュー非対応'; });
+      previewFor(it.pid, tex, it.big).then(function(c){ if(c) cv.appendChild(c); else cv.textContent='プレビュー非対応'; });
     });
     modal.classList.add('show');
     if(typeof isMobile==='function' && isMobile() && typeof collapseSheet==='function') collapseSheet();
@@ -7751,6 +7809,31 @@ var SeeQEst=(function(){
     var p=quotePayload();
     if(!p.name){ return quoteError('お名前を入力してください。', 'qName'); }
     if(!p.contact){ return quoteError('ご連絡先（メールまたは電話番号）を入力してください。', 'qContact'); }
+
+    /* P4-2: 低解像度写真の送信前チェック（全面・保存済み状態から算出。ブロックはしない） */
+    if(!form._dpiAcked){
+      try{
+        saveCurrentFace();
+        var lows=[];
+        (curProduct().faces||[]).forEach(function(f){
+          var ppc=(window.SeeQReal&&SeeQReal.ppcCanvas)?SeeQReal.ppcCanvas(currentProduct, f.id):null;
+          if(!ppc) return;
+          (faceState[stateKey(currentProduct,f.id)]||[]).forEach(function(j){
+            if(j.type!=='image'||!j.width) return;
+            var wCm=(j.width*(j.scaleX||1))/ppc; if(wCm<=0.1) return;
+            var dpi=Math.round(j.width/(wCm/2.54));
+            if(dpi<120) lows.push((f.label||f.id)+'の写真 '+dpi+'dpi');
+          });
+        });
+        if(lows.length){
+          if(!confirm('このまま印刷すると写真が粗くなる可能性があります：\n・'+lows.join('\n・')+'\n\n（推奨200dpi以上。写真を小さくするか、解像度の高い画像に差し替えると改善します）\n\nこのまま見積もりを依頼しますか？')){
+            return;
+          }
+          form._dpiAcked=true;   /* 一度OKしたら再確認しない */
+          p.dpiWarn=lows.join(';');   /* 工場側にも共有（メールに載る） */
+        }
+      }catch(eDpi){}
+    }
 
     var btn=qEl('quoteSend');
     quoteSending=true; btn.disabled=true; btn.textContent='送信しています…';
