@@ -6021,20 +6021,72 @@ canvas.on('object:moving', function(e){
   hCands.forEach(function(cy){ myYs.forEach(function(my){ var d=cy-my; if(Math.abs(d)<Math.abs(bhD)){ bhD=d; bhY=cy; } }); });
   if(Math.abs(bvD)<=SNAP){ o.left+=bvD; snapGuides.push({x:bvX}); }
   if(Math.abs(bhD)<=SNAP){ o.top +=bhD; snapGuides.push({y:bhY}); }
+  /* ---- 基準表スナップ（T3）: 襟下H（上端）・左胸W（内側端）・体の中心。
+     位置ツールと同じ測り方。ラベル付きの緑ガイドで既存の赤ガイドと区別する。 ---- */
+  try{
+    if(window.SeeQPos && SeeQPos.rules() && window.SeeQReal){
+      var _c=SeeQReal.collarBase(), _p=SeeQReal.ppcBase();
+      if(_c && _p){
+        var _u=scaleUnit(), _ppc=_p*_u, _cy=_c.y*_u, _cx=_c.cx*_u;
+        var _d=SeeQReal.objCm(o);
+        var _k={ o:o, d:_d, c:_c, p:_ppc, u:_u,
+                 size:(function(k){ return ({XXL:'2XL',XXXL:'3XL',XXXXL:'3XL','5XL':'3XL','6XL':'3XL'})[k]||k; })(SeeQReal.sizeKey()),
+                 big:SeeQReal.bodyKey()==='big', pid:currentProduct, face:currentFace };
+        var _me=objEdges(o);
+        /* 襟下H: 面とデザイン寸法で行を引く */
+        var _row=null, _isLC=false;
+        if(_d){
+          /* 小型要素が体の中心より左に寄っているときは「左胸」の H を使う */
+          if(currentFace==='front' && Math.max(_d.w,_d.h)<=10.5 && (_me.l+_me.r)/2 < _cx-1.5*_ppc){
+            var _lcH=SeeQPos.leftChest(_k);
+            if(_lcH){ _row={v:_lcH.H, label:'左胸 '+_lcH.cls}; _isLC=true; }
+          }
+          if(!_row){
+            if(currentFace==='front') _row=SeeQPos.frontH(_k);
+            else if(currentFace==='back') _row=SeeQPos.backH(_k);
+          }
+        }
+        if(_row && !snapGuides.some(function(g){return g.y!=null;})){
+          var ty=_cy+_row.v*_ppc, dTop=ty-_me.t;
+          if(Math.abs(dTop)<=SNAP){ o.top+=dTop; snapGuides.push({y:ty, label:'襟下 '+_row.v+'cm（'+(_isLC?_row.label:'基準表')+'・'+_k.size+'）', std:true}); }
+        }
+        /* 左胸W: 前面・左胸サイズ（長辺10.5cm以下）のとき、中心−W に内側端を吸着 */
+        if(currentFace==='front' && _d && Math.max(_d.w,_d.h)<=10.5 && !snapGuides.some(function(g){return g.x!=null;})){
+          var _lc=SeeQPos.leftChest(_k);
+          if(_lc){
+            var tx=_cx-_lc.W*_ppc, dR=tx-_me.r;
+            if(Math.abs(dR)<=SNAP){ o.left+=dR; snapGuides.push({x:tx, label:'中心から '+_lc.W+'cm（左胸 '+_lc.cls+'）', std:true}); }
+          }
+        }
+      }
+    }
+  }catch(err){}
   if(snapGuides.length) o.setCoords();
 });
 canvas.on('mouse:up', function(){ if(snapGuides.length){ snapGuides=[]; canvas.requestRenderAll(); } });
 canvas.on('after:render', function(){
   var ctx=canvas.getSelectionContext(); if(!ctx || !snapGuides.length) return;
   var w=BASE_W*scaleUnit(), h=BASE_H*scaleUnit();
-  ctx.save(); ctx.strokeStyle='#E60012'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+  ctx.save();
   var vt=canvas.viewportTransform;
   ctx.setTransform(vt[0],vt[1],vt[2],vt[3],vt[4],vt[5]);
   snapGuides.forEach(function(g){
+    ctx.strokeStyle=g.std?'#1f7a3a':'#E60012'; ctx.lineWidth=g.std?1.5:1; ctx.setLineDash(g.std?[7,4]:[5,4]);
     ctx.beginPath();
     if(g.x!=null){ ctx.moveTo(g.x,0); ctx.lineTo(g.x,h); }
     else { ctx.moveTo(0,g.y); ctx.lineTo(w,g.y); }
     ctx.stroke();
+    if(g.label){
+      ctx.setLineDash([]);
+      var fs=Math.max(10, 11*scaleUnit()/0.75);
+      ctx.font='700 '+fs+'px "Noto Sans JP",sans-serif';
+      var tw=ctx.measureText(g.label).width, pad=4;
+      var lx=(g.x!=null)? Math.min(g.x+6, w-tw-pad*2-2) : 8;
+      var ly=(g.x!=null)? 16 : Math.max(fs+4, g.y-6);
+      ctx.fillStyle='rgba(31,122,58,.92)';
+      ctx.fillRect(lx-pad, ly-fs, tw+pad*2, fs+7);
+      ctx.fillStyle='#fff'; ctx.fillText(g.label, lx, ly);
+    }
   });
   ctx.restore();
 });
