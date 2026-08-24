@@ -435,6 +435,11 @@
   @media (min-width:821px){ body.has-sel .toast{top:120px;} }   /* クイックバーと重ならない位置へ */
   /* 実寸の目安 */
   .obj-dim{align-self:center;font-size:11.5px;font-weight:800;color:var(--ink);padding:0 8px 0 9px;border-left:1px solid var(--hair);margin-left:3px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .xitem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:10px;}
+  .xitem-card{border:1px solid var(--hair);border-radius:10px;padding:8px 8px 10px;text-align:center;background:#fff;}
+  .xitem-card .xi-cv{min-height:60px;}
+  .xitem-card .xi-cv canvas{width:100%;height:auto;display:block;}
+  .xitem-card .xi-name{font-size:12px;font-weight:800;margin:4px 0 7px;}
   .dpi-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:800;vertical-align:1px;}
   .dpi-good{background:#e3f4e8;color:#1e7c3c;}
   .dpi-mid{background:#fdf3d7;color:#9a6d00;}
@@ -1151,6 +1156,7 @@
         <button data-fmt="proof" role="menuitem" id="expProof" hidden><svg class="exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>入稿データ<small>運用者向け</small></button>
       </div>
     </div>
+    <button class="btn btn-ghost" id="btnXitem" title="いまのデザインを他のアイテムに載せて見る" aria-label="他のアイテムで見る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="label-pc">他のアイテム</span><span class="label-mb">展開</span></button>
     <button class="btn btn-primary" id="btnQuote" title="見積もりを依頼する" aria-label="見積もりを依頼する"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg><span class="label-pc">見積もり依頼</span><span class="label-mb">見積</span></button>
   </div>
 </header>
@@ -2006,6 +2012,15 @@
       </div>
     </details>
     <button class="btn btn-ghost btn-block mt-l" id="proofClose">閉じる</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="xitemModal">
+  <div class="modal modal-wide">
+    <h2>他のアイテムで見る</h2>
+    <p class="mini">いまの面のデザインを他のアイテムのプリント枠に載せたイメージです（大きさは枠に合わせた目安）。気に入ったら「このアイテムで作る」でそのまま続きを編集できます。元のデザインも残ります。</p>
+    <div class="xitem-grid" id="xitemGrid"></div>
+    <button class="btn btn-ghost btn-block mt-l" id="xitemClose">閉じる</button>
   </div>
 </div>
 
@@ -7096,6 +7111,93 @@ window.SEEQ_DESIGN_CODE = window.SEEQ_DESIGN_CODE || '';
   };
 })();
 document.getElementById('btnSaveTpl').onclick=wpSaveTemplate;
+
+/* =====================================================================
+   他のアイテムで見る（P3-3 横展開プレビュー・SUZURI方式）
+   いまの面のデザインテクスチャを他アイテムの線画＋プリント枠に合成して一覧表示。
+   「このアイテムで作る」で枠相対の相似変換でデザインを載せ替えて商品を切り替える。
+   ===================================================================== */
+(function(){
+  var XITEMS=['tshirt','dry','longtee','sweat','parka','tote'];
+  var modal=document.getElementById('xitemModal'), grid=document.getElementById('xitemGrid');
+  var btn=document.getElementById('btnXitem');
+  if(!modal||!grid||!btn) return;
+
+  function frontFace(pid){ var p=PRODUCTS[pid]; return p&&p.faces&&p.faces[0]&&p.faces[0].guide?p.faces[0]:null; }
+
+  function previewFor(pid, tex){
+    return new Promise(function(res){
+      var p=PRODUCTS[pid], f=frontFace(pid);
+      if(!p||!f){ res(null); return; }
+      var hex=((p.colors||[]).some(function(c){return c.hex===currentColor.hex;}))?currentColor.hex:'#ffffff';
+      var svgStr=null;
+      try{ if(typeof f.svg==='function') svgStr=f.svg(hex,false); }catch(e){}
+      if(!svgStr){ try{ var lf=lineartFace(pid,'front'); if(lf) svgStr=lineartGarmentSVG(lf,hex); }catch(e2){} }
+      if(!svgStr){ res(null); return; }
+      var img=new Image();
+      img.onload=function(){
+        var off=document.createElement('canvas'); off.width=480; off.height=560;
+        var ctx=off.getContext('2d');
+        ctx.drawImage(img,0,0,480,560);
+        var g=f.guide;
+        var tw=g.w, th=tw*(tex.height/Math.max(tex.width,1));
+        if(th>g.h){ th=g.h; tw=th*(tex.width/Math.max(tex.height,1)); }
+        ctx.drawImage(tex, g.x+(g.w-tw)/2, g.y+(g.h-th)/2, tw, th);
+        res(off);
+      };
+      img.onerror=function(){ res(null); };
+      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgStr);
+    });
+  }
+
+  function adopt(pid){
+    var f=frontFace(pid); if(!f){ toast('このアイテムには載せ替えできません'); return; }
+    saveCurrentFace();
+    var src=faceState[stateKey(currentProduct,currentFace)]||[];
+    if(!src.length){ toast('デザインがありません'); return; }
+    var u=scaleUnit(), gs=curFaceDef().guide, gd=f.guide;
+    var kx=gd.w/gs.w;
+    var mapped=src.map(function(j0){
+      var j=JSON.parse(JSON.stringify(j0));
+      j.scaleX=(j.scaleX||1)*kx; j.scaleY=(j.scaleY||1)*kx;
+      j.left=gd.x*u + ((j0.left-gs.x*u)/(gs.w*u))*gd.w*u;
+      j.top =gd.y*u + ((j0.top -gs.y*u)/(gs.h*u))*gd.h*u;
+      return j;
+    });
+    var key=stateKey(pid,'front');
+    faceState[key]=(faceState[key]||[]).concat(mapped);
+    modal.classList.remove('show');
+    switchProduct(pid);
+    toast('デザインを載せ替えました。位置と大きさを確認してください（元のアイテムのデザインも残っています）');
+    try{ track('xitem:adopt',{to:pid}); }catch(e){}
+  }
+
+  function openXitem(){
+    if(!hasAnyDesign()){ toast('まだデザインがありません。文字や画像を置いてから試してください'); return; }
+    saveCurrentFace();
+    var tex=designTextureCanvas(768);
+    grid.innerHTML='';
+    var list=XITEMS.filter(function(id){ return id!==currentProduct && PRODUCTS[id] && frontFace(id); });
+    list.forEach(function(pid){
+      var p=PRODUCTS[pid];
+      var card=document.createElement('div'); card.className='xitem-card';
+      var cv=document.createElement('div'); cv.className='xi-cv';
+      var nm=document.createElement('div'); nm.className='xi-name'; nm.textContent=p.short||p.label||pid;
+      var bb=document.createElement('button'); bb.type='button'; bb.className='btn btn-ghost btn-xs'; bb.textContent='このアイテムで作る';
+      bb.onclick=function(){ adopt(pid); };
+      card.appendChild(cv); card.appendChild(nm); card.appendChild(bb);
+      grid.appendChild(card);
+      previewFor(pid, tex).then(function(c){ if(c) cv.appendChild(c); else cv.textContent='プレビュー非対応'; });
+    });
+    modal.classList.add('show');
+    if(typeof isMobile==='function' && isMobile() && typeof collapseSheet==='function') collapseSheet();
+    try{ track('xitem:open',{product:currentProduct}); }catch(e){}
+  }
+
+  btn.onclick=openXitem;
+  document.getElementById('xitemClose').onclick=function(){ modal.classList.remove('show'); };
+  modal.onclick=function(e){ if(e.target===modal) modal.classList.remove('show'); };
+})();
 
 var EXPORTERS={png:exportPNG, jpg:exportJPG, svg:exportSVG, pdf:exportPDF, proof:openProofModal};
 
