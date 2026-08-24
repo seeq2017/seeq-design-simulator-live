@@ -522,6 +522,7 @@
   .nowmaking .nm-txt{flex:1 1 120px;}
   .nm-txt b{overflow-wrap:anywhere;}
   .obj-warn{color:#b45309;font-weight:700;}
+  .obj-warn.obj-ok{color:#1f7a3a;}
   .nn-entry{margin-top:8px;padding-top:8px;border-top:1px dashed var(--hair,#e5e5e5);}
   .nn-box{max-width:520px;}
   .nn-tablewrap{max-height:40vh;overflow:auto;margin:8px 0;border:1px solid var(--hair,#e5e5e5);border-radius:8px;}
@@ -3307,10 +3308,20 @@ var guide = new fabric.Rect({
 });
 guide._isGuide = true;
 canvas.add(guide);
+/* 安全域（T7・Zazzle方式の2段階線）: 枠の内側1cm。ここまで入れておくと
+   縫い目・プレス伸縮のズレ（±1〜2cm）でも切れにくい、という目安の線。 */
+var safeGuide = new fabric.Rect({
+  left:0, top:0, width:10, height:10,
+  fill:'rgba(0,0,0,0)', stroke:'rgba(31,122,58,.45)', strokeDashArray:[2,3],
+  strokeWidth:1, strokeUniform:true, selectable:false, evented:false, excludeFromExport:true
+});
+safeGuide._isGuide = true;
+safeGuide._isSafeGuide = true;   /* ブランド再着色（applyBrand）の対象外＝緑のまま */
+canvas.add(safeGuide);
 
 function scaleUnit(){ return canvas.getWidth()/BASE_W; }
 function scaled(v){ return v*scaleUnit(); }
-function userObjects(){ return canvas.getObjects().filter(function(o){return o!==guide;}); }
+function userObjects(){ return canvas.getObjects().filter(function(o){return o!==guide && !o._isGuide;}); }
 
 /* gradient helper — vertical by default, or by `dir` ('v'|'h'|'d') */
 function gradient(o, colors, dir){
@@ -3378,7 +3389,17 @@ function positionGuide(){
   var g = curFaceDef().guide, u = scaleUnit();
   guide.set({left:g.x*u, top:g.y*u, width:g.w, height:g.h, scaleX:u, scaleY:u, visible:guideVisibleFor(curProduct())});
   guide.setCoords();
-  if(canvas.getObjects()[0]!==guide){ canvas.sendToBack(guide); }
+  /* 安全域: 実寸が取れる商品は枠の内側1cm、取れない商品（小物等）は5% */
+  try{
+    var ppcB=(window.SeeQReal && SeeQReal.ppcBase()) || null;
+    var insetB = ppcB ? ppcB*1.0 : Math.min(g.w,g.h)*0.05;   /* BASE単位 */
+    var okSafe = guide.visible && (g.w-2*insetB) > 20 && (g.h-2*insetB) > 20;
+    safeGuide.set({ left:(g.x+insetB)*u, top:(g.y+insetB)*u, width:g.w-2*insetB, height:g.h-2*insetB,
+                    scaleX:u, scaleY:u, visible:okSafe });
+    safeGuide.setCoords();
+  }catch(e){ try{ safeGuide.set({visible:false}); }catch(_){} }
+  if(canvas.getObjects()[0]!==guide){ canvas.sendToBack(safeGuide); canvas.sendToBack(guide); }
+  else if(canvas.getObjects()[1]!==safeGuide){ canvas.sendToBack(safeGuide); canvas.sendToBack(guide); }
   /* 商品・面の切替やリサイズで枠が変わるので、はみ出し判定もやり直す */
   try{ updateOverflowWarn(); }catch(e){}
 }
@@ -4186,7 +4207,7 @@ var SeeQReal=(function(){
     var g=guideCm();
     if(!g || !guideVisibleFor(curProduct()) || !guide.visible){ gd.hidden=true; return; }
     gd.textContent='プリント範囲 約'+fmt(g.w)+'×'+fmt(g.h)+'cm（'+sizeKey()+'）';
-    gd.title='表示は '+sizeKey()+' サイズ基準。サイズを切り替えると枠の実寸が変わります（実寸は身幅から換算した目安）';
+    gd.title='表示は '+sizeKey()+' サイズ基準。サイズを切り替えると枠の実寸が変わります（実寸は身幅から換算した目安）。内側の緑点線＝安全域（枠から1cm。プレス伸縮などのズレ±1〜2cmでも切れにくい範囲）';
     var gb=guideBox(); if(!gb){ gd.hidden=true; return; }
     var cr=canvas.upperCanvasEl.getBoundingClientRect(), sr=stageEl.getBoundingClientRect();
     gd.hidden=false;
@@ -5977,8 +5998,8 @@ function reorderLayer(src, target){
   if(from<0||to<0) return;
   visual.splice(to,0, visual.splice(from,1)[0]);
   var bottomUp=visual.slice().reverse();   // desired stack order bottom..top
-  bottomUp.forEach(function(o,i){ canvas.moveTo(o, i+1); }); // +1 keeps guide at 0
-  canvas.sendToBack(guide);
+  bottomUp.forEach(function(o,i){ canvas.moveTo(o, i+2); }); // +2 keeps guide/safeGuide at 0/1
+  canvas.sendToBack(safeGuide); canvas.sendToBack(guide);
   canvas.requestRenderAll(); renderLayers(); commitHistory();
 }
 /* one-step reorder for the up/down arrows (small-screen fallback for drag, LO-b).
@@ -5986,7 +6007,7 @@ function reorderLayer(src, target){
 function moveLayerStep(o, dir){
   if(!o) return;
   if(dir>0) canvas.bringForward(o, true); else canvas.sendBackwards(o, true);
-  canvas.sendToBack(guide);                 /* guide always stays at the very back */
+  canvas.sendToBack(safeGuide); canvas.sendToBack(guide);   /* guides always stay at the very back */
   canvas.requestRenderAll(); renderLayers(); commitHistory();
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -6318,11 +6339,30 @@ var SeeQUX=(function(){
   function lum(hex){ try{ var c=new fabric.Color(hex).getSource(); var f=function(v){ v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }; return 0.2126*f(c[0])+0.7152*f(c[1])+0.0722*f(c[2]); }catch(e){ return null; } }
   function contrast(a,b){ var la=lum(a), lb=lum(b); if(la==null||lb==null) return null; var hi=Math.max(la,lb), lo=Math.min(la,lb); return (hi+0.05)/(lo+0.05); }
   var warnEl=null;
+  /* 画像の実効解像度（dpi）。実寸cmが出る商品のみ */
+  function imgDpi(o){
+    try{
+      if(o.type!=='image') return null;
+      var nat=(typeof imgNatural==='function') ? imgNatural(o) : null; if(!nat||!nat.w) return null;
+      var p=(window.SeeQReal && SeeQReal.ppcBase()) || null; if(!p) return null;
+      var wcm=o.getScaledWidth()/(p*scaleUnit()); if(!(wcm>0)) return null;
+      return Math.round(nat.w/(wcm/2.54));
+    }catch(e){ return null; }
+  }
   function checkContrast(){
     var od=document.getElementById('objDim'); if(!od) return;
     if(!warnEl){ warnEl=document.createElement('span'); warnEl.className='obj-dim obj-warn'; warnEl.id='contrastWarn'; warnEl.hidden=true; od.parentNode.insertBefore(warnEl, od.nextSibling); }
-    var o=canvas.getActiveObject(); warnEl.hidden=true;
-    if(!o || o.type==='image' || o.type==='activeSelection' || o.type==='group') return;
+    var o=canvas.getActiveObject(); warnEl.hidden=true; warnEl.classList.remove('obj-ok');
+    if(!o) return;
+    /* 画像 → dpi 目安（300推奨・150未満は警告） */
+    if(o.type==='image'){
+      var dpi=imgDpi(o); if(dpi==null) return;
+      if(dpi<150){ warnEl.textContent='⚠ 約'+dpi+'dpi・画質が粗くなるおそれ'; warnEl.title='この大きさでは元画像の解像度が足りません（目安300dpi・最低150dpi）。小さくするか、大きい画像に差し替えてください'; warnEl.hidden=false; }
+      else if(dpi<250){ warnEl.textContent='約'+dpi+'dpi'; warnEl.title='実効解像度の目安。300dpiあると最もきれいに仕上がります'; warnEl.hidden=false; }
+      else { warnEl.textContent='約'+(dpi>600?'600+':dpi)+'dpi ✓'; warnEl.title='解像度は十分です（目安300dpi）'; warnEl.classList.add('obj-ok'); warnEl.hidden=false; }
+      return;
+    }
+    if(o.type==='activeSelection' || o.type==='group') return;
     var f=colorKey(o.fill); if(!f||f==='FULL') return;
     var body=currentColor && currentColor.hex; if(!body) return;
     var cr=contrast(f, body); if(cr==null) return;
@@ -6333,6 +6373,7 @@ var SeeQUX=(function(){
   /* ---- 既存フローへ接続 ---- */
   var _rb=refreshBars; refreshBars=function(){ _rb.apply(this,arguments); try{ syncAngle(); renderCopyBtns(); checkContrast(); renderColorNote(); }catch(e){} };
   canvas.on('object:rotating', syncAngle); canvas.on('object:modified', function(){ syncAngle(); renderColorNote(); checkContrast(); });
+  canvas.on('object:scaling', function(){ try{ checkContrast(); }catch(e){} });
   canvas.on('object:added', renderColorNote); canvas.on('object:removed', renderColorNote);
   window.addEventListener('seeq:facechange', function(){ renderColorNote(); renderCopyBtns(); });
   return { setAngle:setAngle, copyToFace:copyToFace, faceColors:faceColors, contrast:contrast, refresh:function(){ syncAngle(); renderCopyBtns(); checkContrast(); renderColorNote(); } };
@@ -8276,7 +8317,7 @@ window.SeeQ = {canvas:canvas, applyCurve:applyCurve, applyTextFx:applyTextFx, FO
       var S=window.SeeQ;
       if(S && S.canvas){
         S.canvas.getObjects().forEach(function(o){
-          if(o.excludeFromExport && o.strokeDashArray && o.stroke){ o.set('stroke', red); }
+          if(o.excludeFromExport && o.strokeDashArray && o.stroke && !o._isSafeGuide){ o.set('stroke', red); }
         });
         S.canvas.requestRenderAll();
       }
