@@ -7103,26 +7103,26 @@ function tplStamp(id, o){
 var BUILTIN_TEMPLATES=[
   { id:'athletics', name:'アスレチック ナンバー', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{'tshirt.front':[
-      tplText({text:'ATHLETIC DEPT.', srcText:'ATHLETIC DEPT.', left:240, top:192, fontSize:15, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#efe8da', charSpacing:520}),
+      tplText({text:'ATHLETIC DEPT.', srcText:'ATHLETIC DEPT.', left:240, top:192, fontSize:13, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#efe8da', charSpacing:340}),
       tplText({text:'23', srcText:'23', left:240, top:278, fontSize:128, fontWeight:400, fontFamily:"'Bebas Neue',sans-serif", fill:'#efe8da'}),
-      tplText({text:'EST. MMXVII — KYOTO', srcText:'EST. MMXVII — KYOTO', left:240, top:352, fontSize:11, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:260})
+      tplText({text:'EST. MMXVII — KYOTO', srcText:'EST. MMXVII — KYOTO', left:240, top:352, fontSize:10, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:140})
     ]}} },
   { id:'gameshirt', name:'ゲームシャツ', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#1f3047', state:{'tshirt.front':[
-      tplText({text:'S.C.K.', srcText:'S.C.K.', left:240, top:246, fontSize:88, fontWeight:400, fontFamily:"'Teko',sans-serif", fill:'#efe8da', charSpacing:60}),
-      tplText({text:'KYOTO SOCCER CLUB — 10', srcText:'KYOTO SOCCER CLUB — 10', left:240, top:318, fontSize:12, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#efe8da', charSpacing:420})
+      tplText({text:'S.C.K.', srcText:'S.C.K.', left:240, top:246, fontSize:62, fontWeight:400, fontFamily:"'Teko',sans-serif", fill:'#efe8da', charSpacing:40}),
+      tplText({text:'KYOTO SOCCER CLUB — 10', srcText:'KYOTO SOCCER CLUB — 10', left:240, top:310, fontSize:11, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#efe8da', charSpacing:180})
     ]}} },
   { id:'ivy', name:'アイビー カレッジ', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#f1ece1', state:{'tshirt.front':[
-      tplText({text:'KYOTO', srcText:'KYOTO', left:240, top:232, fontSize:56, fontWeight:700, fontFamily:"'Oswald',sans-serif", fill:'#1f3047', charSpacing:180}),
-      tplText({text:'ATHLETICS', srcText:'ATHLETICS', left:240, top:288, fontSize:20, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#7b2d26', charSpacing:640}),
+      tplText({text:'KYOTO', srcText:'KYOTO', left:240, top:232, fontSize:44, fontWeight:700, fontFamily:"'Oswald',sans-serif", fill:'#1f3047', charSpacing:140}),
+      tplText({text:'ATHLETICS', srcText:'ATHLETICS', left:240, top:282, fontSize:17, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#7b2d26', charSpacing:400}),
       tplText({text:'CLASS OF 2026', srcText:'CLASS OF 2026', left:240, top:330, fontSize:11, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#1f3047', charSpacing:300})
     ]}} },
   { id:'crest', name:'ミニクレスト（左胸）', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
-      tplStamp('shield',{left:198, top:206, scaleX:0.34, scaleY:0.34, fill:'#1f3047'}),
-      tplText({text:'SQ', srcText:'SQ', left:198, top:204, fontSize:22, fontWeight:700, fontFamily:"'Oswald',sans-serif", fill:'#ffffff'}),
-      tplText({text:'KYOTO — SINCE 2017', srcText:'KYOTO — SINCE 2017', left:198, top:242, fontSize:8, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:160})
+      tplStamp('shield',{left:206, top:206, scaleX:0.32, scaleY:0.32, fill:'#1f3047'}),
+      tplText({text:'SQ', srcText:'SQ', left:206, top:204, fontSize:20, fontWeight:700, fontFamily:"'Oswald',sans-serif", fill:'#ffffff'}),
+      tplText({text:'KYOTO — SINCE 2017', srcText:'KYOTO — SINCE 2017', left:206, top:240, fontSize:7, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:100})
     ]}} },
   { id:'love-script', name:'love, kyoto', category:'記念・ギフト', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
@@ -7132,12 +7132,12 @@ var BUILTIN_TEMPLATES=[
   { id:'senum', name:'背ネーム・背番号', category:'クラT・部活', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'back', color:'#ffffff', state:{'tshirt.back':[
       tplText({text:'YAMADA', srcText:'YAMADA', left:240, top:158, fontSize:26, fontWeight:400, fontFamily:"'Oswald',sans-serif", fill:'#1a1a1a', charSpacing:560}),
-      tplText({text:'7', srcText:'7', left:240, top:264, fontSize:150, fontWeight:400, fontFamily:"'Bebas Neue',sans-serif", fill:'#1a1a1a'})
+      tplText({text:'7', srcText:'7', left:240, top:252, fontSize:140, fontWeight:400, fontFamily:"'Bebas Neue',sans-serif", fill:'#1a1a1a'})
     ]}} },
   { id:'zen', name:'禅ミニマル（縦書き）', category:'和・記念', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{'tshirt.front':[
       tplText({vertical:true, srcText:'静寂', text:verticalDisplay('静寂'), left:240, top:248, fontSize:64, fontWeight:400, fontFamily:"'Shippori Mincho',serif", fill:'#efe8da', lineHeight:1.12}),
-      tplText({text:'s t i l l n e s s', srcText:'s t i l l n e s s', left:240, top:352, fontSize:11, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:300})
+      tplText({text:'s t i l l n e s s', srcText:'s t i l l n e s s', left:240, top:350, fontSize:10, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:180})
     ]}} },
   { id:'staff', name:'スタッフT', category:'お店・イベント', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{
@@ -7150,9 +7150,9 @@ var BUILTIN_TEMPLATES=[
       ]}} },
   { id:'club-neon', name:'ネオンレトロ', category:'お店・イベント', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{'tshirt.front':[
-      tplText({text:'MIDNIGHT', srcText:'MIDNIGHT', left:240, top:238, fontSize:40, fontWeight:400, fontFamily:"'Monoton',cursive", fill:'#efe8da', charSpacing:120}),
-      tplText({text:'CLUB — OPEN TILL LATE', srcText:'CLUB — OPEN TILL LATE', left:240, top:300, fontSize:11, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:300}),
-      tplStamp('sparkle',{left:322, top:196, scaleX:0.14, scaleY:0.14, fill:'#efe8da'})
+      tplText({text:'MIDNIGHT', srcText:'MIDNIGHT', left:240, top:238, fontSize:29, fontWeight:400, fontFamily:"'Monoton',cursive", fill:'#efe8da', charSpacing:40}),
+      tplText({text:'CLUB — OPEN TILL LATE', srcText:'CLUB — OPEN TILL LATE', left:240, top:294, fontSize:10, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:120}),
+      tplStamp('sparkle',{left:304, top:192, scaleX:0.13, scaleY:0.13, fill:'#efe8da'})
     ]}} },
   { id:'handnote', name:'手書きメッセージ', category:'記念・ギフト', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#f1ece1', state:{'tshirt.front':[
@@ -7161,19 +7161,19 @@ var BUILTIN_TEMPLATES=[
     ]}} },
   { id:'anniversary', name:'アニバーサリー セリフ', category:'記念・ギフト', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#ffffff', state:{'tshirt.front':[
-      tplText({text:'SIXTY', srcText:'SIXTY', left:240, top:244, fontSize:66, fontWeight:400, fontFamily:"'Cormorant Garamond',serif", fill:'#1a1a1a', charSpacing:220}),
-      tplText({text:'— 60th anniversary —', srcText:'— 60th anniversary —', left:240, top:302, fontSize:13, fontWeight:400, fontFamily:"'Cormorant Garamond',serif", fill:'#7b2d26', charSpacing:180}),
+      tplText({text:'SIXTY', srcText:'SIXTY', left:240, top:244, fontSize:50, fontWeight:400, fontFamily:"'Cormorant Garamond',serif", fill:'#1a1a1a', charSpacing:160}),
+      tplText({text:'— 60th anniversary —', srcText:'— 60th anniversary —', left:240, top:296, fontSize:12, fontWeight:400, fontFamily:"'Cormorant Garamond',serif", fill:'#7b2d26', charSpacing:120}),
       tplText({text:'2026.10.10', srcText:'2026.10.10', left:240, top:336, fontSize:10, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:300})
     ]}} },
   { id:'tour', name:'ツアーT', category:'推し活', product:'tshirt', baseW:BASE_W,
     design:{v:3, product:'tshirt', face:'front', color:'#222222', state:{
       'tshirt.front':[
-        tplText({text:'F.C. — 07', srcText:'F.C. — 07', left:198, top:204, fontSize:13, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#efe8da', charSpacing:200})
+        tplText({text:'F.C. — 07', srcText:'F.C. — 07', left:208, top:204, fontSize:12, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#efe8da', charSpacing:140})
       ],
       'tshirt.back':[
-        tplText({text:'ON TOUR', srcText:'ON TOUR', left:240, top:172, fontSize:34, fontWeight:400, fontFamily:"'Bebas Neue',sans-serif", fill:'#efe8da', charSpacing:340}),
-        tplText({text:'04.05 KYOTO\n05.17 OSAKA\n07.20 TOKYO\n09.23 NAGOYA', srcText:'04.05 KYOTO\n05.17 OSAKA\n07.20 TOKYO\n09.23 NAGOYA', left:240, top:262, fontSize:15, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:160, lineHeight:1.7}),
-        tplText({text:'MMXXVI', srcText:'MMXXVI', left:240, top:352, fontSize:10, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#efe8da', charSpacing:420})
+        tplText({text:'ON TOUR', srcText:'ON TOUR', left:240, top:176, fontSize:27, fontWeight:400, fontFamily:"'Bebas Neue',sans-serif", fill:'#efe8da', charSpacing:220}),
+        tplText({text:'04.05 KYOTO\n05.17 OSAKA\n07.20 TOKYO\n09.23 NAGOYA', srcText:'04.05 KYOTO\n05.17 OSAKA\n07.20 TOKYO\n09.23 NAGOYA', left:240, top:258, fontSize:15, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#8a8177', charSpacing:160, lineHeight:1.6}),
+        tplText({text:'MMXXVI', srcText:'MMXXVI', left:240, top:332, fontSize:10, fontWeight:400, fontFamily:"'Space Mono',monospace", fill:'#efe8da', charSpacing:300})
       ]}} }
 ];
 
@@ -7213,6 +7213,28 @@ function renderTemplates(){
 }
 
 /* scale a template's BASE-space geometry to the live canvas, then load it */
+function fitFaceIntoGuide(){
+  var g=guideBox ? guideBox() : null; if(!g) return;
+  var objs=userObjects().filter(function(o){ return o.visible!==false; }); if(!objs.length) return;
+  var l=1e9,t=1e9,r=-1e9,b=-1e9;
+  objs.forEach(function(o){ var bb=o.getBoundingRect(true,true); l=Math.min(l,bb.left); t=Math.min(t,bb.top); r=Math.max(r,bb.left+bb.width); b=Math.max(b,bb.top+bb.height); });
+  var gw=g.width, gh=g.height, pad=0.02;
+  var k=Math.min((gw*(1-pad))/Math.max(r-l,1e-6), (gh*(1-pad))/Math.max(b-t,1e-6));
+  var over = l < g.left-0.5 || t < g.top-0.5 || r > g.left+gw+0.5 || b > g.top+gh+0.5;
+  if(!over && k>=1) return;
+  k=Math.min(k,1);
+  var cx=g.left+gw/2, cy=g.top+gh/2, ux=(l+r)/2, uy=(t+b)/2;
+  histGuard=true;
+  objs.forEach(function(o){
+    var c=o.getCenterPoint();
+    o.set({ scaleX:o.scaleX*k, scaleY:o.scaleY*k });
+    o.setPositionByOrigin(new fabric.Point(cx+(c.x-ux)*k, cy+(c.y-uy)*k), 'center', 'center');
+    o.setCoords();
+  });
+  histGuard=false;
+  canvas.requestRenderAll();
+  try{ updateOverflowWarn(); }catch(e){}
+}
 function applyTemplate(t){
   if(!t||!t.design){ toast('テンプレートを読み込めません'); return; }
   if(userObjects().length && !window.confirm('現在のデザインを置き換えてテンプレートを読み込みます。よろしいですか？')) return;
@@ -7227,6 +7249,10 @@ function applyTemplate(t){
     });
   }
   importDesign(JSON.stringify(design));
+  /* 「枠の中に収める」(森さん 2026-08-25): フォント読込後に枠超過を検出したら
+     枠中心に等倍で縮小する保険。テンプレ由来の読み込みだけに効かせる。 */
+  setTimeout(function(){ try{ fitFaceIntoGuide(); }catch(e){} }, 700);
+  setTimeout(function(){ try{ fitFaceIntoGuide(); }catch(e){} }, 1600);
   if(isMobile()) collapseSheet();
   toast('テンプレート「'+(t.name||'')+'」を読み込みました');
 }
