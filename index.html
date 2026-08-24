@@ -6600,7 +6600,9 @@ function _rasterSwap(o){
     });
   });
 }
-function buildOutlinedSVG(){
+/* 文字→パス置換のスワップ一覧を作る（適用はしない）。buildOutlinedSVG と
+   入稿SVGアップロード（__uploadPrintData）が共用する */
+function _computeOutlineSwaps(){
   return _loadOutlineLibs().then(function(){
     var texts=userObjects().filter(function(o){ return (o.type==='i-text'||o.type==='text') && o.visible!==false; });
     /* gather subset fonts for the simple (outline-able) text objects */
@@ -6645,12 +6647,17 @@ function buildOutlinedSVG(){
       pending.push(_rasterSwap(o).then(function(img){ swaps.push({orig:o, repl:img, idx:canvas.getObjects().indexOf(o)}); }));
     });
     return Promise.all(pending).then(function(){ return swaps; });
-  }).then(function(swaps){
+  });
+}
+/* スワップを適用 → renderFn() で描画 → 必ず元に戻す */
+function _withOutlinedText(renderFn){
+  return _computeOutlineSwaps().then(function(swaps){
     /* apply swaps (replace text with path/image at same z-index) */
     swaps.forEach(function(s){ var i=canvas.getObjects().indexOf(s.orig); if(i<0)i=s.idx;
       canvas.remove(s.orig); canvas.insertAt(s.repl, i, false); });
     canvas.sendToBack(guide);
-    var svg=_renderForExport({svg:true});
+    var out, err=null;
+    try{ out=renderFn(); }catch(e){ err=e; }
     /* restore originals */
     swaps.forEach(function(s){ var i=canvas.getObjects().indexOf(s.repl); if(i<0)i=s.idx;
       canvas.remove(s.repl); canvas.insertAt(s.orig, i, false); });
@@ -6658,8 +6665,12 @@ function buildOutlinedSVG(){
     canvas.requestRenderAll();
     /* clean temp tags */
     userObjects().forEach(function(o){ delete o._otSkip; delete o._otKey; });
-    return svg;
+    if(err) throw err;
+    return out;
   });
+}
+function buildOutlinedSVG(){
+  return _withOutlinedText(function(){ return _renderForExport({svg:true}); });
 }
 function exportSVG(){
   toast('SVGを生成しています…（文字をアウトライン化）');
@@ -6822,8 +6833,10 @@ function get3DFrame(targetPx){
 }
 function loadFacePromise(arr){ return new Promise(function(res){ loadFace(arr, res); }); }
 
-/* generate proofs for every non-empty face of the current product + a preview */
-function generateProofBundle(){
+/* generate proofs for every non-empty face of the current product + a preview.
+   opts.outline=true で SVG の文字をパス化する（入稿SVGアップロード用） */
+function generateProofBundle(opts){
+  opts=opts||{};
   saveCurrentFace();
   var origFace=currentFace, faces=curProduct().faces;
   var meta={ product:currentProduct, productLabel:curProduct().label, color:currentColor.hex,
@@ -6838,8 +6851,15 @@ function generateProofBundle(){
     chain=chain.then(function(){ return loadFacePromise(arr); }).then(function(){
       currentFace=f.id;
       var info=proofGeometry(f);
-      proofAssets[f.id]={ png:renderProofCurrent({svg:false}), svg:renderProofCurrent({svg:true}), label:f.label };
-      meta.faces.push({ face:f.id, faceLabel:f.label, printAreaMm:info.areaMM, bleedMm:PRINT.bleedMM, outputPx:info.outPx });
+      var png=renderProofCurrent({svg:false});
+      var svgP = opts.outline
+        ? _withOutlinedText(function(){ return renderProofCurrent({svg:true}); })
+        : Promise.resolve(renderProofCurrent({svg:true}));
+      return svgP.then(function(svg){
+        proofAssets[f.id]={ png:png, svg:svg, label:f.label,
+          mm:{ w:+(info.areaMM.w+2*PRINT.bleedMM).toFixed(1), h:+(info.areaMM.h+2*PRINT.bleedMM).toFixed(1) } };
+        meta.faces.push({ face:f.id, faceLabel:f.label, printAreaMm:info.areaMM, bleedMm:PRINT.bleedMM, outputPx:info.outPx });
+      });
     });
   });
   return chain.then(function(){
@@ -6855,6 +6875,50 @@ function generateProofBundle(){
     return {meta:meta, assets:proofAssets, preview:proofPreview};
   });
 }
+/* =====================================================================
+   入稿SVGの自動アップロード（イラレ連携・設計13 v0.3 I1）
+   保存/見積送信の成功後に呼ぶ。面ごとの入稿SVG（文字パス化済み・実寸mm属性）と
+   メタJSONを /designs/:code/files へ置く。失敗しても本流は止めない。
+   ===================================================================== */
+function _svgRootMM(svg, wMM, hMM){
+  /* fabric の toSVG ルートの width/height(px) を mm に置き換える。
+     viewBox が無ければ元のpx値で補う → Illustrator で実寸で開ける */
+  return svg.replace(/<svg([^>]*)>/, function(m, attrs){
+    var wpx=(attrs.match(/width="([\d.]+)(?:px)?"/)||[])[1];
+    var hpx=(attrs.match(/height="([\d.]+)(?:px)?"/)||[])[1];
+    attrs=attrs.replace(/width="[^"]*"/, 'width="'+wMM+'mm"').replace(/height="[^"]*"/, 'height="'+hMM+'mm"');
+    if(!/viewBox=/.test(attrs) && wpx && hpx) attrs+=' viewBox="0 0 '+wpx+' '+hpx+'"';
+    return '<svg'+attrs+'>';
+  });
+}
+function _b64utf8(s){ return btoa(unescape(encodeURIComponent(s))); }
+var _printUploadBusy=false;
+window.__uploadPrintData=function(code){
+  if(_printUploadBusy) return;
+  if(!code || !/^SQ-[A-Z2-9]{5}$/.test(code)) return;
+  var api=(typeof DESIGNS_API!=='undefined'&&DESIGNS_API)?DESIGNS_API:(window.SEEQ_API_BASE?window.SEEQ_API_BASE+'/designs':null);
+  if(!api) return;
+  _printUploadBusy=true;
+  function post(name, dataUrl){
+    return fetch(api+'/'+code+'/files',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name, dataUrl:dataUrl})});
+  }
+  generateProofBundle({outline:true}).then(function(b){
+    var meta=Object.assign({}, b.meta, {designCode:code, kind:'print-svg', version:1});
+    var jobs=Object.keys(b.assets).map(function(face){
+      var a=b.assets[face];
+      var svg=_svgRootMM(a.svg, a.mm.w, a.mm.h);
+      return post('print-'+face+'.svg', 'data:image/svg+xml;base64,'+_b64utf8(svg));
+    });
+    jobs.push(post('print-meta.json', 'data:application/json;base64,'+_b64utf8(JSON.stringify(meta,null,1))));
+    return Promise.all(jobs);
+  }).then(function(){
+    console.log('[print-data] uploaded for '+code);
+  }).catch(function(e){
+    console.warn('[print-data] upload skipped:', e&&e.message);
+  }).then(function(){ _printUploadBusy=false; });
+};
+
 function renderProofModal(meta){
   var set=document.getElementById('proofSettings');
   set.innerHTML='';
@@ -6945,6 +7009,8 @@ window.SEEQ_DESIGN_CODE = window.SEEQ_DESIGN_CODE || '';
         showCode(code);
         toast(method==='PUT' ? '上書き保存しました（'+code+'）' : '保存しました。コード '+code);
         track('design:save',{code:code,product:currentProduct,mode:method});
+        /* 入稿SVG（イラレ連携用）を裏で生成・同梱。失敗しても保存自体には影響なし */
+        if(window.__uploadPrintData) setTimeout(function(){ window.__uploadPrintData(code); }, 80);
       })
       .catch(function(e){
         console.warn('[designs] save failed', e);
@@ -7573,6 +7639,8 @@ var SeeQEst=(function(){
         showQuoteDone(window.SEEQ_DESIGN_CODE||'');
         track('quote:send',{via:'api',product:currentProduct});
         if(window.__markDesignOrdered) window.__markDesignOrdered(res.body.id||res.body.quoteId||'');
+        /* 見積依頼にも最新の入稿SVGを同梱（工場側がそのままイラレで開ける） */
+        if(window.__uploadPrintData) setTimeout(function(){ window.__uploadPrintData(window.SEEQ_DESIGN_CODE); }, 80);
         return;
       }
       var m=(res.body&&res.body.message)||'送信できませんでした。時間をおいてもう一度お試しください。';
